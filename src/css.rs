@@ -1,3 +1,5 @@
+use std::str;
+
 #[derive(Clone, Debug)]
 pub struct Stylesheet {
     pub rules: Vec<Rule>,
@@ -181,7 +183,7 @@ impl Parser {
                     // universal selector
                     self.consume_char();
                 }
-                c if valid_identifier_char(c) => {
+                c if valid_ident_char(c) => {
                     selector.tag_name = Some(self.parse_identifier());
                 }
                 _ => break,
@@ -265,7 +267,7 @@ impl Parser {
     }
 
     fn parse_identifier(&mut self) -> String {
-        self.consume_while(valid_identifier_char)
+        self.consume_while(valid_ident_char)
     }
 
     fn consume_whitespace(&mut self) {
@@ -300,9 +302,7 @@ impl Parser {
     }
 }
 
-fn valid_identifier_char(c: char) -> bool {
-    match c {
-        'a'...'z' | 'A'...'Z' | '0'...'9' | '-' | '_' => true, // TODO: Include U+00A0 and higher.
-        _ => false,
-    }
+fn valid_ident_char(c: char) -> bool {
+    // TODO: other char codes?
+    c.is_alphanumeric() || c == '-' || c == '_'
 }
