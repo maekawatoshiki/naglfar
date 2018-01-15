@@ -7,3 +7,8 @@ authors = ["uint256_t <maekawatoshiki@github.com>"]
 
 html5ever = "*"
 
+tendril = "*"
+
+clap = "*"
+
+
