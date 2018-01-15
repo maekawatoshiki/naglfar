@@ -1,6 +1,9 @@
 [package]
 name = "naglfar"
 version = "0.1.0"
-authors = ["uint256_t <konndennsa@gmail.com>"]
+authors = ["uint256_t <maekawatoshiki@github.com>"]
 
 [dependencies]
+
+html5ever = "*"
+
