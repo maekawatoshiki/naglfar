@@ -1,29 +1,29 @@
 use std::str;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Stylesheet {
     pub rules: Vec<Rule>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Rule {
     pub selectors: Vec<Selector>,
     pub declarations: Vec<Declaration>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Selector {
     Simple(SimpleSelector),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SimpleSelector {
     pub tag_name: Option<String>,
     pub id: Option<String>,
     pub class: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Declaration {
     pub name: String,
     pub value: Value,
@@ -116,6 +116,11 @@ pub fn parse_css(source: String) -> Stylesheet {
     Stylesheet {
         rules: parser.parse_rules(),
     }
+}
+
+fn valid_ident_char(c: char) -> bool {
+    // TODO: other char codes?
+    c.is_alphanumeric() || c == '-' || c == '_'
 }
 
 #[derive(Clone, Debug)]
@@ -302,7 +307,52 @@ impl Parser {
     }
 }
 
-fn valid_ident_char(c: char) -> bool {
-    // TODO: other char codes?
-    c.is_alphanumeric() || c == '-' || c == '_'
+#[test]
+fn test1() {
+    let src = "div { width: 100px; height: 50px; color: #ffffff; background-color: #003300; }";
+    let stylesheet = parse_css(src.to_string());
+    assert_eq!(
+        stylesheet,
+        Stylesheet {
+            rules: vec![
+                Rule {
+                    selectors: vec![
+                        Selector::Simple(SimpleSelector {
+                            tag_name: Some("div".to_string()),
+                            id: None,
+                            class: vec![],
+                        }),
+                    ],
+                    declarations: vec![
+                        Declaration {
+                            name: "width".to_string(),
+                            value: Value::Length(100.0, Unit::Px),
+                        },
+                        Declaration {
+                            name: "height".to_string(),
+                            value: Value::Length(50.0, Unit::Px),
+                        },
+                        Declaration {
+                            name: "color".to_string(),
+                            value: Value::Color(Color {
+                                r: 0xff,
+                                g: 0xff,
+                                b: 0xff,
+                                a: 0xff,
+                            }),
+                        },
+                        Declaration {
+                            name: "background-color".to_string(),
+                            value: Value::Color(Color {
+                                r: 0x00,
+                                g: 0x33,
+                                b: 0x00,
+                                a: 0xff,
+                            }),
+                        },
+                    ],
+                },
+            ],
+        }
+    );
 }

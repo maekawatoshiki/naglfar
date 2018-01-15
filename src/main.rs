@@ -19,24 +19,22 @@ fn main() {
     let _app_matches = app.get_matches();
 
     println!("HTML:");
-    let mut html_source_file = OpenOptions::new()
+    let mut html_source = "".to_string();
+    OpenOptions::new()
         .read(true)
         .open("./example/test.html")
-        .unwrap();
-    let mut html_source = "".to_string();
-    html_source_file
+        .unwrap()
         .read_to_string(&mut html_source)
         .ok()
         .expect("cannot read file");
     renderer::show_html(html_source.as_str());
 
     println!("CSS:");
-    let mut css_source_file = OpenOptions::new()
+    let mut css_source = "".to_string();
+    OpenOptions::new()
         .read(true)
         .open("./example/test.css")
-        .unwrap();
-    let mut css_source = "".to_string();
-    css_source_file
+        .unwrap()
         .read_to_string(&mut css_source)
         .ok()
         .expect("cannot read file");
