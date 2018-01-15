@@ -1,5 +1,7 @@
 # Naglfar
 
+[![CircleCI](https://circleci.com/gh/maekawatoshiki/naglfar.svg?style=shield)](https://circleci.com/gh/maekawatoshiki/naglfar)
+
 Naglfar is a Web browser in Rust.
 
 # Build 
