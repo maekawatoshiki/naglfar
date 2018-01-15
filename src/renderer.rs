@@ -12,7 +12,9 @@ use html5ever::rcdom::{Handle, NodeData, RcDom};
 
 fn walk(indent: usize, node: Handle) {
     fn escape_default(s: &str) -> String {
-        s.chars().flat_map(|c| c.escape_default()).collect()
+        s.chars()
+            .flat_map(|c| c.escape_default())
+            .collect::<String>()
     }
 
     print!("{}", iter::repeat(" ").take(indent).collect::<String>());
@@ -48,21 +50,10 @@ fn walk(indent: usize, node: Handle) {
     }
 }
 
-pub fn f() {
-    let text = "
-<html>
-<body>
-hello
-<font color=\"red\">web</font>
-world
-!!
-</body>
-</html>
-"
-        .to_owned();
+pub fn show_html(source: &str) {
     let dom = parse_document(RcDom::default(), Default::default())
         .from_utf8()
-        .read_from(&mut BufReader::new(text.as_bytes()))
+        .read_from(&mut BufReader::new(source.as_bytes()))
         .unwrap();
     walk(0, dom.document);
 }
