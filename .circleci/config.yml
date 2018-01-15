@@ -36,4 +36,5 @@ jobs:
       - run:
           name: Test
           command: |
+            export PATH=~/.cargo/bin:$PATH
             cargo test
