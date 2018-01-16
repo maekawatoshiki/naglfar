@@ -1,6 +1,7 @@
 # Naglfar
 
 [![CircleCI](https://circleci.com/gh/maekawatoshiki/naglfar.svg?style=shield)](https://circleci.com/gh/maekawatoshiki/naglfar)
+[![](http://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 Naglfar is a Web browser in Rust.
 
