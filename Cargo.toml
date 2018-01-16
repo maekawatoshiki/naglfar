@@ -5,8 +5,4 @@ authors = ["uint256_t <maekawatoshiki@github.com>"]
 
 [dependencies]
 
-html5ever = "*"
-
-tendril = "*"
-
 clap = "*"

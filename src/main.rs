@@ -1,5 +1,5 @@
 extern crate naglfar;
-use naglfar::renderer;
+use naglfar::html;
 use naglfar::css;
 
 extern crate clap;
@@ -27,7 +27,8 @@ fn main() {
         .read_to_string(&mut html_source)
         .ok()
         .expect("cannot read file");
-    renderer::show_html(html_source.as_str());
+    let html_tree = html::parse(html_source);
+    print!("{}", html_tree);
 
     println!("CSS:");
     let mut css_source = "".to_string();
@@ -38,5 +39,6 @@ fn main() {
         .read_to_string(&mut css_source)
         .ok()
         .expect("cannot read file");
-    css::show_css(css_source.as_str());
+    let stylesheet = css::parse(css_source);
+    css::show_css(&stylesheet);
 }
