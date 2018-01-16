@@ -15,6 +15,18 @@ pub fn parse(source: String) -> dom::Node {
     }
 }
 
+fn is_not_to_close_tag(tag_name: &str) -> bool {
+    if tag_name == "br" || tag_name == "img" || tag_name == "hr " || tag_name == "meta"
+        || tag_name == "input" || tag_name == "embed" || tag_name == "area"
+        || tag_name == "base" || tag_name == "col" || tag_name == "keygen"
+        || tag_name == "link" || tag_name == "param" || tag_name == "source"
+    {
+        true
+    } else {
+        false
+    }
+}
+
 struct Parser {
     pos: usize,
     input: String,
@@ -46,6 +58,10 @@ impl Parser {
         let tag_name = self.parse_tag_name();
         let attrs = self.parse_attributes();
         assert_eq!(self.consume_char(), '>');
+
+        if is_not_to_close_tag(tag_name.as_str()) {
+            return dom::Node::elem(tag_name, attrs, vec![]);
+        }
 
         // Contents.
         let children = self.parse_nodes();

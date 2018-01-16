@@ -87,7 +87,7 @@ impl fmt::Display for NodeType {
             }) => {
                 try!(write!(f, "<{}", tag_name));
                 for (name, val) in attrs.iter() {
-                    write!(f, " {}=\"{}\"", name, val);
+                    try!(write!(f, " {}=\"{}\"", name, val));
                 }
                 write!(f, ">")
             }
