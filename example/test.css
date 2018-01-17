@@ -1,3 +1,24 @@
+* {
+  display: block;
+}
+
+span {
+  display: inline;
+}
+
+html {
+  width: 600px;
+  height: 600px;
+  padding: 10px;
+  margin: auto;
+  background: #ffffff;
+}
+
+body {
+  width: auto;
+  height: auto;
+}
+
 span.hello {
   color: red;
 }

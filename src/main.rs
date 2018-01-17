@@ -1,6 +1,8 @@
 extern crate naglfar;
 use naglfar::html;
 use naglfar::css;
+use naglfar::style;
+use naglfar::layout;
 
 extern crate clap;
 use clap::{App, Arg};
@@ -41,4 +43,12 @@ fn main() {
         .expect("cannot read file");
     let stylesheet = css::parse(css_source);
     css::show_css(&stylesheet);
+
+    let mut viewport: layout::Dimensions = ::std::default::Default::default();
+    viewport.content.width = 800.0;
+    viewport.content.height = 600.0;
+
+    let style_tree = style::style_tree(&html_tree, &stylesheet);
+    let layout_tree = layout::layout_tree(&style_tree, viewport);
+    print!("{}", layout_tree);
 }
