@@ -3,6 +3,7 @@ use css::{Unit, Value};
 use dom::NodeType;
 use std::default::Default;
 use std::fmt;
+// use render::get_str_width;
 
 // CSS box model. All sizes are in px.
 // TODO: Support units other than px
@@ -47,7 +48,7 @@ pub enum BoxType<'a> {
 }
 
 impl<'a> LayoutBox<'a> {
-    fn new(box_type: BoxType) -> LayoutBox {
+    pub fn new(box_type: BoxType) -> LayoutBox {
         LayoutBox {
             box_type: box_type,
             dimensions: Default::default(),
@@ -55,7 +56,7 @@ impl<'a> LayoutBox<'a> {
         }
     }
 
-    fn get_style_node(&self) -> &'a StyledNode<'a> {
+    pub fn get_style_node(&self) -> &'a StyledNode<'a> {
         match self.box_type {
             BoxType::BlockNode(node) | BoxType::InlineNode(node) => node,
             BoxType::AnonymousBlock => panic!("Anonymous block box has no style node"),
@@ -142,8 +143,6 @@ impl<'a> LayoutBox<'a> {
         match self.get_style_node().node.data {
             NodeType::Element(_) => {}
             NodeType::Text(ref body) => {
-                // These '8.0' and '16.0' are, as you can see, magic numbers
-                // which mean width per a charactor and the height of a charactor.
                 // TODO: Don't use magic numbers!
                 self.dimensions.content.width = body.len() as f64 * 8.0;
                 self.dimensions.content.height = 16.0;

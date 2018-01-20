@@ -3,6 +3,8 @@ use naglfar::html;
 use naglfar::css;
 use naglfar::style;
 use naglfar::layout;
+use naglfar::painter;
+use naglfar::render;
 
 extern crate clap;
 use clap::{App, Arg};
@@ -45,10 +47,18 @@ fn main() {
     css::show_css(&stylesheet);
 
     let mut viewport: layout::Dimensions = ::std::default::Default::default();
-    viewport.content.width = 800.0;
-    viewport.content.height = 600.0;
+    viewport.content.width = 480.0;
+    viewport.content.height = 360.0;
 
     let style_tree = style::style_tree(&html_tree, &stylesheet);
     let layout_tree = layout::layout_tree(&style_tree, viewport);
-    print!("{}", layout_tree);
+    print!("LAYOUT:\n{}", layout_tree);
+
+    let display_command = painter::build_display_list(&layout_tree);
+    println!("DISPLAY:\n{:?}", display_command);
+
+    render::render(display_command, &viewport);
+
+    // use naglfar::window;
+    // window::feature::main();
 }

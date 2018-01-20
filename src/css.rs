@@ -49,6 +49,8 @@ pub struct Color {
     pub a: u8,
 }
 
+impl Copy for Color {}
+
 impl Value {
     pub fn to_px(&self) -> f64 {
         match *self {
