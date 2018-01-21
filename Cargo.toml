@@ -6,5 +6,6 @@ authors = ["uint256_t <maekawatoshiki@github.com>"]
 [dependencies]
 printpdf = "*"
 gtk = "*"
-cairo = "*"
+gdk = "*"
+cairo-rs = "*"
 clap = "*"
