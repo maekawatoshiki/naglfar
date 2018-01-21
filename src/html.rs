@@ -76,10 +76,7 @@ impl Parser {
     }
 
     fn parse_tag_name(&mut self) -> String {
-        self.consume_while(|c| match c {
-            'a'...'z' | 'A'...'Z' | '0'...'9' => true,
-            _ => false,
-        })
+        self.consume_while(|c| c.is_alphanumeric())
     }
 
     fn parse_attributes(&mut self) -> dom::AttrMap {
@@ -111,7 +108,17 @@ impl Parser {
     }
 
     fn parse_text(&mut self) -> dom::Node {
-        dom::Node::text(self.consume_while(|c| c != '<'))
+        let mut last = ' '; // any char
+        dom::Node::text(self.consume_while(|c| c != '<').trim().chars().fold(
+            "".to_string(),
+            |mut s, c| {
+                if !(last.is_whitespace() && c.is_whitespace()) {
+                    s.push(c);
+                }
+                last = c;
+                s
+            },
+        ))
     }
 
     fn consume_whitespace(&mut self) {
