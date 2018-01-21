@@ -16,7 +16,7 @@ pub fn parse(source: String) -> dom::Node {
 }
 
 fn is_not_to_close_tag(tag_name: &str) -> bool {
-    if tag_name == "br" || tag_name == "img" || tag_name == "hr " || tag_name == "meta"
+    if tag_name == "br" || tag_name == "img" || tag_name == "hr" || tag_name == "meta"
         || tag_name == "input" || tag_name == "embed" || tag_name == "area"
         || tag_name == "base" || tag_name == "col" || tag_name == "keygen"
         || tag_name == "link" || tag_name == "param" || tag_name == "source"
@@ -125,12 +125,12 @@ impl Parser {
         self.consume_while(char::is_whitespace);
     }
 
-    fn consume_while<F>(&mut self, test: F) -> String
+    fn consume_while<F>(&mut self, f: F) -> String
     where
         F: Fn(char) -> bool,
     {
         let mut result = String::new();
-        while !self.eof() && test(self.next_char()) {
+        while !self.eof() && f(self.next_char()) {
             result.push(self.consume_char());
         }
         result
