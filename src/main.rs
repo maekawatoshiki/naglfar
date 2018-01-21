@@ -4,7 +4,7 @@ use naglfar::css;
 use naglfar::style;
 use naglfar::layout;
 use naglfar::painter;
-use naglfar::render;
+use naglfar::window;
 
 extern crate clap;
 use clap::{App, Arg};
@@ -50,15 +50,13 @@ fn main() {
     viewport.content.width = 480.0;
     viewport.content.height = 360.0;
 
-    let style_tree = style::style_tree(&html_tree, &stylesheet);
-    let layout_tree = layout::layout_tree(&style_tree, viewport);
-    print!("LAYOUT:\n{}", layout_tree);
+    window::render(&viewport, move |ctx| {
+        let style_tree = style::style_tree(&html_tree, &stylesheet);
+        let layout_tree = layout::layout_tree(&style_tree, ctx, viewport);
+        print!("LAYOUT:\n{}", layout_tree);
 
-    let display_command = painter::build_display_list(&layout_tree);
-    println!("DISPLAY:\n{:?}", display_command);
-
-    render::render(display_command, &viewport);
-
-    // use naglfar::window;
-    // window::feature::main();
+        let display_command = painter::build_display_list(&layout_tree);
+        println!("DISPLAY:\n{:?}", display_command);
+        display_command
+    });
 }

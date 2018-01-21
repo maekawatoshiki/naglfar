@@ -23,6 +23,10 @@ span.hello {
   background: #00ffff;
 }
 
+span.world {
+  background: #ffff00;
+}
+
 #fox {
   background: #ff0000;
 }

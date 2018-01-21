@@ -3,6 +3,7 @@ use css::{Unit, Value};
 use dom::NodeType;
 use std::default::Default;
 use std::fmt;
+use cairo::Context;
 // use render::get_str_width;
 
 // CSS box model. All sizes are in px.
@@ -64,22 +65,23 @@ impl<'a> LayoutBox<'a> {
     }
 }
 
-/// Transform a style tree into a layout tree.
+// Transform a style tree into a layout tree.
 pub fn layout_tree<'a>(
     node: &'a StyledNode<'a>,
+    ctx: &Context,
     mut containing_block: Dimensions,
 ) -> LayoutBox<'a> {
     // The layout algorithm expects the container height to start at 0.
     // TODO: Save the initial containing block height, for calculating percent heights.
     containing_block.content.height = 0.0;
 
-    let mut root_box = build_layout_tree(node);
-    root_box.layout(containing_block);
+    let mut root_box = build_layout_tree(node, ctx);
+    root_box.layout(ctx, containing_block);
     root_box
 }
 
-/// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
-fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
+// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
+fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> LayoutBox<'a> {
     // Create the root box.
     let mut root = LayoutBox::new(match style_node.display() {
         Display::Block => BoxType::BlockNode(style_node),
@@ -90,10 +92,10 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
     // Create the descendant boxes.
     for child in &style_node.children {
         match child.display() {
-            Display::Block => root.children.push(build_layout_tree(child)),
+            Display::Block => root.children.push(build_layout_tree(child, ctx)),
             Display::Inline => root.get_inline_container()
                 .children
-                .push(build_layout_tree(child)),
+                .push(build_layout_tree(child, ctx)),
             Display::None => {} // Don't lay out nodes with `display: none;`
         }
     }
@@ -102,29 +104,40 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
 
 impl<'a> LayoutBox<'a> {
     // Lay out a box and its descendants.
-    fn layout(&mut self, containing_block: Dimensions) {
+    fn layout(&mut self, ctx: &Context, containing_block: Dimensions) {
         match self.box_type {
-            BoxType::BlockNode(_) => self.layout_block(containing_block),
-            BoxType::InlineNode(_) => self.layout_inline(containing_block),
-            BoxType::AnonymousBlock => for child in &mut self.children {
-                child.layout(containing_block);
-                self.dimensions.content.width = child.dimensions.margin_box().width;
-                self.dimensions.content.height =
-                    self.dimensions.content.height + child.dimensions.margin_box().height;
-            },
+            BoxType::BlockNode(_) => self.layout_block(ctx, containing_block),
+            BoxType::InlineNode(_) => self.layout_inline(ctx, containing_block),
+            BoxType::AnonymousBlock => {
+                let mut containing_block = containing_block;
+                containing_block.content.width = 0.0;
+                for child in &mut self.children {
+                    child.layout(ctx, containing_block);
+                    containing_block.content.width += child.dimensions.margin_box().width;
+                    self.dimensions.content.width = vec![
+                        self.dimensions.content.width,
+                        child.dimensions.margin_box().width,
+                    ].into_iter()
+                        .fold(0.0 / 0.0, f64::max);
+                    self.dimensions.content.height = vec![
+                        self.dimensions.content.height,
+                        child.dimensions.margin_box().height,
+                    ].into_iter()
+                        .fold(0.0 / 0.0, f64::max);
+                }
+            }
         }
     }
 
     // Lay out a block-level element and its descendants.
-    fn layout_block(&mut self, containing_block: Dimensions) {
+    fn layout_block(&mut self, ctx: &Context, containing_block: Dimensions) {
         // Child width can depend on parent width, so we need to calculate this box's width before
         // laying out its children.
         self.calculate_block_width(containing_block);
 
-        // Determine where the box is located within its container.
         self.calculate_block_position(containing_block);
 
-        self.layout_block_children();
+        self.layout_block_children(ctx);
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
         // children are laid out.
@@ -132,20 +145,29 @@ impl<'a> LayoutBox<'a> {
     }
 
     // Lay out a inline-level element and its descendants.
-    fn layout_inline(&mut self, containing_block: Dimensions) {
-        // Determine where the box is located within its container.
+    fn layout_inline(&mut self, ctx: &Context, containing_block: Dimensions) {
         self.calculate_inline_position(containing_block);
 
-        self.layout_inline_children();
+        self.layout_inline_children(ctx);
 
-        // If the node is text, the text's width and height become
+        // If the node is a text node, the text's width and height become
         // the node's width and height.
         match self.get_style_node().node.data {
             NodeType::Element(_) => {}
             NodeType::Text(ref body) => {
+                let font_size = 16.0; // TODO
+                ctx.set_font_size(font_size);
+                let (width, descent) = {
+                    let font_info = ctx.get_scaled_font();
+                    let text_extents = font_info.text_extents(body.as_str());
+                    (
+                        text_extents.x_advance + text_extents.x_bearing,
+                        font_info.extents().descent,
+                    )
+                };
                 // TODO: Don't use magic numbers!
-                self.dimensions.content.width = body.len() as f64 * 8.0;
-                self.dimensions.content.height = 16.0;
+                self.dimensions.content.width = width;
+                self.dimensions.content.height = descent as f64 + font_size;
             }
         }
     }
@@ -174,23 +196,23 @@ impl<'a> LayoutBox<'a> {
         d.padding.top = style.lookup("padding-top", "padding", &zero).to_px();
         d.padding.bottom = style.lookup("padding-bottom", "padding", &zero).to_px();
 
-        d.content.x = containing_block.content.x + d.margin.left + d.border.left + d.padding.left;
+        d.content.x = containing_block.content.width + containing_block.content.x + d.margin.left
+            + d.border.left + d.padding.left;
 
-        // Position the box below all the previous boxes in the container.
         d.content.y = containing_block.content.height + containing_block.content.y + d.margin.top
             + d.border.top + d.padding.top;
     }
 
     // Lay out the inline's children within its content area.
     // Sets `self.dimensions.height` to the total content height.
-    fn layout_inline_children(&mut self) {
+    fn layout_inline_children(&mut self, ctx: &Context) {
         let d = &mut self.dimensions;
         for child in &mut self.children {
-            child.layout(*d);
-            d.content.width = child.dimensions.margin_box().width; // TODO
-
-            // Increment the height so each child is laid out below the previous one.
-            d.content.height = d.content.height + child.dimensions.margin_box().height;
+            child.layout(ctx, *d);
+            d.content.width += child.dimensions.margin_box().width; // TODO
+            d.content.height = vec![d.content.height, child.dimensions.margin_box().height]
+                .into_iter()
+                .fold(0.0 / 0.0, f64::max);
         }
     }
 
@@ -328,12 +350,12 @@ impl<'a> LayoutBox<'a> {
 
     // Lay out the block's children within its content area.
     // Sets `self.dimensions.height` to the total content height.
-    fn layout_block_children(&mut self) {
+    fn layout_block_children(&mut self, ctx: &Context) {
         let d = &mut self.dimensions;
         for child in &mut self.children {
-            child.layout(*d);
+            child.layout(ctx, *d);
             // Increment the height so each child is laid out below the previous one.
-            d.content.height = d.content.height + child.dimensions.margin_box().height;
+            d.content.height += child.dimensions.margin_box().height;
         }
     }
 
