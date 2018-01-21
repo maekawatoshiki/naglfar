@@ -22,4 +22,4 @@ $ cargo run
 
 # Reference
 
-Great thanks to [![robinson](https://github.com/mbrubeck/robinson)](robinson)
+Great thanks to [robinson](https://github.com/mbrubeck/robinson)
