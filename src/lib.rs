@@ -10,4 +10,4 @@ pub mod window;
 extern crate cairo;
 extern crate gdk;
 extern crate gtk;
-extern crate printpdf;
+
