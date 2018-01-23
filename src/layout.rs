@@ -65,6 +65,8 @@ impl<'a> LayoutBox<'a> {
     }
 }
 
+pub static DEFAULT_FONT_SIZE: f64 = 16.0;
+
 // Transform a style tree into a layout tree.
 pub fn layout_tree<'a>(
     node: &'a StyledNode<'a>,
@@ -114,11 +116,6 @@ impl<'a> LayoutBox<'a> {
                 for child in &mut self.children {
                     child.layout(ctx, containing_block);
                     containing_block.content.width += child.dimensions.margin_box().width;
-                    self.dimensions.content.width = vec![
-                        self.dimensions.content.width,
-                        child.dimensions.margin_box().width,
-                    ].into_iter()
-                        .fold(0.0 / 0.0, f64::max);
                     self.dimensions.content.height = vec![
                         self.dimensions.content.height,
                         child.dimensions.margin_box().height,
@@ -155,8 +152,7 @@ impl<'a> LayoutBox<'a> {
         match self.get_style_node().node.data {
             NodeType::Element(_) => {}
             NodeType::Text(ref body) => {
-                let font_size = 16.0; // TODO
-                ctx.set_font_size(font_size);
+                ctx.set_font_size(DEFAULT_FONT_SIZE);
                 let (width, descent) = {
                     let font_info = ctx.get_scaled_font();
                     let text_extents = font_info.text_extents(body.as_str());
@@ -165,9 +161,8 @@ impl<'a> LayoutBox<'a> {
                         font_info.extents().descent,
                     )
                 };
-                // TODO: Don't use magic numbers!
                 self.dimensions.content.width = width;
-                self.dimensions.content.height = descent as f64 + font_size;
+                self.dimensions.content.height = DEFAULT_FONT_SIZE + descent;
             }
         }
     }
@@ -180,7 +175,7 @@ impl<'a> LayoutBox<'a> {
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        // If margins are `auto`, the used value is zero.
+        // TODO: Do follow specifications
         d.margin.top = style.lookup("margin-top", "margin", &zero).to_px();
         d.margin.bottom = style.lookup("margin-bottom", "margin", &zero).to_px();
         d.margin.left = style.lookup("margin-left", "margin", &zero).to_px();
@@ -191,6 +186,12 @@ impl<'a> LayoutBox<'a> {
             .to_px();
         d.border.bottom = style
             .lookup("border-bottom-width", "border-width", &zero)
+            .to_px();
+        d.border.left = style
+            .lookup("border-left-width", "border-width", &zero)
+            .to_px();
+        d.border.right = style
+            .lookup("border-right-width", "border-width", &zero)
             .to_px();
 
         d.padding.top = style.lookup("padding-top", "padding", &zero).to_px();
@@ -210,10 +211,8 @@ impl<'a> LayoutBox<'a> {
         for child in &mut self.children {
             child.layout(ctx, *d);
             d.content.width += child.dimensions.margin_box().width; // TODO
-            d.content.height = vec![d.content.height, child.dimensions.margin_box().height]
-                .into_iter()
-                .fold(0.0 / 0.0, f64::max);
         }
+        d.content.height = DEFAULT_FONT_SIZE;
     }
 
     // Calculate the width of a block-level non-replaced element in normal flow.

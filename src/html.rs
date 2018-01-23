@@ -37,6 +37,13 @@ impl Parser {
         let mut nodes = vec![];
         loop {
             self.consume_whitespace();
+            // if let Some(last) = nodes.last() {
+            //     if !last.contains_text() {
+            //         self.consume_whitespace();
+            //     }
+            // } else {
+            //     self.consume_whitespace();
+            // }
             if self.eof() || self.starts_with("</") {
                 break;
             }
@@ -108,12 +115,13 @@ impl Parser {
     }
 
     fn parse_text(&mut self) -> dom::Node {
-        let mut last = ' '; // any char
-        dom::Node::text(self.consume_while(|c| c != '<').trim().chars().fold(
+        let mut last = '*'; // any char except space
+        dom::Node::text(self.consume_while(|c| c != '<').chars().fold(
             "".to_string(),
             |mut s, c| {
+                println!("'{}'", c);
                 if !(last.is_whitespace() && c.is_whitespace()) {
-                    s.push(c);
+                    s.push(if c.is_whitespace() { ' ' } else { c });
                 }
                 last = c;
                 s

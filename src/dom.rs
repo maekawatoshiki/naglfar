@@ -40,6 +40,20 @@ impl Node {
             }),
         }
     }
+
+    pub fn contains_text(&self) -> bool {
+        match self.data {
+            NodeType::Element(_) => {
+                for child in &self.children {
+                    if child.contains_text() {
+                        return true;
+                    }
+                }
+                false
+            }
+            NodeType::Text(_) => return true,
+        }
+    }
 }
 
 // Element methods

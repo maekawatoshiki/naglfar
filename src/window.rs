@@ -8,6 +8,8 @@ use cairo::Context;
 use painter::{DisplayCommand, DisplayList};
 use layout::Dimensions;
 
+use layout::DEFAULT_FONT_SIZE;
+
 struct RenderingWindow {
     window: gtk::Window,
     drawing_area: gtk::DrawingArea,
@@ -61,14 +63,14 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
                 color.g as f64 / 255.0,
                 color.b as f64 / 255.0,
             );
-            ctx.stroke_preserve();
+            // ctx.stroke_preserve();
             ctx.fill();
         }
         &DisplayCommand::Text(ref text, rect) => {
-            let font_size = 16.0; // TODO
             ctx.save();
-            ctx.move_to(rect.x, font_size + rect.y);
-            ctx.set_font_size(font_size);
+            ctx.set_font_size(DEFAULT_FONT_SIZE);
+            let font_ascent = ctx.get_scaled_font().extents().ascent;
+            ctx.move_to(rect.x, font_ascent + rect.y);
             ctx.set_source_rgb(0.0, 0.0, 0.0);
             ctx.show_text(text.as_str());
             ctx.restore();
