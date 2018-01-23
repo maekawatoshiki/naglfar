@@ -2,22 +2,6 @@ use layout::{BoxType, LayoutBox, Rect};
 use css::{Color, Value};
 use dom::NodeType;
 
-pub struct Canvas {
-    pub pixels: Vec<Color>,
-    pub width: usize,
-    pub height: usize,
-}
-
-// Paint a tree of LayoutBoxes to an array of pixels.
-pub fn paint(layout_root: &LayoutBox, bounds: Rect) -> Canvas {
-    let display_list = build_display_list(layout_root);
-    let mut canvas = Canvas::new(bounds.width as usize, bounds.height as usize);
-    for item in display_list {
-        canvas.paint_item(&item);
-    }
-    canvas
-}
-
 #[derive(Debug)]
 pub enum DisplayCommand {
     SolidColor(Color, Rect),
@@ -125,51 +109,5 @@ fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
             _ => None,
         },
         BoxType::AnonymousBlock => None,
-    }
-}
-
-impl Canvas {
-    /// Create a blank canvas
-    fn new(width: usize, height: usize) -> Canvas {
-        let white = Color {
-            r: 255,
-            g: 255,
-            b: 255,
-            a: 255,
-        };
-        Canvas {
-            pixels: vec![white; width * height],
-            width: width,
-            height: height,
-        }
-    }
-
-    fn paint_item(&mut self, item: &DisplayCommand) {
-        match *item {
-            DisplayCommand::SolidColor(color, rect) => {
-                // Clip the rectangle to the canvas boundaries.
-                let x0 = rect.x.clamp(0.0, self.width as f64) as usize;
-                let y0 = rect.y.clamp(0.0, self.height as f64) as usize;
-                let x1 = (rect.x + rect.width).clamp(0.0, self.width as f64) as usize;
-                let y1 = (rect.y + rect.height).clamp(0.0, self.height as f64) as usize;
-
-                for y in y0..y1 {
-                    for x in x0..x1 {
-                        // TODO: alpha compositing with existing pixel
-                        self.pixels[y * self.width + x] = color;
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-trait Clamp {
-    fn clamp(self, lower: Self, upper: Self) -> Self;
-}
-impl Clamp for f64 {
-    fn clamp(self, lower: f64, upper: f64) -> f64 {
-        self.max(lower).min(upper)
     }
 }

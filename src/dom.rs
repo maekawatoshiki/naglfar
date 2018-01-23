@@ -51,7 +51,20 @@ impl Node {
                 }
                 false
             }
-            NodeType::Text(_) => return true,
+            NodeType::Text(_) => true,
+        }
+    }
+
+    pub fn is_inline(&self) -> bool {
+        match self.data {
+            NodeType::Element(ElementData { ref tag_name, .. }) => match tag_name.as_str() {
+                "a" | "abbr" | "acronym" | "b" | "bdo" | "big" | "br" | "button" | "cite"
+                | "code" | "dfn" | "em" | "i" | "img" | "input" | "kbd" | "label" | "map"
+                | "object" | "q" | "samp" | "script" | "select" | "small" | "span" | "strong"
+                | "sub" | "sup" | "textarea" | "time" | "tt" | "var" => true,
+                _ => false,
+            },
+            NodeType::Text(_) => false,
         }
     }
 }

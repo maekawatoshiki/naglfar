@@ -34,16 +34,13 @@ struct Parser {
 
 impl Parser {
     fn parse_nodes(&mut self) -> Vec<dom::Node> {
-        let mut nodes = vec![];
+        let mut nodes: Vec<dom::Node> = vec![];
         loop {
-            self.consume_whitespace();
-            // if let Some(last) = nodes.last() {
-            //     if !last.contains_text() {
-            //         self.consume_whitespace();
-            //     }
-            // } else {
-            //     self.consume_whitespace();
-            // }
+            // TODO: Is this correct?
+            match nodes.last() {
+                Some(last) if last.is_inline() && last.contains_text() => {}
+                _ => self.consume_whitespace(),
+            };
             if self.eof() || self.starts_with("</") {
                 break;
             }
@@ -119,7 +116,6 @@ impl Parser {
         dom::Node::text(self.consume_while(|c| c != '<').chars().fold(
             "".to_string(),
             |mut s, c| {
-                println!("'{}'", c);
                 if !(last.is_whitespace() && c.is_whitespace()) {
                     s.push(if c.is_whitespace() { ' ' } else { c });
                 }

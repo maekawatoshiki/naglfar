@@ -47,8 +47,8 @@ fn main() {
     css::show_css(&stylesheet);
 
     let mut viewport: layout::Dimensions = ::std::default::Default::default();
-    viewport.content.width = 480.0;
-    viewport.content.height = 360.0;
+    viewport.content.width = 640.0;
+    viewport.content.height = 480.0;
 
     window::render(&viewport, move |ctx| {
         let style_tree = style::style_tree(&html_tree, &stylesheet);

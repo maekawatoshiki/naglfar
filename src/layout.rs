@@ -65,7 +65,7 @@ impl<'a> LayoutBox<'a> {
     }
 }
 
-pub static DEFAULT_FONT_SIZE: f64 = 16.0;
+pub static DEFAULT_FONT_SIZE: f64 = 20.0;
 
 // Transform a style tree into a layout tree.
 pub fn layout_tree<'a>(
@@ -364,6 +364,12 @@ impl<'a> LayoutBox<'a> {
         // Otherwise, just keep the value set by `layout_block_children`.
         if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().value("height") {
             self.dimensions.content.height = h;
+        } else {
+            // When a block contains text. TODO: Is this correct?
+            // https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#line-height
+            let line_height = DEFAULT_FONT_SIZE * 1.2;
+            self.dimensions.content.y -= (line_height - DEFAULT_FONT_SIZE) / 2.0;
+            self.dimensions.content.height += (line_height - DEFAULT_FONT_SIZE) / 2.0;
         }
     }
 
