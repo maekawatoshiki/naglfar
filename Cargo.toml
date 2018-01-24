@@ -4,7 +4,7 @@ version = "0.1.1"
 authors = ["uint256_t <maekawatoshiki@github.com>"]
 
 [dependencies]
-
+app_units = "0.6.1"
 gtk = "*"
 gdk = "*"
 cairo-rs = "*"
