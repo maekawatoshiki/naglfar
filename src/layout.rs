@@ -4,6 +4,7 @@ use dom::NodeType;
 use std::default::Default;
 use std::fmt;
 use cairo::Context;
+use app_units::Au;
 // use render::get_str_width;
 
 // CSS box model. All sizes are in px.
@@ -11,10 +12,10 @@ use cairo::Context;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Rect {
-    pub x: f64,
-    pub y: f64,
-    pub width: f64,
-    pub height: f64,
+    pub x: Au,
+    pub y: Au,
+    pub width: Au,
+    pub height: Au,
 }
 
 #[derive(Clone, Copy, Default, Debug)]
@@ -29,10 +30,10 @@ pub struct Dimensions {
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct EdgeSizes {
-    pub left: f64,
-    pub right: f64,
-    pub top: f64,
-    pub bottom: f64,
+    pub left: Au,
+    pub right: Au,
+    pub top: Au,
+    pub bottom: Au,
 }
 
 // A node in the layout tree.
@@ -65,7 +66,8 @@ impl<'a> LayoutBox<'a> {
     }
 }
 
-pub static DEFAULT_FONT_SIZE: f64 = 20.0;
+pub const DEFAULT_FONT_SIZE: f64 = 16.0f64;
+pub const DEFAULT_LINE_HEIGHT: f64 = DEFAULT_FONT_SIZE * 1.2f64;
 
 // Transform a style tree into a layout tree.
 pub fn layout_tree<'a>(
@@ -75,7 +77,7 @@ pub fn layout_tree<'a>(
 ) -> LayoutBox<'a> {
     // The layout algorithm expects the container height to start at 0.
     // TODO: Save the initial containing block height, for calculating percent heights.
-    containing_block.content.height = 0.0;
+    containing_block.content.height = Au::from_f64_px(0.0);
 
     let mut root_box = build_layout_tree(node, ctx);
     root_box.layout(ctx, containing_block);
@@ -112,15 +114,17 @@ impl<'a> LayoutBox<'a> {
             BoxType::InlineNode(_) => self.layout_inline(ctx, containing_block),
             BoxType::AnonymousBlock => {
                 let mut containing_block = containing_block;
-                containing_block.content.width = 0.0;
+                containing_block.content.width = Au::from_f64_px(0.0);
                 for child in &mut self.children {
                     child.layout(ctx, containing_block);
                     containing_block.content.width += child.dimensions.margin_box().width;
-                    self.dimensions.content.height = vec![
-                        self.dimensions.content.height,
-                        child.dimensions.margin_box().height,
-                    ].into_iter()
-                        .fold(0.0 / 0.0, f64::max);
+                    self.dimensions.content.height = Au::from_f64_px(
+                        vec![
+                            self.dimensions.content.height.to_f64_px(),
+                            child.dimensions.margin_box().height.to_f64_px(),
+                        ].into_iter()
+                            .fold(0.0 / 0.0, f64::max),
+                    );
                 }
             }
         }
@@ -138,7 +142,7 @@ impl<'a> LayoutBox<'a> {
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
         // children are laid out.
-        self.calculate_block_height();
+        self.calculate_block_height(ctx);
     }
 
     // Lay out a inline-level element and its descendants.
@@ -156,13 +160,10 @@ impl<'a> LayoutBox<'a> {
                 let (width, descent) = {
                     let font_info = ctx.get_scaled_font();
                     let text_extents = font_info.text_extents(body.as_str());
-                    (
-                        text_extents.x_advance + text_extents.x_bearing,
-                        font_info.extents().descent,
-                    )
+                    (text_extents.x_advance, font_info.extents().descent)
                 };
-                self.dimensions.content.width = width;
-                self.dimensions.content.height = DEFAULT_FONT_SIZE + descent;
+                self.dimensions.content.width = Au::from_f64_px(width);
+                self.dimensions.content.height = Au::from_f64_px(DEFAULT_LINE_HEIGHT);
             }
         }
     }
@@ -176,26 +177,35 @@ impl<'a> LayoutBox<'a> {
         let zero = Value::Length(0.0, Unit::Px);
 
         // TODO: Do follow specifications
-        d.margin.top = style.lookup("margin-top", "margin", &zero).to_px();
-        d.margin.bottom = style.lookup("margin-bottom", "margin", &zero).to_px();
-        d.margin.left = style.lookup("margin-left", "margin", &zero).to_px();
-        d.margin.right = style.lookup("margin-right", "margin", &zero).to_px();
+        d.margin.top = Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px());
+        d.margin.bottom = Au::from_f64_px(style.lookup("margin-bottom", "margin", &zero).to_px());
+        d.margin.left = Au::from_f64_px(style.lookup("margin-left", "margin", &zero).to_px());
+        d.margin.right = Au::from_f64_px(style.lookup("margin-right", "margin", &zero).to_px());
 
-        d.border.top = style
-            .lookup("border-top-width", "border-width", &zero)
-            .to_px();
-        d.border.bottom = style
-            .lookup("border-bottom-width", "border-width", &zero)
-            .to_px();
-        d.border.left = style
-            .lookup("border-left-width", "border-width", &zero)
-            .to_px();
-        d.border.right = style
-            .lookup("border-right-width", "border-width", &zero)
-            .to_px();
+        d.border.top = Au::from_f64_px(
+            style
+                .lookup("border-top-width", "border-width", &zero)
+                .to_px(),
+        );
+        d.border.bottom = Au::from_f64_px(
+            style
+                .lookup("border-bottom-width", "border-width", &zero)
+                .to_px(),
+        );
+        d.border.left = Au::from_f64_px(
+            style
+                .lookup("border-left-width", "border-width", &zero)
+                .to_px(),
+        );
+        d.border.right = Au::from_f64_px(
+            style
+                .lookup("border-right-width", "border-width", &zero)
+                .to_px(),
+        );
 
-        d.padding.top = style.lookup("padding-top", "padding", &zero).to_px();
-        d.padding.bottom = style.lookup("padding-bottom", "padding", &zero).to_px();
+        d.padding.top = Au::from_f64_px(style.lookup("padding-top", "padding", &zero).to_px());
+        d.padding.bottom =
+            Au::from_f64_px(style.lookup("padding-bottom", "padding", &zero).to_px());
 
         d.content.x = containing_block.content.width + containing_block.content.x + d.margin.left
             + d.border.left + d.padding.left;
@@ -212,7 +222,7 @@ impl<'a> LayoutBox<'a> {
             child.layout(ctx, *d);
             d.content.width += child.dimensions.margin_box().width; // TODO
         }
-        d.content.height = DEFAULT_FONT_SIZE;
+        d.content.height = Au::from_f64_px(DEFAULT_FONT_SIZE);
     }
 
     // Calculate the width of a block-level non-replaced element in normal flow.
@@ -249,7 +259,7 @@ impl<'a> LayoutBox<'a> {
             .map(|v| v.to_px()));
 
         // If width is not auto and the total is wider than the container, treat auto margins as 0.
-        if width != auto && total > containing_block.content.width {
+        if width != auto && total > containing_block.content.width.to_f64_px() {
             if margin_left == auto {
                 margin_left = Value::Length(0.0, Unit::Px);
             }
@@ -261,20 +271,21 @@ impl<'a> LayoutBox<'a> {
         // Adjust used values so that the above sum equals `containing_block.width`.
         // Each arm of the `match` should increase the total width by exactly `underflow`,
         // and afterward all values should be absolute lengths in px.
-        let underflow = containing_block.content.width - total;
+        let underflow = containing_block.content.width - Au::from_f64_px(total);
 
         match (width == auto, margin_left == auto, margin_right == auto) {
             // If the values are overconstrained, calculate margin_right.
             (false, false, false) => {
-                margin_right = Value::Length(margin_right.to_px() + underflow, Unit::Px);
+                margin_right =
+                    Value::Length(margin_right.to_px() + underflow.to_f64_px(), Unit::Px);
             }
 
             // If exactly one size is auto, its used value follows from the equality.
             (false, false, true) => {
-                margin_right = Value::Length(underflow, Unit::Px);
+                margin_right = Value::Length(underflow.to_f64_px(), Unit::Px);
             }
             (false, true, false) => {
-                margin_left = Value::Length(underflow, Unit::Px);
+                margin_left = Value::Length(underflow.to_f64_px(), Unit::Px);
             }
 
             // If width is set to auto, any other auto values become 0.
@@ -286,34 +297,35 @@ impl<'a> LayoutBox<'a> {
                     margin_right = Value::Length(0.0, Unit::Px);
                 }
 
-                if underflow >= 0.0 {
+                if underflow.to_f64_px() >= 0.0 {
                     // Expand width to fill the underflow.
-                    width = Value::Length(underflow, Unit::Px);
+                    width = Value::Length(underflow.to_f64_px(), Unit::Px);
                 } else {
                     // Width can't be negative. Adjust the right margin instead.
                     width = Value::Length(0.0, Unit::Px);
-                    margin_right = Value::Length(margin_right.to_px() + underflow, Unit::Px);
+                    margin_right =
+                        Value::Length(margin_right.to_px() + underflow.to_f64_px(), Unit::Px);
                 }
             }
 
             // If margin-left and margin-right are both auto, their used values are equal.
             (false, true, true) => {
-                margin_left = Value::Length(underflow / 2.0, Unit::Px);
-                margin_right = Value::Length(underflow / 2.0, Unit::Px);
+                margin_left = Value::Length(underflow.to_f64_px() / 2.0, Unit::Px);
+                margin_right = Value::Length(underflow.to_f64_px() / 2.0, Unit::Px);
             }
         }
 
         let d = &mut self.dimensions;
-        d.content.width = width.to_px();
+        d.content.width = Au::from_f64_px(width.to_px());
 
-        d.padding.left = padding_left.to_px();
-        d.padding.right = padding_right.to_px();
+        d.padding.left = Au::from_f64_px(padding_left.to_px());
+        d.padding.right = Au::from_f64_px(padding_right.to_px());
 
-        d.border.left = border_left.to_px();
-        d.border.right = border_right.to_px();
+        d.border.left = Au::from_f64_px(border_left.to_px());
+        d.border.right = Au::from_f64_px(border_right.to_px());
 
-        d.margin.left = margin_left.to_px();
-        d.margin.right = margin_right.to_px();
+        d.margin.left = Au::from_f64_px(margin_left.to_px());
+        d.margin.right = Au::from_f64_px(margin_right.to_px());
     }
 
     // Finish calculating the block's edge sizes, and position it within its containing block.
@@ -327,18 +339,23 @@ impl<'a> LayoutBox<'a> {
         let zero = Value::Length(0.0, Unit::Px);
 
         // If margin-top or margin-bottom is `auto`, the used value is zero.
-        d.margin.top = style.lookup("margin-top", "margin", &zero).to_px();
-        d.margin.bottom = style.lookup("margin-bottom", "margin", &zero).to_px();
+        d.margin.top = Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px());
+        d.margin.bottom = Au::from_f64_px(style.lookup("margin-bottom", "margin", &zero).to_px());
 
-        d.border.top = style
-            .lookup("border-top-width", "border-width", &zero)
-            .to_px();
-        d.border.bottom = style
-            .lookup("border-bottom-width", "border-width", &zero)
-            .to_px();
+        d.border.top = Au::from_f64_px(
+            style
+                .lookup("border-top-width", "border-width", &zero)
+                .to_px(),
+        );
+        d.border.bottom = Au::from_f64_px(
+            style
+                .lookup("border-bottom-width", "border-width", &zero)
+                .to_px(),
+        );
 
-        d.padding.top = style.lookup("padding-top", "padding", &zero).to_px();
-        d.padding.bottom = style.lookup("padding-bottom", "padding", &zero).to_px();
+        d.padding.top = Au::from_f64_px(style.lookup("padding-top", "padding", &zero).to_px());
+        d.padding.bottom =
+            Au::from_f64_px(style.lookup("padding-bottom", "padding", &zero).to_px());
 
         d.content.x = containing_block.content.x + d.margin.left + d.border.left + d.padding.left;
 
@@ -359,17 +376,18 @@ impl<'a> LayoutBox<'a> {
     }
 
     // Height of a block-level non-replaced element in normal flow with overflow visible.
-    fn calculate_block_height(&mut self) {
+    fn calculate_block_height(&mut self, ctx: &Context) {
         // If the height is set to an explicit length, use that exact length.
         // Otherwise, just keep the value set by `layout_block_children`.
         if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().value("height") {
-            self.dimensions.content.height = h;
+            self.dimensions.content.height = Au::from_f64_px(h);
         } else {
             // When a block contains text. TODO: Is this correct?
             // https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#line-height
-            let line_height = DEFAULT_FONT_SIZE * 1.2;
-            self.dimensions.content.y -= (line_height - DEFAULT_FONT_SIZE) / 2.0;
-            self.dimensions.content.height += (line_height - DEFAULT_FONT_SIZE) / 2.0;
+            ctx.set_font_size(DEFAULT_FONT_SIZE);
+            let font_info = ctx.get_scaled_font();
+            let l = DEFAULT_LINE_HEIGHT - font_info.extents().ascent - font_info.extents().descent;
+            self.dimensions.content.y -= Au::from_f64_px(l / 2.0);
         }
     }
 

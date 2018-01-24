@@ -12,6 +12,9 @@ use clap::{App, Arg};
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 
+extern crate app_units;
+use app_units::Au;
+
 const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() {
@@ -47,8 +50,8 @@ fn main() {
     css::show_css(&stylesheet);
 
     let mut viewport: layout::Dimensions = ::std::default::Default::default();
-    viewport.content.width = 640.0;
-    viewport.content.height = 480.0;
+    viewport.content.width = Au::from_px(640);
+    viewport.content.height = Au::from_px(480);
 
     window::render(&viewport, move |ctx| {
         let style_tree = style::style_tree(&html_tree, &stylesheet);

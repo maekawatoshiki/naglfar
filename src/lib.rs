@@ -7,7 +7,7 @@ pub mod layout;
 pub mod painter;
 pub mod window;
 
+extern crate app_units;
 extern crate cairo;
 extern crate gdk;
 extern crate gtk;
-

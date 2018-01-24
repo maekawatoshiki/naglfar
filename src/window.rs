@@ -57,7 +57,12 @@ impl RenderingWindow {
 fn render_item(ctx: &Context, item: &DisplayCommand) {
     match item {
         &DisplayCommand::SolidColor(ref color, rect) => {
-            ctx.rectangle(rect.x, rect.y, rect.width, rect.height);
+            ctx.rectangle(
+                rect.x.ceil_to_px() as f64,
+                rect.y.ceil_to_px() as f64,
+                rect.width.ceil_to_px() as f64,
+                rect.height.ceil_to_px() as f64,
+            );
             ctx.set_source_rgb(
                 color.r as f64 / 255.0,
                 color.g as f64 / 255.0,
@@ -70,7 +75,10 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
             ctx.save();
             ctx.set_font_size(DEFAULT_FONT_SIZE);
             let font_ascent = ctx.get_scaled_font().extents().ascent;
-            ctx.move_to(rect.x, font_ascent + rect.y);
+            ctx.move_to(
+                rect.x.ceil_to_px() as f64,
+                font_ascent + rect.y.ceil_to_px() as f64,
+            );
             ctx.set_source_rgb(0.0, 0.0, 0.0);
             ctx.show_text(text.as_str());
             ctx.restore();
@@ -85,8 +93,8 @@ where
     gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
     let window = RenderingWindow::new(
-        viewport.content.width as i32,
-        viewport.content.height as i32,
+        viewport.content.width.to_f64_px() as i32,
+        viewport.content.height.to_f64_px() as i32,
         f,
     );
     window.exit_on_close();
