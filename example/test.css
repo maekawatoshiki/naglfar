@@ -8,7 +8,6 @@ span {
 
 html {
   width: 500px;
-  height: 400px;
   padding: 10px;
   margin: auto;
   background: #ffffff;
@@ -24,6 +23,7 @@ span.world {
 
 #fox {
   background: #ff8119;
+  height: 70px;
 }
 
 #highlight {
