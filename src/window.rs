@@ -3,6 +3,7 @@ extern crate gtk;
 
 use gtk::traits::*;
 use gtk::Inhibit;
+// use gtk::{ContainerExt, WidgetExt, Window};
 use cairo::Context;
 
 use painter::{DisplayCommand, DisplayList};
@@ -23,10 +24,13 @@ impl RenderingWindow {
         F: Fn(&Context) -> DisplayList,
     {
         let window = gtk::Window::new(gtk::WindowType::Toplevel);
-        let drawing_area = gtk::DrawingArea::new();
-        drawing_area.set_size_request(width, height);
         window.set_title("Naglfar");
-        window.add(&drawing_area);
+        window.set_default_size(width, height);
+        let drawing_area = gtk::DrawingArea::new();
+        let scrolled_window = gtk::ScrolledWindow::new(None, None);
+        drawing_area.set_size_request(width, height);
+        scrolled_window.add_with_viewport(&drawing_area);
+        window.add(&scrolled_window);
 
         let instance = RenderingWindow {
             window: window,
@@ -35,8 +39,11 @@ impl RenderingWindow {
 
         instance
             .drawing_area
-            .connect_draw(move |_widget, cairo_context| {
+            .connect_draw(move |widget, cairo_context| {
                 let items = f(cairo_context);
+                if let DisplayCommand::SolidColor(_, rect) = items[0] {
+                    widget.set_size_request(width, rect.height.ceil_to_px())
+                }
                 for item in &items {
                     render_item(cairo_context, item);
                 }

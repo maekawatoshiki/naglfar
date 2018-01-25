@@ -118,13 +118,11 @@ impl<'a> LayoutBox<'a> {
                 for child in &mut self.children {
                     child.layout(ctx, containing_block);
                     containing_block.content.width += child.dimensions.margin_box().width;
-                    self.dimensions.content.height = Au::from_f64_px(
-                        vec![
-                            self.dimensions.content.height.to_f64_px(),
-                            child.dimensions.margin_box().height.to_f64_px(),
-                        ].into_iter()
-                            .fold(0.0 / 0.0, f64::max),
-                    );
+                    self.dimensions.content.height = vec![
+                        self.dimensions.content.height,
+                        child.dimensions.margin_box().height,
+                    ].into_iter()
+                        .fold(Au::from_f64_px(0.0), |x, y| if x < y { y } else { x });
                 }
             }
         }
@@ -157,10 +155,9 @@ impl<'a> LayoutBox<'a> {
             NodeType::Element(_) => {}
             NodeType::Text(ref body) => {
                 ctx.set_font_size(DEFAULT_FONT_SIZE);
-                let (width, descent) = {
+                let width = {
                     let font_info = ctx.get_scaled_font();
-                    let text_extents = font_info.text_extents(body.as_str());
-                    (text_extents.x_advance, font_info.extents().descent)
+                    font_info.text_extents(body.as_str()).x_advance
                 };
                 self.dimensions.content.width = Au::from_f64_px(width);
                 self.dimensions.content.height = Au::from_f64_px(DEFAULT_LINE_HEIGHT);
@@ -381,14 +378,14 @@ impl<'a> LayoutBox<'a> {
         // Otherwise, just keep the value set by `layout_block_children`.
         if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().value("height") {
             self.dimensions.content.height = Au::from_f64_px(h);
-        } else {
-            // When a block contains text. TODO: Is this correct?
-            // https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#line-height
-            ctx.set_font_size(DEFAULT_FONT_SIZE);
-            let font_info = ctx.get_scaled_font();
-            let l = DEFAULT_LINE_HEIGHT - font_info.extents().ascent - font_info.extents().descent;
-            self.dimensions.content.y -= Au::from_f64_px(l / 2.0);
         }
+
+        // When a block contains text.
+        // https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#line-height
+        ctx.set_font_size(DEFAULT_FONT_SIZE);
+        let font_info = ctx.get_scaled_font();
+        let l = DEFAULT_LINE_HEIGHT - font_info.extents().ascent - font_info.extents().descent;
+        self.dimensions.content.y -= Au::from_f64_px(l / 2.0);
     }
 
     // Where a new inline child should go.
@@ -444,6 +441,7 @@ where
 
 // Functions for displaying
 
+// TODO: Implement all features.
 impl<'a> fmt::Display for LayoutBox<'a> {
     // TODO: Implement all features
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
