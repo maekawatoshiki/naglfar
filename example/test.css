@@ -7,7 +7,7 @@ span {
 }
 
 html {
-  width: 500px;
+  width: auto;
   padding: 10px;
   margin: auto;
   background: #ffffff;
@@ -23,6 +23,11 @@ span.world {
 
 #fox {
   background: #ff8119;
+  height: 70px;
+}
+
+#fox2 {
+  background: #1e90ff;
   height: 70px;
 }
 
