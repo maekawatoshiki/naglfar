@@ -100,8 +100,8 @@ where
     gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
     let window = RenderingWindow::new(
-        viewport.content.width.to_f64_px() as i32,
-        viewport.content.height.to_f64_px() as i32,
+        viewport.content.width.to_px(),
+        viewport.content.height.to_px(),
         f,
     );
     window.exit_on_close();

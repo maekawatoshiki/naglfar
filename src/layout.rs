@@ -75,12 +75,13 @@ pub fn layout_tree<'a>(
     ctx: &Context,
     mut containing_block: Dimensions,
 ) -> LayoutBox<'a> {
+    // Save the initial containing block height for calculating percent heights.
+    let saved_block = containing_block.clone();
     // The layout algorithm expects the container height to start at 0.
-    // TODO: Save the initial containing block height, for calculating percent heights.
     containing_block.content.height = Au::from_f64_px(0.0);
 
     let mut root_box = build_layout_tree(node, ctx);
-    root_box.layout(ctx, containing_block);
+    root_box.layout(ctx, containing_block, saved_block);
     root_box
 }
 
@@ -107,16 +108,18 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> Layou
 }
 
 impl<'a> LayoutBox<'a> {
-    // Lay out a box and its descendants.
-    fn layout(&mut self, ctx: &Context, containing_block: Dimensions) {
+    /// Lay out a box and its descendants.
+    /// `saved_block` is used to know the maximum width/height of the box, calculate the percent
+    /// width/height and so on.
+    fn layout(&mut self, ctx: &Context, mut containing_block: Dimensions, saved_block: Dimensions) {
         match self.box_type {
-            BoxType::BlockNode(_) => self.layout_block(ctx, containing_block),
-            BoxType::InlineNode(_) => self.layout_inline(ctx, containing_block),
+            BoxType::BlockNode(_) => self.layout_block(ctx, containing_block, saved_block),
+            BoxType::InlineNode(_) => self.layout_inline(ctx, containing_block, saved_block),
             BoxType::AnonymousBlock => {
-                let mut containing_block = containing_block;
+                self.dimensions = containing_block;
                 containing_block.content.width = Au::from_f64_px(0.0);
                 for child in &mut self.children {
-                    child.layout(ctx, containing_block);
+                    child.layout(ctx, containing_block, saved_block);
                     containing_block.content.width += child.dimensions.margin_box().width;
                     self.dimensions.content.height = vec![
                         self.dimensions.content.height,
@@ -128,8 +131,13 @@ impl<'a> LayoutBox<'a> {
         }
     }
 
-    // Lay out a block-level element and its descendants.
-    fn layout_block(&mut self, ctx: &Context, containing_block: Dimensions) {
+    /// Lay out a block-level element and its descendants.
+    fn layout_block(
+        &mut self,
+        ctx: &Context,
+        containing_block: Dimensions,
+        _saved_block: Dimensions,
+    ) {
         // Child width can depend on parent width, so we need to calculate this box's width before
         // laying out its children.
         self.calculate_block_width(containing_block);
@@ -143,14 +151,24 @@ impl<'a> LayoutBox<'a> {
         self.calculate_block_height(ctx);
     }
 
-    // Lay out a inline-level element and its descendants.
-    fn layout_inline(&mut self, ctx: &Context, containing_block: Dimensions) {
+    /// Lay out a inline-level element and its descendants.
+    fn layout_inline(
+        &mut self,
+        ctx: &Context,
+        containing_block: Dimensions,
+        saved_block: Dimensions,
+    ) {
         self.calculate_inline_position(containing_block);
 
         self.layout_inline_children(ctx);
 
         // If the node is a text node, the text's width and height become
         // the node's width and height.
+        self.layout_text(ctx, saved_block);
+    }
+
+    /// Lay out a text
+    fn layout_text(&mut self, ctx: &Context, saved_block: Dimensions) {
         match self.get_style_node().node.data {
             NodeType::Element(_) => {}
             NodeType::Text(ref body) => {
@@ -159,13 +177,20 @@ impl<'a> LayoutBox<'a> {
                     let font_info = ctx.get_scaled_font();
                     font_info.text_extents(body.as_str()).x_advance
                 };
+                let max_width = saved_block.content.width;
                 self.dimensions.content.width = Au::from_f64_px(width);
-                self.dimensions.content.height = Au::from_f64_px(DEFAULT_LINE_HEIGHT);
+                self.dimensions.content.height = Au::from_f64_px(DEFAULT_LINE_HEIGHT)
+                    * if max_width.to_px() != 0 {
+                        (width as i32 / max_width.to_px() + 1)
+                    } else {
+                        1
+                    };
             }
         }
     }
 
-    // https://www.w3.org/TR/CSS2/visudet.html#inline-replaced-height
+    /// Finish calculating the block's edge sizes, and position it within its containing block.
+    /// https://www.w3.org/TR/CSS2/visudet.html#inline-replaced-height
     fn calculate_inline_position(&mut self, containing_block: Dimensions) {
         let style = self.get_style_node();
         let d = &mut self.dimensions;
@@ -211,20 +236,21 @@ impl<'a> LayoutBox<'a> {
             + d.border.top + d.padding.top;
     }
 
-    // Lay out the inline's children within its content area.
-    // Sets `self.dimensions.height` to the total content height.
+    /// Lay out the inline's children within its content area.
+    /// Sets `self.dimensions.width` to the total content width and
+    /// sets `self.dimensions.height` to default font size(height).
     fn layout_inline_children(&mut self, ctx: &Context) {
         let d = &mut self.dimensions;
         for child in &mut self.children {
-            child.layout(ctx, *d);
+            child.layout(ctx, *d, *d);
             d.content.width += child.dimensions.margin_box().width; // TODO
         }
         d.content.height = Au::from_f64_px(DEFAULT_FONT_SIZE);
     }
 
-    // Calculate the width of a block-level non-replaced element in normal flow.
-    // ref. http://www.w3.org/TR/CSS2/visudet.html#blockwidth
-    // Sets the horizontal margin/padding/border dimensions, and the `width`.
+    /// Calculate the width of a block-level non-replaced element in normal flow.
+    /// Sets the horizontal margin/padding/border dimensions, and the `width`.
+    /// ref. http://www.w3.org/TR/CSS2/visudet.html#blockwidth
     fn calculate_block_width(&mut self, containing_block: Dimensions) {
         let style = self.get_style_node();
 
@@ -325,9 +351,9 @@ impl<'a> LayoutBox<'a> {
         d.margin.right = Au::from_f64_px(margin_right.to_px());
     }
 
-    // Finish calculating the block's edge sizes, and position it within its containing block.
-    // http://www.w3.org/TR/CSS2/visudet.html#normal-block
-    // Sets the vertical margin/padding/border dimensions, and the `x`, `y` values.
+    /// Finish calculating the block's edge sizes, and position it within its containing block.
+    /// http://www.w3.org/TR/CSS2/visudet.html#normal-block
+    /// Sets the vertical margin/padding/border dimensions, and the `x`, `y` values.
     fn calculate_block_position(&mut self, containing_block: Dimensions) {
         let style = self.get_style_node();
         let d = &mut self.dimensions;
@@ -361,18 +387,18 @@ impl<'a> LayoutBox<'a> {
             + d.border.top + d.padding.top;
     }
 
-    // Lay out the block's children within its content area.
-    // Sets `self.dimensions.height` to the total content height.
+    /// Lay out the block's children within its content area.
+    /// Sets `self.dimensions.height` to the total content height.
     fn layout_block_children(&mut self, ctx: &Context) {
         let d = &mut self.dimensions;
         for child in &mut self.children {
-            child.layout(ctx, *d);
+            child.layout(ctx, *d, *d);
             // Increment the height so each child is laid out below the previous one.
             d.content.height += child.dimensions.margin_box().height;
         }
     }
 
-    // Height of a block-level non-replaced element in normal flow with overflow visible.
+    /// Height of a block-level non-replaced element in normal flow with overflow visible.
     fn calculate_block_height(&mut self, ctx: &Context) {
         // If the height is set to an explicit length, use that exact length.
         // Otherwise, just keep the value set by `layout_block_children`.
@@ -388,7 +414,7 @@ impl<'a> LayoutBox<'a> {
         self.dimensions.content.y -= Au::from_f64_px(l / 2.0);
     }
 
-    // Where a new inline child should go.
+    /// Where a new inline child should go.
     fn get_inline_container(&mut self) -> &mut LayoutBox<'a> {
         match self.box_type {
             BoxType::InlineNode(_) | BoxType::AnonymousBlock => self,

@@ -58,7 +58,7 @@ fn main() {
         let layout_tree = layout::layout_tree(&style_tree, ctx, viewport);
         print!("LAYOUT:\n{}", layout_tree);
 
-        let display_command = painter::build_display_list(&layout_tree);
+        let display_command = painter::build_display_list(ctx, viewport, &layout_tree);
         println!("DISPLAY:\n{:?}", display_command);
         display_command
     });

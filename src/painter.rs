@@ -1,6 +1,11 @@
-use layout::{BoxType, LayoutBox, Rect};
+use layout::{BoxType, Dimensions, LayoutBox, Rect};
 use css::{Color, Value};
 use dom::NodeType;
+use cairo::Context;
+use app_units::Au;
+
+use layout::DEFAULT_FONT_SIZE;
+use layout::DEFAULT_LINE_HEIGHT;
 
 #[derive(Debug)]
 pub enum DisplayCommand {
@@ -10,29 +15,69 @@ pub enum DisplayCommand {
 
 pub type DisplayList = Vec<DisplayCommand>;
 
-pub fn build_display_list(layout_root: &LayoutBox) -> DisplayList {
+pub fn build_display_list(
+    ctx: &Context,
+    containing_block: Dimensions,
+    layout_root: &LayoutBox,
+) -> DisplayList {
     let mut list = Vec::new();
-    render_layout_box(&mut list, layout_root);
+    render_layout_box(&mut list, ctx, containing_block, layout_root);
     list
 }
 
-fn render_layout_box(list: &mut DisplayList, layout_box: &LayoutBox) {
-    render_text(list, layout_box);
+fn render_layout_box(
+    list: &mut DisplayList,
+    ctx: &Context,
+    containing_block: Dimensions,
+    layout_box: &LayoutBox,
+) {
+    render_text(list, ctx, containing_block, layout_box);
     render_background(list, layout_box);
     render_borders(list, layout_box);
     for child in &layout_box.children {
-        render_layout_box(list, child);
+        render_layout_box(list, ctx, layout_box.dimensions, child);
     }
 }
 
-fn render_text(list: &mut DisplayList, layout_box: &LayoutBox) {
+fn render_text(
+    list: &mut DisplayList,
+    ctx: &Context,
+    containing_block: Dimensions,
+    layout_box: &LayoutBox,
+) {
     match layout_box.box_type {
         BoxType::BlockNode(node) | BoxType::InlineNode(node) => match node.node.data {
             NodeType::Element(_) => (),
-            NodeType::Text(ref content) => list.push(DisplayCommand::Text(
-                content.clone(),
-                layout_box.dimensions.border_box(),
-            )),
+            NodeType::Text(ref text) => {
+                ctx.set_font_size(DEFAULT_FONT_SIZE);
+                let font_info = ctx.get_scaled_font();
+                let text_width = font_info.text_extents(text.as_str()).x_advance;
+                let font_width = font_info.extents().max_x_advance;
+                let max_width = containing_block.content.width;
+                if max_width.to_f64_px() > 0.0 && max_width.to_f64_px() < text_width {
+                    let mut line = "".to_string();
+                    let mut d = layout_box.dimensions;
+                    for c in text.chars() {
+                        line.push(c);
+                        if max_width.to_f64_px()
+                            - (d.content.x.to_f64_px() - containing_block.content.x.to_f64_px())
+                            - font_width
+                            < font_info.text_extents(line.as_str()).x_advance
+                        {
+                            list.push(DisplayCommand::Text(line.clone(), d.border_box()));
+                            d.content.x = containing_block.content.x;
+                            d.content.y += Au::from_f64_px(DEFAULT_LINE_HEIGHT);
+                            line.clear();
+                        }
+                    }
+                    list.push(DisplayCommand::Text(line, d.border_box()))
+                } else {
+                    list.push(DisplayCommand::Text(
+                        text.clone(),
+                        layout_box.dimensions.border_box(),
+                    ))
+                };
+            }
         },
         _ => (),
     }
