@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/maekawatoshiki/naglfar/branch/master/graph/badge.svg)](https://codecov.io/gh/maekawatoshiki/naglfar)
 [![](http://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-Naglfar is a Web browser in Rust.
+Naglfar is a toy web browser in Rust.
 
 # Build 
 
