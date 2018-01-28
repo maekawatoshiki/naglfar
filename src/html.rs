@@ -160,3 +160,45 @@ impl Parser {
         self.pos >= self.input.len()
     }
 }
+
+#[test]
+fn test1() {
+    let src = "<html><head></head><body><div id=\"x\">test</div><p>paragrapgh</p><span>aa</span>\n  space</body></html>";
+    let dom_node = parse(src.to_string());
+    assert_eq!(
+        dom_node,
+        dom::Node::elem(
+            "html".to_string(),
+            HashMap::new(),
+            vec![
+                dom::Node::elem("head".to_string(), HashMap::new(), vec![]),
+                dom::Node::elem(
+                    "body".to_string(),
+                    HashMap::new(),
+                    vec![
+                        dom::Node::elem(
+                            "div".to_string(),
+                            {
+                                let mut h = HashMap::new();
+                                h.insert("id".to_string(), "x".to_string());
+                                h
+                            },
+                            vec![dom::Node::text("test".to_string())],
+                        ),
+                        dom::Node::elem(
+                            "p".to_string(),
+                            HashMap::new(),
+                            vec![dom::Node::text("paragrapgh".to_string())],
+                        ),
+                        dom::Node::elem(
+                            "span".to_string(),
+                            HashMap::new(),
+                            vec![dom::Node::text("aa".to_string())],
+                        ),
+                        dom::Node::text(" space".to_string()),
+                    ],
+                ),
+            ]
+        )
+    );
+}

@@ -47,7 +47,7 @@ fn main() {
         .ok()
         .expect("cannot read file");
     let stylesheet = css::parse(css_source);
-    css::show_css(&stylesheet);
+    print!("{}", stylesheet);
 
     let mut viewport: layout::Dimensions = ::std::default::Default::default();
     viewport.content.width = Au::from_px(640);

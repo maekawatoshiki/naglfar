@@ -3,7 +3,7 @@ use std::{fmt, iter};
 
 pub type AttrMap = HashMap<String, String>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     // data specific to each node type:
     pub data: NodeType,
@@ -11,13 +11,13 @@ pub struct Node {
     pub children: Vec<Node>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NodeType {
     Element(ElementData),
     Text(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ElementData {
     pub tag_name: String,
     pub attrs: AttrMap,

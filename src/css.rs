@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Stylesheet {
     pub rules: Vec<Rule>,
@@ -70,41 +72,6 @@ impl Selector {
         let b = simple.class.len();
         let c = simple.tag_name.iter().count();
         (a, b, c)
-    }
-}
-
-// TODO: implement fmt::Diaplay
-pub fn show_css(stylesheet: &Stylesheet) {
-    for rule in &stylesheet.rules {
-        for (i, selector) in rule.selectors.iter().enumerate() {
-            let &Selector::Simple(ref selector) = selector;
-            if let Some(ref id) = selector.id {
-                print!("#{}", id);
-            } else if let Some(ref tag_name) = selector.tag_name {
-                print!("{}", tag_name);
-                for class in &selector.class {
-                    print!(".{}", class);
-                }
-            }
-            if i != rule.selectors.len() - 1 {
-                print!(", ");
-            }
-        }
-        println!(" {{");
-        for decl in &rule.declarations {
-            println!(
-                "  {}: {};",
-                decl.name,
-                match decl.value {
-                    Value::Keyword(ref kw) => kw.clone(),
-                    Value::Length(ref f, Unit::Px) => format!("{}px", f),
-                    Value::Color(ref color) => {
-                        format!("rgba({}, {}, {}, {})", color.r, color.g, color.b, color.a)
-                    }
-                }
-            );
-        }
-        println!("}}");
     }
 }
 
@@ -304,6 +271,47 @@ impl Parser {
 
     fn eof(&self) -> bool {
         self.pos >= self.input.len()
+    }
+}
+
+impl fmt::Display for Stylesheet {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for rule in &self.rules {
+            for (i, selector) in rule.selectors.iter().enumerate() {
+                let &Selector::Simple(ref selector) = selector;
+                if let Some(ref id) = selector.id {
+                    try!(write!(f, "#{}", id));
+                } else if let Some(ref tag_name) = selector.tag_name {
+                    try!(write!(f, "{}", tag_name));
+                    for class in &selector.class {
+                        try!(write!(f, ".{}", class));
+                    }
+                } else {
+                    // universal selector
+                    try!(write!(f, "*"));
+                }
+                if i != rule.selectors.len() - 1 {
+                    try!(write!(f, ", "));
+                }
+            }
+            try!(writeln!(f, " {{"));
+            for decl in &rule.declarations {
+                try!(writeln!(
+                    f,
+                    "  {}: {};",
+                    decl.name,
+                    match decl.value {
+                        Value::Keyword(ref kw) => kw.clone(),
+                        Value::Length(ref f, Unit::Px) => format!("{}px", f),
+                        Value::Color(ref color) => {
+                            format!("rgba({}, {}, {}, {})", color.r, color.g, color.b, color.a)
+                        }
+                    }
+                ));
+            }
+            try!(writeln!(f, "}}"));
+        }
+        Ok(())
     }
 }
 
