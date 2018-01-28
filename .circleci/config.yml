@@ -5,7 +5,7 @@ jobs:
     docker:
       - image: ubuntu:16.04
 
-    working_directory: /opt/rucc
+    working_directory: /opt/naglfar
 
     steps:
       - checkout
@@ -25,16 +25,22 @@ jobs:
             chmod -R a+w $RUSTUP_HOME $CARGO_HOME;
             rm rustup-init
             source ~/.cargo/env
-      # - run:
-      #     name: Setting up kcov
-      #     command: |
-      #       git clone https://github.com/SimonKagstrom/kcov
-      #       cd kcov
-      #       cmake .
-      #       make
-      #       make install
+      - run:
+          name: Setting up kcov
+          command: |
+            git clone https://github.com/SimonKagstrom/kcov
+            cd kcov
+            cmake .
+            make
+            make install
       - run:
           name: Test
           command: |
             export PATH=~/.cargo/bin:$PATH
-            cargo test
+
+            REPORT=$(find ./target/debug -maxdepth 1 -name 'naglfar-*' -a ! -name '*.d')
+            for file in $REPORT; do  
+              echo $file
+              /usr/local/bin/kcov --include-pattern=naglfar/src --exclude-pattern=/.cargo ./target/cov "$file"
+            done
+            bash <(curl -s https://codecov.io/bash) -s ./target/cov
