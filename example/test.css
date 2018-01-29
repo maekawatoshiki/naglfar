@@ -15,8 +15,9 @@ html {
 
 h1 {
   font-size: 32px;
-  margin-bottom: 21px;
   font-weight: bold;
+  background: #eeeeee;
+  margin-bottom: 21px;
 }
 
 span.hello {
