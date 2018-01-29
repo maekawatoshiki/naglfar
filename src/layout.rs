@@ -148,10 +148,14 @@ impl<'a> LayoutBox<'a> {
             BoxType::AnonymousBlock(ref mut texts) => {
                 self.dimensions.content.x = containing_block.content.x;
                 self.dimensions.content.y = containing_block.content.y;
+
                 containing_block.content.width = Au::from_f64_px(0.0);
+
                 for child in &mut self.children {
                     child.layout(ctx, texts, containing_block, saved_block);
+
                     let child_width = child.dimensions.margin_box().width;
+
                     containing_block.content.width += child_width;
                     self.dimensions.content.width += child_width;
                     self.dimensions.content.height = vec![
@@ -204,83 +208,50 @@ impl<'a> LayoutBox<'a> {
     fn layout_text(&mut self, ctx: &Context, texts: &mut Texts, saved_block: Dimensions) {
         let style = self.get_style_node();
 
-        match style.node.data {
-            NodeType::Element(_) => {}
-            NodeType::Text(ref text) => {
-                let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-                let font_size = style
-                    .lookup("font-size", "font-size", &default_font_size)
-                    .to_px();
-                let line_height = font_size * 1.2;
+        let text = if let NodeType::Text(ref text) = style.node.data {
+            text
+        } else {
+            return;
+        };
 
-                let default_font_weight = Value::Keyword("normal".to_string());
-                let font_weight = if let Value::Keyword(keyword) =
-                    style.lookup("font-weight", "font-weight", &default_font_weight)
+        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
+        let font_size = style
+            .lookup("font-size", "font-size", &default_font_size)
+            .to_px();
+        let line_height = font_size * 1.2;
+
+        let default_font_weight = Value::Keyword("normal".to_string());
+        let font_weight = style
+            .lookup("font-weight", "font-weight", &default_font_weight)
+            .to_font_weight();
+
+        // TODO: REFINE THIS!
+        ctx.set_font_size(font_size);
+        ctx.select_font_face(
+            "",
+            cairo::FontSlant::Normal,
+            font_weight.to_cairo_font_weight(),
+        );
+        let font_info = ctx.get_scaled_font();
+        let text_width = font_info.text_extents(text.as_str()).x_advance;
+        let font_width = font_info.extents().max_x_advance;
+
+        let max_width = saved_block.content.width;
+
+        // If line breaking is needed.
+        if max_width.to_f64_px() > 0.0 && max_width.to_f64_px() < text_width {
+            let mut line = "".to_string();
+            let mut d = self.dimensions;
+
+            for c in text.chars() {
+                line.push(c);
+
+                // TODO: It's inefficient to call `text_extents` every time.
+                if max_width.to_f64_px()
+                    - (d.content.x.to_f64_px() - saved_block.content.x.to_f64_px())
+                    - font_width
+                    < font_info.text_extents(line.as_str()).x_advance
                 {
-                    match keyword.as_str() {
-                        "normal" => FontWeight::Normal,
-                        "bold" => FontWeight::Bold,
-                        _ => panic!(),
-                    }
-                } else {
-                    panic!()
-                };
-
-                // TODO: REFINE THIS!
-                ctx.set_font_size(font_size);
-                ctx.select_font_face(
-                    "",
-                    cairo::FontSlant::Normal,
-                    font_weight.to_cairo_font_weight(),
-                );
-                let font_info = ctx.get_scaled_font();
-                let text_width = font_info.text_extents(text.as_str()).x_advance;
-                let font_width = font_info.extents().max_x_advance;
-                let max_width = saved_block.content.width;
-
-                self.dimensions.content.width =
-                    if max_width.to_px() > 0 && max_width.to_f64_px() < text_width {
-                        max_width - (self.dimensions.content.x - saved_block.content.x)
-                    } else {
-                        Au::from_f64_px(text_width)
-                    };
-                self.dimensions.content.height = Au::from_f64_px(line_height)
-                    * if max_width.to_px() > 0 {
-                        (text_width as i32 / max_width.to_px() + 1)
-                    } else {
-                        1
-                    };
-
-                // If line breaking is needed.
-                if max_width.to_f64_px() > 0.0 && max_width.to_f64_px() < text_width {
-                    let mut line = "".to_string();
-                    let mut d = self.dimensions;
-
-                    d.content.height = Au::from_f64_px(line_height);
-
-                    for c in text.chars() {
-                        line.push(c);
-
-                        // TODO: It's inefficient to call `text_extents` every time.
-                        if max_width.to_f64_px()
-                            - (d.content.x.to_f64_px() - saved_block.content.x.to_f64_px())
-                            - font_width
-                            < font_info.text_extents(line.as_str()).x_advance
-                        {
-                            texts.push(Text {
-                                dimensions: d,
-                                text: line.clone(),
-                                font: Font {
-                                    size: font_size,
-                                    weight: font_weight,
-                                },
-                            });
-                            d.content.x = saved_block.content.x;
-                            d.content.y += Au::from_f64_px(line_height);
-                            line.clear();
-                        }
-                    }
-
                     texts.push(Text {
                         dimensions: d,
                         text: line.clone(),
@@ -289,18 +260,37 @@ impl<'a> LayoutBox<'a> {
                             weight: font_weight,
                         },
                     });
-                } else {
-                    texts.push(Text {
-                        dimensions: self.dimensions,
-                        text: text.clone(),
-                        font: Font {
-                            size: font_size,
-                            weight: font_weight,
-                        },
-                    });
-                };
+                    d.content.x = saved_block.content.x;
+                    d.content.y += Au::from_f64_px(line_height);
+                    line.clear();
+                }
             }
-        }
+
+            texts.push(Text {
+                dimensions: d,
+                text: line.clone(),
+                font: Font {
+                    size: font_size,
+                    weight: font_weight,
+                },
+            });
+
+            self.dimensions.content.width =
+                max_width - (self.dimensions.content.x - saved_block.content.x);
+            self.dimensions.content.height =
+                Au::from_f64_px(line_height) * (text_width as i32 / max_width.to_px());
+        } else {
+            texts.push(Text {
+                dimensions: self.dimensions,
+                text: text.clone(),
+                font: Font {
+                    size: font_size,
+                    weight: font_weight,
+                },
+            });
+            self.dimensions.content.width = Au::from_f64_px(text_width);
+            self.dimensions.content.height = Au::from_f64_px(line_height);
+        };
     }
 
     /// Finish calculating the inline's edge sizes, and position it within its containing block.
@@ -564,6 +554,16 @@ impl FontWeight {
         match self {
             &FontWeight::Normal => cairo::FontWeight::Normal,
             &FontWeight::Bold => cairo::FontWeight::Bold,
+        }
+    }
+}
+
+impl Value {
+    pub fn to_font_weight(&self) -> FontWeight {
+        match self {
+            &Value::Keyword(ref k) if k.as_str() == "normal" => FontWeight::Normal,
+            &Value::Keyword(ref k) if k.as_str() == "bold" => FontWeight::Bold,
+            _ => FontWeight::Normal,
         }
     }
 }
