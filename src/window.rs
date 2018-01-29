@@ -4,12 +4,10 @@ extern crate gtk;
 use gtk::traits::*;
 use gtk::Inhibit;
 // use gtk::{ContainerExt, WidgetExt, Window};
-use cairo::Context;
+use cairo::{Context, FontSlant};
 
 use painter::{DisplayCommand, DisplayList};
 use layout::Dimensions;
-
-use layout::DEFAULT_FONT_SIZE;
 
 struct RenderingWindow {
     window: gtk::Window,
@@ -78,9 +76,10 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
             // ctx.stroke_preserve();
             ctx.fill();
         }
-        &DisplayCommand::Text(ref text, rect) => {
+        &DisplayCommand::Text(ref text, rect, ref font) => {
             ctx.save();
-            ctx.set_font_size(DEFAULT_FONT_SIZE);
+            ctx.set_font_size(font.size);
+            ctx.select_font_face("", FontSlant::Normal, font.weight.to_cairo_font_weight());
             let font_ascent = ctx.get_scaled_font().extents().ascent;
             ctx.move_to(
                 rect.x.ceil_to_px() as f64,

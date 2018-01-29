@@ -47,23 +47,53 @@ impl<'a> StyledNode<'a> {
     }
 }
 
-pub fn style_tree<'a>(root: &'a Node, stylesheet: &'a Stylesheet) -> StyledNode<'a> {
+fn inherit_peoperties(specified_values: &PropertyMap, property_list: Vec<&str>) -> PropertyMap {
+    let mut inherited_property = PropertyMap::new();
+    for property in property_list {
+        if let Some(value) = specified_values.get(property) {
+            inherited_property.insert(property.to_string(), value.clone());
+        }
+    }
+    inherited_property
+}
+
+pub fn style_tree<'a>(
+    root: &'a Node,
+    stylesheet: &'a Stylesheet,
+    inherited_property: &PropertyMap,
+) -> StyledNode<'a> {
+    let specified_values = match root.data {
+        NodeType::Element(ref elem) => specified_values(elem, stylesheet, inherited_property),
+        NodeType::Text(_) => inherited_property.clone(),
+    };
+
+    let inherited_property = inherit_peoperties(
+        &specified_values,
+        vec!["font-size", "line-height", "font-weight"],
+    );
+
     StyledNode {
         node: root,
-        specified_values: match root.data {
-            NodeType::Element(ref elem) => specified_values(elem, stylesheet),
-            NodeType::Text(_) => PropertyMap::new(),
-        },
+        specified_values: specified_values,
         children: root.children
             .iter()
-            .map(|child| style_tree(child, stylesheet))
+            .map(|child| style_tree(child, stylesheet, &inherited_property))
             .collect(),
     }
 }
 
-fn specified_values(elem: &ElementData, stylesheet: &Stylesheet) -> PropertyMap {
+fn specified_values(
+    elem: &ElementData,
+    stylesheet: &Stylesheet,
+    inherited_property: &PropertyMap,
+) -> PropertyMap {
     let mut values = HashMap::new();
     let mut rules = matching_rules(elem, stylesheet);
+
+    // Insert inherited properties
+    for (name, value) in inherited_property {
+        values.insert(name.clone(), value.clone());
+    }
 
     // Go through the rules from lowest to highest specificity.
     rules.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
@@ -139,5 +169,5 @@ fn test1() {
     let stylesheet = css::parse(src.to_string());
 
     // TODO
-    style_tree(&dom_node, &stylesheet);
+    style_tree(&dom_node, &stylesheet, &PropertyMap::new());
 }

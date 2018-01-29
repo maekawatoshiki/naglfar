@@ -1,10 +1,10 @@
-use layout::{BoxType, LayoutBox, Rect, Text};
+use layout::{BoxType, Font, LayoutBox, Rect, Text};
 use css::{Color, Value};
 
 #[derive(Debug)]
 pub enum DisplayCommand {
     SolidColor(Color, Rect),
-    Text(String, Rect),
+    Text(String, Rect, Font),
 }
 
 pub type DisplayList = Vec<DisplayCommand>;
@@ -29,9 +29,14 @@ fn render_text(list: &mut DisplayList, layout_box: &LayoutBox) {
         BoxType::AnonymousBlock(ref texts) => for &Text {
             ref dimensions,
             ref text,
+            ref font,
         } in texts
         {
-            list.push(DisplayCommand::Text(text.clone(), dimensions.border_box()))
+            list.push(DisplayCommand::Text(
+                text.clone(),
+                dimensions.border_box(),
+                font.clone(),
+            ))
         },
         _ => {}
     }

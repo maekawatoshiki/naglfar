@@ -4,6 +4,7 @@ use dom::NodeType;
 use std::default::Default;
 use std::fmt;
 use cairo::Context;
+use cairo;
 use app_units::Au;
 // use render::get_str_width;
 
@@ -44,10 +45,23 @@ pub struct LayoutBox<'a> {
     pub children: Vec<LayoutBox<'a>>,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Font {
+    pub size: f64,
+    pub weight: FontWeight,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum FontWeight {
+    Normal,
+    Bold,
+}
+
 #[derive(Clone, Debug)]
 pub struct Text {
     pub dimensions: Dimensions,
     pub text: String,
+    pub font: Font,
 }
 
 pub type Texts = Vec<Text>;
@@ -132,11 +146,14 @@ impl<'a> LayoutBox<'a> {
             BoxType::BlockNode(_) => self.layout_block(ctx, texts, containing_block, saved_block),
             BoxType::InlineNode(_) => self.layout_inline(ctx, texts, containing_block, saved_block),
             BoxType::AnonymousBlock(ref mut texts) => {
-                self.dimensions = containing_block;
+                self.dimensions.content.x = containing_block.content.x;
+                self.dimensions.content.y = containing_block.content.y;
                 containing_block.content.width = Au::from_f64_px(0.0);
                 for child in &mut self.children {
                     child.layout(ctx, texts, containing_block, saved_block);
-                    containing_block.content.width += child.dimensions.margin_box().width;
+                    let child_width = child.dimensions.margin_box().width;
+                    containing_block.content.width += child_width;
+                    self.dimensions.content.width += child_width;
                     self.dimensions.content.height = vec![
                         self.dimensions.content.height,
                         child.dimensions.margin_box().height,
@@ -185,11 +202,37 @@ impl<'a> LayoutBox<'a> {
 
     /// Lay out a text.
     fn layout_text(&mut self, ctx: &Context, texts: &mut Texts, saved_block: Dimensions) {
-        match self.get_style_node().node.data {
+        let style = self.get_style_node();
+
+        match style.node.data {
             NodeType::Element(_) => {}
             NodeType::Text(ref text) => {
+                let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
+                let font_size = style
+                    .lookup("font-size", "font-size", &default_font_size)
+                    .to_px();
+                let line_height = font_size * 1.2;
+
+                let default_font_weight = Value::Keyword("normal".to_string());
+                let font_weight = if let Value::Keyword(keyword) =
+                    style.lookup("font-weight", "font-weight", &default_font_weight)
+                {
+                    match keyword.as_str() {
+                        "normal" => FontWeight::Normal,
+                        "bold" => FontWeight::Bold,
+                        _ => panic!(),
+                    }
+                } else {
+                    panic!()
+                };
+
                 // TODO: REFINE THIS!
-                ctx.set_font_size(DEFAULT_FONT_SIZE);
+                ctx.set_font_size(font_size);
+                ctx.select_font_face(
+                    "",
+                    cairo::FontSlant::Normal,
+                    font_weight.to_cairo_font_weight(),
+                );
                 let font_info = ctx.get_scaled_font();
                 let text_width = font_info.text_extents(text.as_str()).x_advance;
                 let font_width = font_info.extents().max_x_advance;
@@ -201,7 +244,7 @@ impl<'a> LayoutBox<'a> {
                     } else {
                         Au::from_f64_px(text_width)
                     };
-                self.dimensions.content.height = Au::from_f64_px(DEFAULT_LINE_HEIGHT)
+                self.dimensions.content.height = Au::from_f64_px(line_height)
                     * if max_width.to_px() > 0 {
                         (text_width as i32 / max_width.to_px() + 1)
                     } else {
@@ -213,7 +256,7 @@ impl<'a> LayoutBox<'a> {
                     let mut line = "".to_string();
                     let mut d = self.dimensions;
 
-                    d.content.height = Au::from_f64_px(DEFAULT_LINE_HEIGHT);
+                    d.content.height = Au::from_f64_px(line_height);
 
                     for c in text.chars() {
                         line.push(c);
@@ -227,9 +270,13 @@ impl<'a> LayoutBox<'a> {
                             texts.push(Text {
                                 dimensions: d,
                                 text: line.clone(),
+                                font: Font {
+                                    size: font_size,
+                                    weight: font_weight,
+                                },
                             });
                             d.content.x = saved_block.content.x;
-                            d.content.y += Au::from_f64_px(DEFAULT_LINE_HEIGHT);
+                            d.content.y += Au::from_f64_px(line_height);
                             line.clear();
                         }
                     }
@@ -237,11 +284,19 @@ impl<'a> LayoutBox<'a> {
                     texts.push(Text {
                         dimensions: d,
                         text: line.clone(),
+                        font: Font {
+                            size: font_size,
+                            weight: font_weight,
+                        },
                     });
                 } else {
                     texts.push(Text {
                         dimensions: self.dimensions,
                         text: text.clone(),
+                        font: Font {
+                            size: font_size,
+                            weight: font_weight,
+                        },
                     });
                 };
             }
@@ -299,12 +354,20 @@ impl<'a> LayoutBox<'a> {
     /// Sets `self.dimensions.width` to the total content width and
     /// sets `self.dimensions.height` to default font size(height).
     fn layout_inline_children(&mut self, ctx: &Context, texts: &mut Texts) {
+        let style = self.get_style_node();
         let d = &mut self.dimensions;
+
         for child in &mut self.children {
             child.layout(ctx, texts, *d, *d);
             d.content.width += child.dimensions.margin_box().width; // TODO
         }
-        d.content.height = Au::from_f64_px(DEFAULT_FONT_SIZE);
+
+        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
+        let font_size = style
+            .lookup("font-size", "font-size", &default_font_size)
+            .to_px();
+
+        d.content.height = Au::from_f64_px(font_size);
     }
 
     /// Calculate the width of a block-level non-replaced element in normal flow.
@@ -465,11 +528,15 @@ impl<'a> LayoutBox<'a> {
             self.dimensions.content.height = Au::from_f64_px(h);
         }
 
-        // When a block contains text.
-        // https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#line-height
-        ctx.set_font_size(DEFAULT_FONT_SIZE);
+        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
+        let font_size = self.get_style_node()
+            .lookup("font-size", "font-size", &default_font_size)
+            .to_px();
+        let line_height = font_size * 1.2;
+        ctx.set_font_size(font_size);
         let font_info = ctx.get_scaled_font();
-        let l = DEFAULT_LINE_HEIGHT - font_info.extents().ascent - font_info.extents().descent;
+        // https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#line-height
+        let l = line_height - font_info.extents().ascent - font_info.extents().descent;
         self.dimensions.content.y -= Au::from_f64_px(l / 2.0);
     }
 
@@ -488,6 +555,15 @@ impl<'a> LayoutBox<'a> {
                 }
                 self.children.last_mut().unwrap()
             }
+        }
+    }
+}
+
+impl FontWeight {
+    pub fn to_cairo_font_weight(&self) -> cairo::FontWeight {
+        match self {
+            &FontWeight::Normal => cairo::FontWeight::Normal,
+            &FontWeight::Bold => cairo::FontWeight::Bold,
         }
     }
 }
