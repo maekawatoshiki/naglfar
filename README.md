@@ -13,13 +13,11 @@ Naglfar is a toy web browser in Rust.
 
 ## Build & Run
 
+By default, naglfar shows `example/test.html` applied `example/test.css`.
+
 ```sh
 $ cargo run
 ```
-
-# Current Status
-
-...
 
 # Reference
 
