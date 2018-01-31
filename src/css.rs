@@ -33,6 +33,7 @@ pub struct Declaration {
 pub enum Value {
     Keyword(String),
     Length(f64, Unit),
+    Num(f64),
     Color(Color),
 }
 
@@ -57,6 +58,12 @@ impl Value {
     pub fn to_px(&self) -> f64 {
         match *self {
             Value::Length(f, Unit::Px) => f,
+            _ => 0.0,
+        }
+    }
+    pub fn to_num(&self) -> f64 {
+        match *self {
+            Value::Num(f) => f,
             _ => 0.0,
         }
     }
@@ -204,7 +211,12 @@ impl Parser {
     }
 
     fn parse_length(&mut self) -> Value {
-        Value::Length(self.parse_float(), self.parse_unit())
+        let num = self.parse_float();
+        if self.next_char().is_alphabetic() {
+            Value::Length(num, self.parse_unit())
+        } else {
+            Value::Num(num)
+        }
     }
 
     fn parse_float(&mut self) -> f64 {
@@ -303,6 +315,7 @@ impl fmt::Display for Stylesheet {
                     match decl.value {
                         Value::Keyword(ref kw) => kw.clone(),
                         Value::Length(ref f, Unit::Px) => format!("{}px", f),
+                        Value::Num(ref f) => format!("{}", f),
                         Value::Color(ref color) => {
                             format!("rgba({}, {}, {}, {})", color.r, color.g, color.b, color.a)
                         }

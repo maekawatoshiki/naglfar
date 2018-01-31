@@ -63,10 +63,10 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
     match item {
         &DisplayCommand::SolidColor(ref color, rect) => {
             ctx.rectangle(
-                rect.x.ceil_to_px() as f64,
-                rect.y.ceil_to_px() as f64,
-                rect.width.ceil_to_px() as f64,
-                rect.height.ceil_to_px() as f64,
+                rect.x.to_px() as f64,
+                rect.y.to_px() as f64,
+                rect.width.to_px() as f64,
+                rect.height.to_px() as f64,
             );
             ctx.set_source_rgb(
                 color.r as f64 / 255.0,
@@ -80,10 +80,16 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
             ctx.save();
             ctx.set_font_size(font.size);
             ctx.select_font_face("", FontSlant::Normal, font.weight.to_cairo_font_weight());
-            let font_ascent = ctx.get_scaled_font().extents().ascent;
+
+            let line_height = font.size * 1.2;
+            let font_info = ctx.get_scaled_font();
+            // https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#line-height
+            let font_ascent = font_info.extents().ascent;
+            let l = line_height - font_ascent - font_info.extents().descent;
+
             ctx.move_to(
-                rect.x.ceil_to_px() as f64,
-                font_ascent + rect.y.ceil_to_px() as f64,
+                rect.x.to_px() as f64,
+                l / 2.0 + font_ascent + rect.y.to_px() as f64,
             );
             ctx.set_source_rgb(0.0, 0.0, 0.0);
             ctx.show_text(text.as_str());

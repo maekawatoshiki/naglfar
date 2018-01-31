@@ -18,8 +18,11 @@ pub fn build_display_list(layout_root: &LayoutBox) -> DisplayList {
 fn render_layout_box(list: &mut DisplayList, layout_box: &LayoutBox) {
     render_background(list, layout_box);
     render_borders(list, layout_box);
-    for child in &layout_box.children {
-        render_layout_box(list, child);
+
+    let mut children = layout_box.children.clone();
+    children.sort_by(|&LayoutBox { z_index: a, .. }, &LayoutBox { z_index: b, .. }| a.cmp(&b));
+    for child in children {
+        render_layout_box(list, &child);
     }
     render_text(list, layout_box);
 }

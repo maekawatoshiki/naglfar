@@ -9,15 +9,21 @@ span {
 html {
   width: auto;
   padding: 10px;
-  margin: auto;
+  margin: 0px;
   background: #ffffff;
 }
 
+body {
+  padding: 0px;
+  margin: 0px;
+}
+
 h1 {
-  font-size: 32px;
+  font-size: 30px;
   font-weight: bold;
   background: #eeeeee;
-  margin-bottom: 21px;
+  padding: 0px;
+  margin: 0px;
 }
 
 span.hello {
@@ -26,6 +32,14 @@ span.hello {
 
 span.world {
   background: #ffff00;
+}
+
+#x1 {
+  background: #dddddd;
+}
+
+#x2 {
+  background: #aaaaaa;
 }
 
 #fox {

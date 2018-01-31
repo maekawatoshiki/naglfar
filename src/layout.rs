@@ -41,6 +41,7 @@ pub struct EdgeSizes {
 #[derive(Clone, Debug)]
 pub struct LayoutBox<'a> {
     pub dimensions: Dimensions,
+    pub z_index: i32,
     pub box_type: BoxType<'a>,
     pub children: Vec<LayoutBox<'a>>,
 }
@@ -77,15 +78,16 @@ impl<'a> LayoutBox<'a> {
     pub fn new(box_type: BoxType) -> LayoutBox {
         LayoutBox {
             box_type: box_type,
+            z_index: 0,
             dimensions: Default::default(),
             children: Vec::new(),
         }
     }
 
-    pub fn get_style_node(&self) -> &'a StyledNode<'a> {
+    pub fn get_style_node(&self) -> Option<&'a StyledNode<'a>> {
         match self.box_type {
-            BoxType::BlockNode(node) | BoxType::InlineNode(node) => node,
-            BoxType::AnonymousBlock(_) => panic!("Anonymous block box has no style node"),
+            BoxType::BlockNode(node) | BoxType::InlineNode(node) => Some(node),
+            BoxType::AnonymousBlock(_) => None,
         }
     }
 }
@@ -101,11 +103,12 @@ pub fn layout_tree<'a>(
 ) -> LayoutBox<'a> {
     // Save the initial containing block height for calculating percent heights.
     let saved_block = containing_block.clone();
+    let viewport = containing_block.clone();
     // The layout algorithm expects the container height to start at 0.
     containing_block.content.height = Au::from_f64_px(0.0);
 
     let mut root_box = build_layout_tree(node, ctx);
-    root_box.layout(ctx, &mut vec![], containing_block, saved_block);
+    root_box.layout(ctx, &mut vec![], containing_block, saved_block, viewport);
     root_box
 }
 
@@ -141,10 +144,15 @@ impl<'a> LayoutBox<'a> {
         texts: &mut Texts,
         mut containing_block: Dimensions,
         saved_block: Dimensions,
+        viewport: Dimensions,
     ) {
         match self.box_type {
-            BoxType::BlockNode(_) => self.layout_block(ctx, texts, containing_block, saved_block),
-            BoxType::InlineNode(_) => self.layout_inline(ctx, texts, containing_block, saved_block),
+            BoxType::BlockNode(_) => {
+                self.layout_block(ctx, texts, containing_block, saved_block, viewport)
+            }
+            BoxType::InlineNode(_) => {
+                self.layout_inline(ctx, texts, containing_block, saved_block, viewport)
+            }
             BoxType::AnonymousBlock(ref mut texts) => {
                 self.dimensions.content.x = containing_block.content.x;
                 self.dimensions.content.y = containing_block.content.y;
@@ -152,7 +160,7 @@ impl<'a> LayoutBox<'a> {
                 containing_block.content.width = Au::from_f64_px(0.0);
 
                 for child in &mut self.children {
-                    child.layout(ctx, texts, containing_block, saved_block);
+                    child.layout(ctx, texts, containing_block, saved_block, viewport);
 
                     let child_width = child.dimensions.margin_box().width;
 
@@ -175,6 +183,7 @@ impl<'a> LayoutBox<'a> {
         texts: &mut Texts,
         containing_block: Dimensions,
         _saved_block: Dimensions,
+        viewport: Dimensions,
     ) {
         // Child width can depend on parent width, so we need to calculate this box's width before
         // laying out its children.
@@ -182,7 +191,7 @@ impl<'a> LayoutBox<'a> {
 
         self.calculate_block_position(containing_block);
 
-        self.layout_block_children(ctx, texts);
+        self.layout_block_children(ctx, texts, viewport);
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
         // children are laid out.
@@ -196,17 +205,27 @@ impl<'a> LayoutBox<'a> {
         texts: &mut Texts,
         containing_block: Dimensions,
         saved_block: Dimensions,
+        viewport: Dimensions,
     ) {
         self.calculate_inline_position(containing_block);
 
-        self.layout_inline_children(ctx, texts);
+        self.layout_inline_children(ctx, texts, viewport);
 
         self.layout_text(ctx, texts, saved_block);
+
+        // TODO: Is this correct?
+        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
+        let font_size = self.get_style_node()
+            .unwrap()
+            .lookup("font-size", "font-size", &default_font_size)
+            .to_px();
+        let line_height = font_size * 1.2;
+        self.dimensions.content.y += Au::from_f64_px(line_height - font_size) / 2;
     }
 
     /// Lay out a text.
     fn layout_text(&mut self, ctx: &Context, texts: &mut Texts, saved_block: Dimensions) {
-        let style = self.get_style_node();
+        let style = self.get_style_node().unwrap();
 
         let text = if let NodeType::Text(ref text) = style.node.data {
             text
@@ -296,7 +315,7 @@ impl<'a> LayoutBox<'a> {
     /// Finish calculating the inline's edge sizes, and position it within its containing block.
     /// https://www.w3.org/TR/CSS2/visudet.html#inline-replaced-height
     fn calculate_inline_position(&mut self, containing_block: Dimensions) {
-        let style = self.get_style_node();
+        let style = self.get_style_node().unwrap();
         let d = &mut self.dimensions;
 
         // margin, border, and padding have initial value 0.
@@ -343,12 +362,12 @@ impl<'a> LayoutBox<'a> {
     /// Lay out the inline's children within its content area.
     /// Sets `self.dimensions.width` to the total content width and
     /// sets `self.dimensions.height` to default font size(height).
-    fn layout_inline_children(&mut self, ctx: &Context, texts: &mut Texts) {
-        let style = self.get_style_node();
+    fn layout_inline_children(&mut self, ctx: &Context, texts: &mut Texts, viewport: Dimensions) {
+        let style = self.get_style_node().unwrap();
         let d = &mut self.dimensions;
 
         for child in &mut self.children {
-            child.layout(ctx, texts, *d, *d);
+            child.layout(ctx, texts, *d, *d, viewport);
             d.content.width += child.dimensions.margin_box().width; // TODO
         }
 
@@ -364,7 +383,7 @@ impl<'a> LayoutBox<'a> {
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
     /// ref. http://www.w3.org/TR/CSS2/visudet.html#blockwidth
     fn calculate_block_width(&mut self, containing_block: Dimensions) {
-        let style = self.get_style_node();
+        let style = self.get_style_node().unwrap();
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
@@ -467,7 +486,7 @@ impl<'a> LayoutBox<'a> {
     /// http://www.w3.org/TR/CSS2/visudet.html#normal-block
     /// Sets the vertical margin/padding/border dimensions, and the `x`, `y` values.
     fn calculate_block_position(&mut self, containing_block: Dimensions) {
-        let style = self.get_style_node();
+        let style = self.get_style_node().unwrap();
         let d = &mut self.dimensions;
 
         // margin, border, and padding have initial value 0.
@@ -492,6 +511,8 @@ impl<'a> LayoutBox<'a> {
         d.padding.bottom =
             Au::from_f64_px(style.lookup("padding-bottom", "padding", &zero).to_px());
 
+        self.z_index = style.lookup("z-index", "z-index", &zero).to_num() as i32;
+
         d.content.x = containing_block.content.x + d.margin.left + d.border.left + d.padding.left;
 
         // Position the box below all the previous boxes in the container.
@@ -501,10 +522,10 @@ impl<'a> LayoutBox<'a> {
 
     /// Lay out the block's children within its content area.
     /// Sets `self.dimensions.height` to the total content height.
-    fn layout_block_children(&mut self, ctx: &Context, texts: &mut Texts) {
+    fn layout_block_children(&mut self, ctx: &Context, texts: &mut Texts, viewport: Dimensions) {
         let d = &mut self.dimensions;
         for child in &mut self.children {
-            child.layout(ctx, texts, *d, *d);
+            child.layout(ctx, texts, *d, *d, viewport);
             // Increment the height so each child is laid out below the previous one.
             d.content.height += child.dimensions.margin_box().height;
         }
@@ -514,20 +535,9 @@ impl<'a> LayoutBox<'a> {
     fn calculate_block_height(&mut self, ctx: &Context) {
         // If the height is set to an explicit length, use that exact length.
         // Otherwise, just keep the value set by `layout_block_children`.
-        if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().value("height") {
+        if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().unwrap().value("height") {
             self.dimensions.content.height = Au::from_f64_px(h);
         }
-
-        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-        let font_size = self.get_style_node()
-            .lookup("font-size", "font-size", &default_font_size)
-            .to_px();
-        let line_height = font_size * 1.2;
-        ctx.set_font_size(font_size);
-        let font_info = ctx.get_scaled_font();
-        // https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#line-height
-        let l = line_height - font_info.extents().ascent - font_info.extents().descent;
-        self.dimensions.content.y -= Au::from_f64_px(l / 2.0);
     }
 
     /// Where a new inline child should go.
