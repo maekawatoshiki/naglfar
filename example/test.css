@@ -30,8 +30,18 @@ span.hello {
   background: #00ffff;
 }
 
+span.big {
+  background: #00ffff;
+  font-size: 40px;
+}
+
 span.world {
   background: #ffff00;
+}
+
+b {
+  font-weight: bold;
+  display: inline;
 }
 
 #x1 {
