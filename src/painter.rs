@@ -1,5 +1,6 @@
 use layout::{BoxType, Font, LayoutBox, Rect, Text};
 use css::{Color, Value};
+use app_units::Au;
 
 #[derive(Debug)]
 pub enum DisplayCommand {
@@ -11,57 +12,69 @@ pub type DisplayList = Vec<DisplayCommand>;
 
 pub fn build_display_list(layout_root: &LayoutBox) -> DisplayList {
     let mut list = Vec::new();
-    render_layout_box(&mut list, layout_root);
+    render_layout_box(
+        &mut list,
+        Au::from_f64_px(0.0),
+        Au::from_f64_px(0.0),
+        layout_root,
+    );
     list
 }
 
-fn render_layout_box(list: &mut DisplayList, layout_box: &LayoutBox) {
-    render_background(list, layout_box);
-    render_borders(list, layout_box);
+fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+    render_background(list, x, y, layout_box);
+    render_borders(list, x, y, layout_box);
 
     let mut children = layout_box.children.clone();
     children.sort_by(|&LayoutBox { z_index: a, .. }, &LayoutBox { z_index: b, .. }| a.cmp(&b));
     for child in children {
-        render_layout_box(list, &child);
+        render_layout_box(
+            list,
+            x + layout_box.dimensions.content.x,
+            y + layout_box.dimensions.content.y,
+            &child,
+        );
     }
-    render_text(list, layout_box);
+    render_text(
+        list,
+        x + layout_box.dimensions.content.x,
+        y + layout_box.dimensions.content.y,
+        layout_box,
+    );
 }
 
-fn render_text(list: &mut DisplayList, layout_box: &LayoutBox) {
-    match layout_box.box_type {
-        BoxType::AnonymousBlock(ref texts) => for &Text {
-            ref dimensions,
-            ref text,
-            ref font,
-        } in texts
-        {
-            list.push(DisplayCommand::Text(
-                text.clone(),
-                dimensions.border_box(),
-                font.clone(),
-            ))
-        },
-        _ => {}
+fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+    for &Text {
+        ref dimensions,
+        ref text,
+        ref font,
+    } in &layout_box.texts
+    {
+        list.push(DisplayCommand::Text(
+            text.clone(),
+            dimensions.border_box().add_xy(x, y),
+            font.clone(),
+        ))
     }
 }
 
-fn render_background(list: &mut DisplayList, layout_box: &LayoutBox) {
+fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     get_color(layout_box, "background").map(|color| {
         list.push(DisplayCommand::SolidColor(
             color,
-            layout_box.dimensions.border_box(),
+            layout_box.dimensions.border_box().add_xy(x, y),
         ))
     });
 }
 
-fn render_borders(list: &mut DisplayList, layout_box: &LayoutBox) {
+fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     let color = match get_color(layout_box, "border-color") {
         Some(color) => color,
         _ => return,
     };
 
     let d = &layout_box.dimensions;
-    let border_box = d.border_box();
+    let border_box = d.border_box().add_xy(x, y);
 
     // Left border
     list.push(DisplayCommand::SolidColor(
@@ -111,10 +124,12 @@ fn render_borders(list: &mut DisplayList, layout_box: &LayoutBox) {
 /// Return the specified color for CSS property `name`, or None if no color was specified.
 fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
     match layout_box.box_type {
-        BoxType::BlockNode(ref style) | BoxType::InlineNode(ref style) => match style.value(name) {
+        BoxType::BlockNode(ref style)
+        | BoxType::InlineNode(ref style)
+        | BoxType::TextNode(ref style) => match style.value(name) {
             Some(Value::Color(color)) => Some(color),
             _ => None,
         },
-        BoxType::AnonymousBlock(_) => None,
+        BoxType::AnonymousBlock => None,
     }
 }
