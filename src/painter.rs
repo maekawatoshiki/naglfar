@@ -47,7 +47,6 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     if let &BoxType::AnonymousBlock(ref texts) = &layout_box.box_type {
         for &Text {
             ref rect,
-            ref line,
             ref text,
             ref font,
             ref line_height,
