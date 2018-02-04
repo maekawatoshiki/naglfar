@@ -293,17 +293,12 @@ impl<'a> LayoutBox<'a> {
                 self.calculate_text_position(ctx, texts, containing_block, saved_block)
             }
             BoxType::AnonymousBlock(ref mut texts) => {
+                // TODO: REFINE THIS CODE!!
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
 
                 containing_block.content.width = Au(0);
                 containing_block.content.height = Au(0);
-
-                // TODO
-                let line_height = 19.2;
-                let font_size = 16.0;
-
-                let l = (line_height - font_size);
 
                 let mut line = 0;
 
@@ -316,7 +311,7 @@ impl<'a> LayoutBox<'a> {
                         viewport,
                     );
 
-                    let child_width = child.dimensions.margin_box().width;
+                    let mut child_width = child.dimensions.margin_box().width;
 
                     if self.dimensions.content.width < containing_block.content.width + child_width
                     {
@@ -327,7 +322,7 @@ impl<'a> LayoutBox<'a> {
                                 let text = if let NodeType::Text(ref text) = style.node.data {
                                     text
                                 } else {
-                                    panic!()
+                                    unreachable!();
                                 };
 
                                 let (font_size, line_height, font_weight) =
@@ -343,26 +338,32 @@ impl<'a> LayoutBox<'a> {
                                 let font_info = ctx.get_scaled_font();
                                 let font_width = font_info.extents().max_x_advance;
 
-                                let mut tt = vec![];
-                                let mut s = "".to_string();
+                                let mut lines_str = vec![];
+                                let mut line_str = "".to_string();
                                 let mut max =
                                     self.dimensions.content.width - containing_block.content.width;
 
                                 for c in text.chars() {
-                                    if font_info.text_extents(s.as_str()).x_advance + font_width
+                                    if font_info.text_extents(line_str.as_str()).x_advance
+                                        + font_width
                                         > max.to_f64_px()
                                     {
-                                        tt.push(s.clone());
-                                        s.clear();
+                                        lines_str.push(line_str.clone());
+                                        line_str.clear();
                                         max = self.dimensions.content.width;
                                     }
-                                    s.push(c);
+                                    line_str.push(c);
                                 }
-                                tt.push(s.clone());
+                                lines_str.push(line_str.clone());
 
                                 texts.pop();
 
-                                for (i, t) in tt.iter().enumerate() {
+                                line += lines_str.len();
+
+                                for (i, t) in lines_str.iter().enumerate() {
+                                    child_width = Au::from_f64_px(
+                                        font_info.text_extents(t.as_str()).x_advance,
+                                    );
                                     texts.push(Text {
                                         rect: Rect {
                                             x: if i == 0 {
@@ -385,15 +386,19 @@ impl<'a> LayoutBox<'a> {
                                         line_height: line_height,
                                     });
                                 }
+
+                                containing_block.content.width = child_width;
+                                containing_block.content.height =
+                                    Au::from_f64_px((line - 1) as f64 * line_height);
                             }
                             _ => {}
                         }
+                    } else {
+                        containing_block.content.width += child_width;
                     }
 
                     let (font_size, line_height, _) = child.get_text_font_info();
                     child.dimensions.content.y += Au::from_f64_px(line_height - font_size) / 2;
-
-                    containing_block.content.width += child_width;
                 }
             }
         }
@@ -426,14 +431,12 @@ impl<'a> LayoutBox<'a> {
         let text_width = font_info.text_extents(text.as_str()).x_advance;
         let font_width = font_info.extents().max_x_advance;
 
-        self.dimensions.content.x = Au::from_f64_px(0.0);
-        self.dimensions.content.y = Au::from_f64_px(0.0);
-
         texts.push(Text {
             rect: {
                 let mut d = self.dimensions.content;
                 d.x = containing_block.content.width;
-                d.y = Au::from_f64_px(line_height - font_size) / 2;
+                d.y =
+                    containing_block.content.height + Au::from_f64_px(line_height - font_size) / 2;
                 d
             },
             text: text.clone(),
