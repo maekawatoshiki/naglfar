@@ -73,8 +73,8 @@ pub type Texts = Vec<Text>;
 pub enum BoxType<'a> {
     BlockNode(&'a StyledNode<'a>),
     InlineNode(&'a StyledNode<'a>),
-    TextNode(&'a StyledNode<'a>, Texts),
-    AnonymousBlock,
+    TextNode(&'a StyledNode<'a>),
+    AnonymousBlock(Texts),
 }
 
 impl<'a> LayoutBox<'a> {
@@ -89,10 +89,10 @@ impl<'a> LayoutBox<'a> {
 
     pub fn get_style_node(&self) -> Option<&'a StyledNode<'a>> {
         match self.box_type {
-            BoxType::BlockNode(node) | BoxType::InlineNode(node) | BoxType::TextNode(node, _) => {
+            BoxType::BlockNode(node) | BoxType::InlineNode(node) | BoxType::TextNode(node) => {
                 Some(node)
             }
-            BoxType::AnonymousBlock => None,
+            BoxType::AnonymousBlock(_) => None,
         }
     }
 }
@@ -115,7 +115,13 @@ pub fn layout_tree<'a>(
     let mut root_box = build_layout_tree(node, ctx);
     root_box.calculate_inline_size(ctx);
     root_box.calculate_block_size(ctx, containing_block);
-    root_box.calculate_position(ctx, containing_block, saved_block, viewport);
+    root_box.calculate_position(
+        ctx,
+        &mut Texts::new(),
+        containing_block,
+        saved_block,
+        viewport,
+    );
     root_box
 }
 
@@ -126,7 +132,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> Layou
         Display::Block => BoxType::BlockNode(style_node),
         Display::Inline => match style_node.node.data {
             NodeType::Element(_) => BoxType::InlineNode(style_node),
-            NodeType::Text(_) => BoxType::TextNode(style_node, Texts::new()),
+            NodeType::Text(_) => BoxType::TextNode(style_node),
         },
         Display::None => panic!("Root node has display: none."),
     });
@@ -151,8 +157,8 @@ impl<'a> LayoutBox<'a> {
                 child.calculate_inline_size(ctx);
             },
             BoxType::InlineNode(_) => self.do_calculate_inline_size(ctx),
-            BoxType::TextNode(_, _) => self.do_calculate_text_size_inline(ctx),
-            BoxType::AnonymousBlock => for child in &mut self.children {
+            BoxType::TextNode(_) => self.do_calculate_text_size_inline(ctx),
+            BoxType::AnonymousBlock(_) => for child in &mut self.children {
                 child.calculate_inline_size(ctx);
             },
         }
@@ -208,8 +214,8 @@ impl<'a> LayoutBox<'a> {
         match self.box_type {
             BoxType::BlockNode(_) => self.do_calculate_block_size(ctx, containing_block),
             BoxType::InlineNode(_) => {}
-            BoxType::TextNode(_, _) => {}
-            BoxType::AnonymousBlock => {
+            BoxType::TextNode(_) => {}
+            BoxType::AnonymousBlock(_) => {
                 self.dimensions.content.width = containing_block.content.width;
 
                 containing_block.content.width = Au(0);
@@ -220,7 +226,7 @@ impl<'a> LayoutBox<'a> {
                     if self.dimensions.content.width < containing_block.content.width + child_width
                     {
                         match child.box_type {
-                            BoxType::InlineNode(_) | BoxType::TextNode(_, _) => {
+                            BoxType::InlineNode(_) | BoxType::TextNode(_) => {
                                 self.dimensions.content.height = vec![
                                     self.dimensions.content.height,
                                     Au::from_f64_px(
@@ -266,6 +272,7 @@ impl<'a> LayoutBox<'a> {
     fn calculate_position(
         &mut self,
         ctx: &Context,
+        texts: &mut Texts,
         mut containing_block: Dimensions,
         saved_block: Dimensions,
         viewport: Dimensions,
@@ -275,24 +282,24 @@ impl<'a> LayoutBox<'a> {
                 self.calculate_block_position(containing_block);
                 containing_block.content.height = Au::from_f64_px(0.0);
                 for child in &mut self.children {
-                    child.calculate_position(ctx, containing_block, saved_block, viewport);
+                    child.calculate_position(ctx, texts, containing_block, saved_block, viewport);
                     containing_block.content.height += child.dimensions.margin_box().height;
                 }
             }
             BoxType::InlineNode(_) => {
                 self.calculate_inline_position(containing_block);
 
-                containing_block.content.width = Au(0);
+                // containing_block.content.width = Au(0);
 
                 for child in &mut self.children {
-                    child.calculate_position(ctx, containing_block, saved_block, viewport);
+                    child.calculate_position(ctx, texts, containing_block, saved_block, viewport);
                     containing_block.content.width += child.dimensions.margin_box().width;
                 }
             }
-            BoxType::TextNode(_, _) => {
-                self.calculate_text_position(ctx, containing_block, saved_block, viewport)
+            BoxType::TextNode(_) => {
+                self.calculate_text_position(ctx, texts, containing_block, saved_block, viewport)
             }
-            BoxType::AnonymousBlock => {
+            BoxType::AnonymousBlock(ref mut texts) => {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
 
@@ -308,8 +315,13 @@ impl<'a> LayoutBox<'a> {
                 let mut line = 0;
 
                 for child in &mut self.children {
-                    child.calculate_position(ctx, containing_block, self.dimensions, viewport);
-                    // child.dimensions.content.y += Au::from_f64_px(l) / 2;
+                    child.calculate_position(
+                        ctx,
+                        texts,
+                        containing_block,
+                        self.dimensions,
+                        viewport,
+                    );
 
                     let child_width = child.dimensions.margin_box().width;
 
@@ -317,7 +329,7 @@ impl<'a> LayoutBox<'a> {
                     {
                         let style = child.get_style_node().unwrap();
                         match child.box_type {
-                            BoxType::TextNode(_, ref mut texts) => {
+                            BoxType::TextNode(_) => {
                                 let text = if let NodeType::Text(ref text) = style.node.data {
                                     text
                                 } else {
@@ -347,31 +359,33 @@ impl<'a> LayoutBox<'a> {
 
                                 let mut tt = vec![];
                                 let mut s = "".to_string();
+                                let mut max =
+                                    self.dimensions.content.width - containing_block.content.width;
 
                                 for c in text.chars() {
-                                    let max = self.dimensions.content.width
-                                        - containing_block.content.width;
-                                    if font_info.text_extents(s.as_str()).x_advance
+                                    if font_info.text_extents(s.as_str()).x_advance + font_width
                                         > max.to_f64_px()
                                     {
                                         tt.push(s.clone());
                                         s.clear();
-                                        containing_block.content.width = Au(0);
+                                        max = self.dimensions.content.width;
                                     }
                                     s.push(c);
                                 }
                                 tt.push(s.clone());
 
-                                texts.clear();
+                                texts.pop();
+
                                 for (i, t) in tt.iter().enumerate() {
                                     texts.push(Text {
                                         rect: Rect {
                                             x: if i == 0 {
-                                                child.dimensions.content.x
+                                                containing_block.content.width
                                             } else {
                                                 Au(0)
                                             },
-                                            y: Au(0),
+                                            y: Au::from_f64_px(line_height - font_size) / 2
+                                                + Au::from_f64_px(i as f64 * line_height),
                                             width: Au::from_f64_px(
                                                 font_info.text_extents(t.as_str()).x_advance,
                                             ),
@@ -390,11 +404,9 @@ impl<'a> LayoutBox<'a> {
                             _ => {}
                         }
                     }
-                    //     child.dimensions.content.x = Au(0);
-                    //     child.dimensions.content.y += Au::from_f64_px(line_height);
-                    //     containing_block.content.width = Au(0);
-                    // } else {
-                    // }
+
+                    child.dimensions.content.y += Au::from_f64_px(l) / 2;
+
                     containing_block.content.width += child_width;
                 }
             }
@@ -403,17 +415,12 @@ impl<'a> LayoutBox<'a> {
     fn calculate_text_position(
         &mut self,
         ctx: &Context,
+        texts: &mut Texts,
         mut containing_block: Dimensions,
         saved_block: Dimensions,
         viewport: Dimensions,
     ) {
         let style = self.get_style_node().unwrap();
-
-        let texts = if let BoxType::TextNode(_, ref mut texts) = self.box_type {
-            texts
-        } else {
-            panic!();
-        };
 
         let text = if let NodeType::Text(ref text) = style.node.data {
             text
@@ -445,14 +452,14 @@ impl<'a> LayoutBox<'a> {
 
         let max_width = saved_block.content.width;
 
-        self.dimensions.content.x = containing_block.content.width;
+        self.dimensions.content.x = Au::from_f64_px(0.0);
         self.dimensions.content.y = Au::from_f64_px(0.0);
 
         texts.push(Text {
             rect: {
                 let mut d = self.dimensions.content;
                 d.x = containing_block.content.width;
-                d.y = Au(0);
+                d.y = Au::from_f64_px(line_height - font_size) / 2;
                 d
             },
             line: 0,
@@ -483,10 +490,10 @@ impl<'a> LayoutBox<'a> {
             BoxType::InlineNode(_) => {
                 self.layout_inline(ctx, texts, containing_block, saved_block, viewport)
             }
-            BoxType::TextNode(_, _) => {
+            BoxType::TextNode(_) => {
                 self.layout_inline(ctx, texts, containing_block, saved_block, viewport)
             }
-            BoxType::AnonymousBlock => {
+            BoxType::AnonymousBlock(_) => {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = Au::from_f64_px(0.0);
 
@@ -872,18 +879,19 @@ impl<'a> LayoutBox<'a> {
     /// Where a new inline child should go.
     fn get_inline_container(&mut self) -> &mut LayoutBox<'a> {
         match self.box_type {
-            BoxType::InlineNode(_) | BoxType::AnonymousBlock => self,
+            BoxType::InlineNode(_) | BoxType::AnonymousBlock(_) => self,
             BoxType::BlockNode(_) => {
                 match self.children.last() {
                     Some(&LayoutBox {
-                        box_type: BoxType::AnonymousBlock,
+                        box_type: BoxType::AnonymousBlock(_),
                         ..
                     }) => {}
-                    _ => self.children.push(LayoutBox::new(BoxType::AnonymousBlock)),
+                    _ => self.children
+                        .push(LayoutBox::new(BoxType::AnonymousBlock(Texts::new()))),
                 }
                 self.children.last_mut().unwrap()
             }
-            BoxType::TextNode(_, _) => panic!(),
+            BoxType::TextNode(_) => panic!(),
         }
     }
 }

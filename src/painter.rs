@@ -35,11 +35,16 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
             &child,
         );
     }
-    render_text(list, x, y, layout_box);
+    render_text(
+        list,
+        x + layout_box.dimensions.content.x,
+        y + layout_box.dimensions.content.y,
+        layout_box,
+    );
 }
 
 fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
-    if let &BoxType::TextNode(_, ref texts) = &layout_box.box_type {
+    if let &BoxType::AnonymousBlock(ref texts) = &layout_box.box_type {
         for &Text {
             ref rect,
             ref line,
@@ -125,10 +130,10 @@ fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
     match layout_box.box_type {
         BoxType::BlockNode(ref style)
         | BoxType::InlineNode(ref style)
-        | BoxType::TextNode(ref style, _) => match style.value(name) {
+        | BoxType::TextNode(ref style) => match style.value(name) {
             Some(Value::Color(color)) => Some(color),
             _ => None,
         },
-        BoxType::AnonymousBlock => None,
+        BoxType::AnonymousBlock(_) => None,
     }
 }
