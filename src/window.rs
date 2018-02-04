@@ -65,8 +65,8 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
             ctx.rectangle(
                 rect.x.to_px() as f64,
                 rect.y.to_px() as f64,
-                rect.width.ceil_to_px() as f64,
-                rect.height.ceil_to_px() as f64,
+                rect.width.to_px() as f64,
+                rect.height.to_px() as f64,
             );
             ctx.set_source_rgb(
                 color.r as f64 / 255.0,
