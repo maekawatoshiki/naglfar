@@ -398,6 +398,8 @@ impl<'a> LayoutBox<'a> {
                     }
 
                     let (font_size, line_height, _) = child.get_text_font_info();
+                    // For inline elements. (Texts are already added `(line_height - font_size) /
+                    // 2`.
                     child.dimensions.content.y += Au::from_f64_px(line_height - font_size) / 2;
                 }
             }
@@ -415,7 +417,7 @@ impl<'a> LayoutBox<'a> {
         let text = if let NodeType::Text(ref text) = style.node.data {
             text
         } else {
-            return;
+            panic!();
         };
 
         let (font_size, line_height, font_weight) = self.get_text_font_info();
@@ -433,11 +435,11 @@ impl<'a> LayoutBox<'a> {
 
         texts.push(Text {
             rect: {
-                let mut d = self.dimensions.content;
-                d.x = containing_block.content.width;
-                d.y =
+                let mut r = self.dimensions.content;
+                r.x = containing_block.content.width;
+                r.y =
                     containing_block.content.height + Au::from_f64_px(line_height - font_size) / 2;
-                d
+                r
             },
             text: text.clone(),
             font: Font {
