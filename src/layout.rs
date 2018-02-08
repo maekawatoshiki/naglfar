@@ -113,15 +113,22 @@ pub fn layout_tree<'a>(
     containing_block.content.height = Au::from_f64_px(0.0);
 
     let mut root_box = build_layout_tree(node, ctx);
-    root_box.calculate_inline_size(ctx);
-    root_box.calculate_block_size(ctx, containing_block);
-    root_box.calculate_position(
+    root_box.layout(
         ctx,
         &mut Texts::new(),
         containing_block,
         saved_block,
         viewport,
     );
+    // root_box.calculate_inline_size(ctx);
+    // root_box.calculate_block_size(ctx, containing_block);
+    // root_box.calculate_position(
+    //     ctx,
+    //     &mut Texts::new(),
+    //     containing_block,
+    //     saved_block,
+    //     viewport,
+    // );
     root_box
 }
 
@@ -151,327 +158,6 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> Layou
 }
 
 impl<'a> LayoutBox<'a> {
-    fn calculate_inline_size(&mut self, ctx: &Context) {
-        match self.box_type {
-            BoxType::BlockNode(_) => for child in &mut self.children {
-                child.calculate_inline_size(ctx);
-            },
-            BoxType::InlineNode(_) => self.do_calculate_inline_size(ctx),
-            BoxType::TextNode(_) => self.do_calculate_text_size_inline(ctx),
-            BoxType::AnonymousBlock(_) => for child in &mut self.children {
-                child.calculate_inline_size(ctx);
-            },
-        }
-    }
-    fn do_calculate_inline_size(&mut self, ctx: &Context) {
-        let style = self.get_style_node().unwrap();
-        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-        let font_size = style
-            .lookup("font-size", "font-size", &default_font_size)
-            .to_px();
-
-        self.dimensions.content.height = Au::from_f64_px(font_size);
-
-        for child in &mut self.children {
-            child.calculate_inline_size(ctx);
-            self.dimensions.content.width += child.dimensions.content.width;
-        }
-    }
-    fn do_calculate_text_size_inline(&mut self, ctx: &Context) {
-        let style = self.get_style_node().unwrap();
-
-        let text = if let NodeType::Text(ref text) = style.node.data {
-            text
-        } else {
-            return;
-        };
-
-        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-        let font_size = style
-            .lookup("font-size", "font-size", &default_font_size)
-            .to_px();
-        let line_height = font_size * 1.2;
-
-        let default_font_weight = Value::Keyword("normal".to_string());
-        let font_weight = style
-            .lookup("font-weight", "font-weight", &default_font_weight)
-            .to_font_weight();
-
-        // TODO: REFINE THIS!
-        ctx.set_font_size(font_size);
-        ctx.select_font_face(
-            "",
-            cairo::FontSlant::Normal,
-            font_weight.to_cairo_font_weight(),
-        );
-        let font_info = ctx.get_scaled_font();
-        let text_width = font_info.text_extents(text.as_str()).x_advance;
-
-        self.dimensions.content.width = Au::from_f64_px(text_width);
-        self.dimensions.content.height = Au::from_f64_px(font_size);
-    }
-    fn calculate_block_size(&mut self, ctx: &Context, mut containing_block: Dimensions) {
-        match self.box_type {
-            BoxType::BlockNode(_) => self.do_calculate_block_size(ctx, containing_block),
-            BoxType::InlineNode(_) => {}
-            BoxType::TextNode(_) => {}
-            BoxType::AnonymousBlock(_) => {
-                self.dimensions.content.width = containing_block.content.width;
-
-                containing_block.content.width = Au(0);
-
-                for child in &mut self.children {
-                    let child_width = child.dimensions.content.width;
-
-                    if self.dimensions.content.width < containing_block.content.width + child_width
-                    {
-                        match child.box_type {
-                            BoxType::InlineNode(_) | BoxType::TextNode(_) => {
-                                self.dimensions.content.height = vec![
-                                    self.dimensions.content.height,
-                                    Au::from_f64_px(
-                                        ((child.dimensions.content.width
-                                            / self.dimensions.content.width)
-                                            as i32 as f64
-                                            + 1.0)
-                                            * child.dimensions.content.height.to_f64_px(),
-                                    ),
-                                ].into_iter()
-                                    .fold(Au::from_f64_px(0.0), |x, y| if x < y { y } else { x });
-                            }
-                            _ => panic!(),
-                        }
-                        containing_block.content.width = Au(0);
-                    } else {
-                        containing_block.content.width += child_width;
-
-                        // Inline and text elements are already calculated their size.
-                        self.dimensions.content.height = vec![
-                            self.dimensions.content.height,
-                            child.dimensions.margin_box().height,
-                        ].into_iter()
-                            .fold(Au::from_f64_px(0.0), |x, y| if x < y { y } else { x });
-                    }
-                }
-                self.dimensions.content.height =
-                    Au::from_f64_px(self.dimensions.content.height.to_f64_px() * 1.2);
-            }
-        }
-    }
-    fn do_calculate_block_size(&mut self, ctx: &Context, containing_block: Dimensions) {
-        self.calculate_block_width(containing_block);
-
-        for child in &mut self.children {
-            child.calculate_block_size(ctx, self.dimensions);
-            self.dimensions.content.height += child.dimensions.margin_box().height;
-        }
-
-        self.calculate_block_height(ctx);
-    }
-
-    fn calculate_position(
-        &mut self,
-        ctx: &Context,
-        texts: &mut Texts,
-        mut containing_block: Dimensions,
-        saved_block: Dimensions,
-        viewport: Dimensions,
-    ) {
-        match self.box_type {
-            BoxType::BlockNode(_) => {
-                self.calculate_block_position(containing_block);
-                containing_block.content.height = Au::from_f64_px(0.0);
-                for child in &mut self.children {
-                    child.calculate_position(ctx, texts, containing_block, saved_block, viewport);
-                    containing_block.content.height += child.dimensions.margin_box().height;
-                }
-            }
-            BoxType::InlineNode(_) => {
-                self.calculate_inline_position(containing_block);
-
-                // containing_block.content.width = Au(0);
-
-                for child in &mut self.children {
-                    child.calculate_position(ctx, texts, containing_block, saved_block, viewport);
-                    containing_block.content.width += child.dimensions.margin_box().width;
-                }
-            }
-            BoxType::TextNode(_) => {
-                self.calculate_text_position(ctx, texts, containing_block, saved_block, viewport)
-            }
-            BoxType::AnonymousBlock(ref mut texts) => {
-                self.dimensions.content.x = Au::from_f64_px(0.0);
-                self.dimensions.content.y = containing_block.content.height;
-
-                containing_block.content.width = Au(0);
-                containing_block.content.height = Au(0);
-
-                // TODO
-                let line_height = 19.2;
-                let font_size = 16.0;
-
-                let l = (line_height - font_size);
-
-                let mut line = 0;
-
-                for child in &mut self.children {
-                    child.calculate_position(
-                        ctx,
-                        texts,
-                        containing_block,
-                        self.dimensions,
-                        viewport,
-                    );
-
-                    let child_width = child.dimensions.margin_box().width;
-
-                    if self.dimensions.content.width < containing_block.content.width + child_width
-                    {
-                        let style = child.get_style_node().unwrap();
-                        match child.box_type {
-                            BoxType::TextNode(_) => {
-                                let text = if let NodeType::Text(ref text) = style.node.data {
-                                    text
-                                } else {
-                                    panic!()
-                                };
-
-                                let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-                                let font_size = style
-                                    .lookup("font-size", "font-size", &default_font_size)
-                                    .to_px();
-                                let line_height = font_size * 1.2;
-
-                                let default_font_weight = Value::Keyword("normal".to_string());
-                                let font_weight = style
-                                    .lookup("font-weight", "font-weight", &default_font_weight)
-                                    .to_font_weight();
-
-                                // TODO: REFINE THIS!
-                                ctx.set_font_size(font_size);
-                                ctx.select_font_face(
-                                    "",
-                                    cairo::FontSlant::Normal,
-                                    font_weight.to_cairo_font_weight(),
-                                );
-                                let font_info = ctx.get_scaled_font();
-                                let font_width = font_info.extents().max_x_advance;
-
-                                let mut tt = vec![];
-                                let mut s = "".to_string();
-                                let mut max =
-                                    self.dimensions.content.width - containing_block.content.width;
-
-                                for c in text.chars() {
-                                    if font_info.text_extents(s.as_str()).x_advance + font_width
-                                        > max.to_f64_px()
-                                    {
-                                        tt.push(s.clone());
-                                        s.clear();
-                                        max = self.dimensions.content.width;
-                                    }
-                                    s.push(c);
-                                }
-                                tt.push(s.clone());
-
-                                texts.pop();
-
-                                for (i, t) in tt.iter().enumerate() {
-                                    texts.push(Text {
-                                        rect: Rect {
-                                            x: if i == 0 {
-                                                containing_block.content.width
-                                            } else {
-                                                Au(0)
-                                            },
-                                            y: Au::from_f64_px(line_height - font_size) / 2
-                                                + Au::from_f64_px(i as f64 * line_height),
-                                            width: Au::from_f64_px(
-                                                font_info.text_extents(t.as_str()).x_advance,
-                                            ),
-                                            height: Au::from_f64_px(font_size),
-                                        },
-                                        line: i as i32,
-                                        font: Font {
-                                            size: font_size,
-                                            weight: font_weight,
-                                        },
-                                        text: t.clone(),
-                                        line_height: line_height,
-                                    });
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-
-                    child.dimensions.content.y += Au::from_f64_px(l) / 2;
-
-                    containing_block.content.width += child_width;
-                }
-            }
-        }
-    }
-    fn calculate_text_position(
-        &mut self,
-        ctx: &Context,
-        texts: &mut Texts,
-        mut containing_block: Dimensions,
-        saved_block: Dimensions,
-        viewport: Dimensions,
-    ) {
-        let style = self.get_style_node().unwrap();
-
-        let text = if let NodeType::Text(ref text) = style.node.data {
-            text
-        } else {
-            return;
-        };
-
-        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-        let font_size = style
-            .lookup("font-size", "font-size", &default_font_size)
-            .to_px();
-        let line_height = font_size * 1.2;
-
-        let default_font_weight = Value::Keyword("normal".to_string());
-        let font_weight = style
-            .lookup("font-weight", "font-weight", &default_font_weight)
-            .to_font_weight();
-
-        // TODO: REFINE THIS!
-        ctx.set_font_size(font_size);
-        ctx.select_font_face(
-            "",
-            cairo::FontSlant::Normal,
-            font_weight.to_cairo_font_weight(),
-        );
-        let font_info = ctx.get_scaled_font();
-        let text_width = font_info.text_extents(text.as_str()).x_advance;
-        let font_width = font_info.extents().max_x_advance;
-
-        let max_width = saved_block.content.width;
-
-        self.dimensions.content.x = Au::from_f64_px(0.0);
-        self.dimensions.content.y = Au::from_f64_px(0.0);
-
-        texts.push(Text {
-            rect: {
-                let mut d = self.dimensions.content;
-                d.x = containing_block.content.width;
-                d.y = Au::from_f64_px(line_height - font_size) / 2;
-                d
-            },
-            line: 0,
-            text: text.clone(),
-            font: Font {
-                size: font_size,
-                weight: font_weight,
-            },
-            line_height: line_height,
-        });
-    }
-
     /// Lay out a box and its descendants.
     /// `saved_block` is used to know the maximum width/height of the box, calculate the percent
     /// width/height and so on.
@@ -493,11 +179,12 @@ impl<'a> LayoutBox<'a> {
             BoxType::TextNode(_) => {
                 self.layout_inline(ctx, texts, containing_block, saved_block, viewport)
             }
-            BoxType::AnonymousBlock(_) => {
+            BoxType::AnonymousBlock(ref mut texts) => {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = Au::from_f64_px(0.0);
 
                 containing_block.content.width = Au::from_f64_px(0.0);
+                containing_block.content.height = Au::from_f64_px(0.0);
 
                 for child in &mut self.children {
                     child.layout(ctx, texts, containing_block, saved_block, viewport);
@@ -551,7 +238,7 @@ impl<'a> LayoutBox<'a> {
 
         self.layout_inline_children(ctx, texts, viewport);
 
-        self.layout_text(ctx, texts, saved_block);
+        self.layout_text(ctx, texts, containing_block, saved_block);
 
         // TODO: Is this correct?
         let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
@@ -564,7 +251,13 @@ impl<'a> LayoutBox<'a> {
     }
 
     /// Lay out a text.
-    fn layout_text(&mut self, ctx: &Context, texts: &mut Texts, saved_block: Dimensions) {
+    fn layout_text(
+        &mut self,
+        ctx: &Context,
+        texts: &mut Texts,
+        containing_block: Dimensions,
+        saved_block: Dimensions,
+    ) {
         let style = self.get_style_node().unwrap();
 
         let text = if let NodeType::Text(ref text) = style.node.data {
@@ -611,42 +304,53 @@ impl<'a> LayoutBox<'a> {
                     - font_width
                     < font_info.text_extents(line.as_str()).x_advance
                 {
-                    // texts.push(Text {
-                    //     dimensions: d,
-                    //     text: line.clone(),
-                    //     font: Font {
-                    //         size: font_size,
-                    //         weight: font_weight,
-                    //     },
-                    // });
+                    texts.push(Text {
+                        rect: d.border_box(),
+                        text: line.clone(),
+                        font: Font {
+                            size: font_size,
+                            weight: font_weight,
+                        },
+                        line: 0,
+                        line_height: 0.0,
+                    });
                     d.content.x = saved_block.content.x;
                     d.content.y += Au::from_f64_px(line_height);
                     line.clear();
                 }
             }
 
-            // texts.push(Text {
-            //     dimensions: d,
-            //     text: line.clone(),
-            //     font: Font {
-            //         size: font_size,
-            //         weight: font_weight,
-            //     },
-            // });
+            texts.push(Text {
+                rect: d.border_box(),
+                text: line.clone(),
+                font: Font {
+                    size: font_size,
+                    weight: font_weight,
+                },
+                line: 0,
+                line_height: 0.0,
+            });
 
             self.dimensions.content.width =
                 max_width - (self.dimensions.content.x - saved_block.content.x);
             self.dimensions.content.height =
                 Au::from_f64_px(line_height) * (text_width as i32 / max_width.to_px());
         } else {
-            // texts.push(Text {
-            //     dimensions: self.dimensions,
-            //     text: text.clone(),
-            //     font: Font {
-            //         size: font_size,
-            //         weight: font_weight,
-            //     },
-            // });
+            texts.push(Text {
+                rect: {
+                    let mut r = self.dimensions.border_box();
+                    r.x = containing_block.content.width + containing_block.content.x;
+                    r.y = Au(0);
+                    r
+                },
+                text: text.clone(),
+                font: Font {
+                    size: font_size,
+                    weight: font_weight,
+                },
+                line: 0,
+                line_height: 0.0,
+            });
             self.dimensions.content.width = Au::from_f64_px(text_width);
             self.dimensions.content.height = Au::from_f64_px(line_height);
         };
@@ -704,7 +408,7 @@ impl<'a> LayoutBox<'a> {
         let d = &mut self.dimensions;
 
         for child in &mut self.children {
-            // child.layout(ctx, &mut texts, *d, *d, viewport);
+            child.layout(ctx, texts, *d, *d, viewport);
             d.content.width += child.dimensions.margin_box().width; // TODO
         }
 
