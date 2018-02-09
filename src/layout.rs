@@ -67,6 +67,11 @@ pub struct Text {
     pub line_height: f64,
 }
 
+#[derive(Clone, Debug)]
+pub struct Line {
+    pub line_height: f64,
+}
+
 pub type Texts = Vec<Text>;
 
 #[derive(Clone, Debug)]
@@ -181,7 +186,7 @@ impl<'a> LayoutBox<'a> {
             }
             BoxType::AnonymousBlock(ref mut texts) => {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
-                self.dimensions.content.y = Au::from_f64_px(0.0);
+                self.dimensions.content.y = containing_block.content.height;
 
                 containing_block.content.width = Au::from_f64_px(0.0);
                 containing_block.content.height = Au::from_f64_px(0.0);
@@ -401,8 +406,8 @@ impl<'a> LayoutBox<'a> {
     }
 
     /// Lay out the inline's children within its content area.
-    /// Sets `self.dimensions.width` to the total content width and
-    /// sets `self.dimensions.height` to default font size(height).
+    /// Sets the total content width to `self.dimensions.width` and
+    /// sets `default font size(height)` to self.dimensions.height`.
     fn layout_inline_children(&mut self, ctx: &Context, texts: &mut Texts, viewport: Dimensions) {
         let style = self.get_style_node().unwrap();
         let d = &mut self.dimensions;
