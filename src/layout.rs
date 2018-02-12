@@ -125,19 +125,10 @@ pub fn layout_tree<'a>(
         saved_block,
         viewport,
     );
-    // root_box.calculate_inline_size(ctx);
-    // root_box.calculate_block_size(ctx, containing_block);
-    // root_box.calculate_position(
-    //     ctx,
-    //     &mut Texts::new(),
-    //     containing_block,
-    //     saved_block,
-    //     viewport,
-    // );
     root_box
 }
 
-// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
+/// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
 fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> LayoutBox<'a> {
     // Create the root box.
     let mut root = LayoutBox::new(match style_node.display() {
