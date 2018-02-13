@@ -129,21 +129,20 @@ impl<'a> LineMaker<'a> {
             };
 
             match layoutbox.box_type {
-                BoxType::TextNode(_, _) => {
-                    while self.pending.range.len() > 0 {
-                        self.run_text_node(layoutbox.clone(), ctx, max_width)
-                    }
-                    self.lines.push(Line {
-                        range: self.start..self.end,
-                        line_height: self.cur_line_height,
-                    });
-                    self.start = self.end;
-                }
+                BoxType::TextNode(_, _) => while self.pending.range.len() > 0 {
+                    self.run_text_node(layoutbox.clone(), ctx, max_width)
+                },
                 _ => {}
             }
         }
+        self.lines.push(Line {
+            range: self.start..self.end,
+            line_height: self.cur_line_height,
+        });
+        self.start = self.end;
 
         self.cur_height = 0.0;
+
         for line in &self.lines {
             self.cur_width = 0.0;
             for new_box in &mut self.new_boxes[line.range.clone()] {
@@ -228,7 +227,6 @@ impl<'a> LineMaker<'a> {
             self.pending.range = self.pending.range.start + max_chars..self.pending.range.end;
 
             self.cur_width = 0.0;
-            self.cur_height += line_height;
         } else {
             new_layoutbox.dimensions.content.width = Au::from_f64_px(text_width);
             new_layoutbox.dimensions.content.height = Au::from_f64_px(font_size);
