@@ -132,9 +132,22 @@ impl<'a> LineMaker<'a> {
                 BoxType::TextNode(_, _) => while self.pending.range.len() > 0 {
                     self.run_text_node(layoutbox.clone(), ctx, max_width)
                 },
+                BoxType::InlineNode(_) => {
+                    let mut linemaker = self.clone();
+                    linemaker.work_list = VecDeque::from(layoutbox.children);
+                    linemaker.run(ctx, max_width);
+                    self.new_boxes = linemaker.new_boxes;
+                    self.lines = linemaker.lines;
+                    self.start = linemaker.start;
+                    self.end = linemaker.end;
+                    self.cur_width = linemaker.cur_width;
+                    self.cur_line_height = linemaker.cur_line_height;
+                }
                 _ => {}
             }
         }
+    }
+    fn finish(&mut self) {
         // push remainings to `lines`.
         self.lines.push(Line {
             range: self.start..self.end,
@@ -374,6 +387,7 @@ impl<'a> LayoutBox<'a> {
 
                 let mut linemaker = LineMaker::new(self.children.clone());
                 linemaker.run(ctx, containing_block.padding_box().width.to_f64_px());
+                linemaker.finish();
                 self.children = linemaker.new_boxes;
                 self.dimensions.content.width = containing_block.content.width;
                 self.dimensions.content.height = Au::from_f64_px(linemaker.cur_height);
