@@ -135,6 +135,7 @@ impl<'a> LineMaker<'a> {
                 _ => {}
             }
         }
+        // push remainings to `lines`.
         self.lines.push(Line {
             range: self.start..self.end,
             line_height: self.cur_line_height,
@@ -157,12 +158,11 @@ impl<'a> LineMaker<'a> {
         }
     }
     fn run_text_node(&mut self, layoutbox: LayoutBox<'a>, ctx: &Context, max_width: f64) {
-        let style;
-        if let BoxType::TextNode(ref s, _) = layoutbox.box_type {
-            style = s.clone();
+        let style = if let BoxType::TextNode(s, _) = layoutbox.box_type {
+            s
         } else {
             return;
-        }
+        };
 
         let text = if let NodeType::Text(ref text) = style.node.data {
             &text[self.pending.range.clone()]
@@ -174,17 +174,14 @@ impl<'a> LineMaker<'a> {
         let font_size = style
             .lookup("font-size", "font-size", &default_font_size)
             .to_px();
-        println!("size: {}", font_size);
 
-        let line_height = font_size * 1.2;
-        println!("{} {}", font_size, line_height);
+        let line_height = font_size * 1.2; // TODO: magic number '1.2'
 
         let default_font_weight = Value::Keyword("normal".to_string());
         let font_weight = style
             .lookup("font-weight", "font-weight", &default_font_weight)
             .to_font_weight();
 
-        // TODO: REFINE THIS!
         ctx.set_font_size(font_size);
         ctx.select_font_face(
             "",
@@ -193,7 +190,6 @@ impl<'a> LineMaker<'a> {
         );
         let font_info = ctx.get_scaled_font();
         let text_width = font_info.text_extents(text).x_advance;
-        let font_width = font_info.extents().max_x_advance;
 
         let mut new_layoutbox = layoutbox.clone();
 
@@ -214,7 +210,7 @@ impl<'a> LineMaker<'a> {
 
             self.start = self.end;
 
-            let max_chars = compute_max_chars(text, max_width, &font_info);
+            let max_chars = compute_max_chars(text, max_width - self.cur_width, &font_info);
             new_layoutbox.set_text_info(
                 Font {
                     size: font_size,
@@ -355,7 +351,7 @@ impl<'a> LayoutBox<'a> {
         &mut self,
         ctx: &Context,
         texts: &mut Texts,
-        mut containing_block: Dimensions,
+        containing_block: Dimensions,
         saved_block: Dimensions,
         viewport: Dimensions,
     ) {
