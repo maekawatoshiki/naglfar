@@ -1,4 +1,5 @@
-use layout::{BoxType, Font, LayoutBox, Rect, Text};
+use layout::{BoxType, Font, FontWeight, LayoutBox, Rect, Text};
+use dom::NodeType;
 use css::{Color, Value};
 use app_units::Au;
 
@@ -35,30 +36,21 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
             &child,
         );
     }
-    render_text(
-        list,
-        x + layout_box.dimensions.content.x,
-        y + layout_box.dimensions.content.y,
-        layout_box,
-    );
+    render_text(list, x, y, layout_box);
 }
 
 fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
-    if let &BoxType::AnonymousBlock(ref texts) = &layout_box.box_type {
-        for &Text {
-            ref rect,
-            ref line,
-            ref text,
-            ref font,
-            ref line_height,
-        } in texts
-        {
-            list.push(DisplayCommand::Text(
-                text.clone(),
-                rect.add_xy(x, y),
-                font.clone(),
-            ));
-        }
+    if let &BoxType::TextNode(ref style, ref text_info) = &layout_box.box_type {
+        let text = if let NodeType::Text(ref text) = style.node.data {
+            &text.as_str()[text_info.range.clone()]
+        } else {
+            panic!()
+        };
+        list.push(DisplayCommand::Text(
+            text.to_string(),
+            layout_box.dimensions.content.add_xy(x, y),
+            text_info.font,
+        ));
     }
 }
 
@@ -130,7 +122,7 @@ fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
     match layout_box.box_type {
         BoxType::BlockNode(ref style)
         | BoxType::InlineNode(ref style)
-        | BoxType::TextNode(ref style) => match style.value(name) {
+        | BoxType::TextNode(ref style, _) => match style.value(name) {
             Some(Value::Color(color)) => Some(color),
             _ => None,
         },
