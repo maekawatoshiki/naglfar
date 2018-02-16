@@ -61,24 +61,11 @@ pub fn style_tree<'a>(
     root: &'a Node,
     stylesheet: &'a Stylesheet,
     inherited_property: &PropertyMap,
-    parent_property: &PropertyMap,
 ) -> StyledNode<'a> {
     let specified_values = match root.data {
         NodeType::Element(ref elem) => specified_values(elem, stylesheet, inherited_property),
         // TODO: Fix this implementation
-        NodeType::Text(_) => inherit_peoperties(
-            &parent_property,
-            vec![
-                "background",
-                "color",
-                "border-color",
-                "border-style",
-                "border-size",
-                "font-size",
-                "line-height",
-                "font-weight",
-            ],
-        ),
+        NodeType::Text(_) => inherited_property.clone(),
     };
 
     let inherited_property = inherit_peoperties(
@@ -90,7 +77,7 @@ pub fn style_tree<'a>(
         node: root,
         children: root.children
             .iter()
-            .map(|child| style_tree(child, stylesheet, &inherited_property, &specified_values))
+            .map(|child| style_tree(child, stylesheet, &inherited_property))
             .collect(),
         specified_values: specified_values,
     }
