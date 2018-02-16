@@ -1,4 +1,4 @@
-use layout::{BoxType, Font, FontWeight, LayoutBox, Rect, Text};
+use layout::{BoxType, Font, LayoutBox, Rect};
 use dom::NodeType;
 use css::{Color, Value};
 use app_units::Au;

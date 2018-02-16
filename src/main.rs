@@ -54,7 +54,12 @@ fn main() {
     viewport.content.height = Au::from_px(480);
 
     window::render(&viewport, move |ctx| {
-        let style_tree = style::style_tree(&html_tree, &stylesheet, &style::PropertyMap::new());
+        let style_tree = style::style_tree(
+            &html_tree,
+            &stylesheet,
+            &style::PropertyMap::new(),
+            &style::PropertyMap::new(),
+        );
         let layout_tree = layout::layout_tree(&style_tree, ctx, viewport);
         print!("LAYOUT:\n{}", layout_tree);
 

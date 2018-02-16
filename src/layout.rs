@@ -214,7 +214,7 @@ impl<'a> LineMaker<'a> {
             .fold(0.0, |x, y| x.max(y));
 
         if self.cur_width + text_width > max_width {
-            new_layoutbox.dimensions.content.width = Au::from_f64_px(max_width);
+            new_layoutbox.dimensions.content.width = Au::from_f64_px(max_width - self.cur_width);
             new_layoutbox.dimensions.content.height = Au::from_f64_px(font_size);
 
             self.lines.push(Line {
@@ -434,7 +434,7 @@ impl<'a> LayoutBox<'a> {
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
         // children are laid out.
-        self.calculate_block_height(ctx);
+        self.calculate_block_height();
     }
 
     /// Lay out a inline-level element and its descendants.
@@ -443,14 +443,12 @@ impl<'a> LayoutBox<'a> {
         ctx: &Context,
         texts: &mut Texts,
         containing_block: Dimensions,
-        saved_block: Dimensions,
+        _saved_block: Dimensions,
         viewport: Dimensions,
     ) {
         self.calculate_inline_position(containing_block);
 
         self.layout_inline_children(ctx, texts, viewport);
-
-        self.layout_text(ctx, texts, containing_block, saved_block);
 
         // TODO: Is this correct?
         let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
@@ -468,14 +466,12 @@ impl<'a> LayoutBox<'a> {
         ctx: &Context,
         texts: &mut Texts,
         containing_block: Dimensions,
-        saved_block: Dimensions,
+        _saved_block: Dimensions,
         viewport: Dimensions,
     ) {
         self.calculate_inline_position(containing_block);
 
         self.layout_inline_children(ctx, texts, viewport);
-
-        self.layout_text(ctx, texts, containing_block, saved_block);
 
         // TODO: Is this correct?
         let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
@@ -485,113 +481,6 @@ impl<'a> LayoutBox<'a> {
             .to_px();
         let line_height = font_size * 1.2;
         self.dimensions.content.y += Au::from_f64_px(line_height - font_size) / 2;
-    }
-
-    /// Lay out a text.
-    fn layout_text(
-        &mut self,
-        ctx: &Context,
-        texts: &mut Texts,
-        containing_block: Dimensions,
-        saved_block: Dimensions,
-    ) {
-        let style = self.get_style_node().unwrap();
-
-        let text = if let NodeType::Text(ref text) = style.node.data {
-            text
-        } else {
-            return;
-        };
-
-        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-        let font_size = style
-            .lookup("font-size", "font-size", &default_font_size)
-            .to_px();
-
-        let line_height = font_size * 1.2;
-
-        let default_font_weight = Value::Keyword("normal".to_string());
-        let font_weight = style
-            .lookup("font-weight", "font-weight", &default_font_weight)
-            .to_font_weight();
-
-        // TODO: REFINE THIS!
-        ctx.set_font_size(font_size);
-        ctx.select_font_face(
-            "",
-            cairo::FontSlant::Normal,
-            font_weight.to_cairo_font_weight(),
-        );
-        let font_info = ctx.get_scaled_font();
-        let text_width = font_info.text_extents(text.as_str()).x_advance;
-        let font_width = font_info.extents().max_x_advance;
-
-        let max_width = saved_block.content.width;
-
-        // If line breaking is needed.
-        if max_width.to_f64_px() > 0.0 && max_width.to_f64_px() < text_width {
-            let mut line = "".to_string();
-            let mut d = self.dimensions;
-
-            for c in text.chars() {
-                line.push(c);
-
-                // TODO: It's inefficient to call `text_extents` every time.
-                if max_width.to_f64_px()
-                    - (d.content.x.to_f64_px() - saved_block.content.x.to_f64_px())
-                    - font_width
-                    < font_info.text_extents(line.as_str()).x_advance
-                {
-                    // texts.push(Text {
-                    //     rect: d.border_box(),
-                    //     text: line.clone(),
-                    //     font: Font {
-                    //         size: font_size,
-                    //         weight: font_weight,
-                    //     },
-                    //     line: 0,
-                    //     line_height: 0.0,
-                    // });
-                    d.content.x = saved_block.content.x;
-                    d.content.y += Au::from_f64_px(line_height);
-                    line.clear();
-                }
-            }
-
-            // texts.push(Text {
-            //     rect: d.border_box(),
-            //     text: line.clone(),
-            //     font: Font {
-            //         size: font_size,
-            //         weight: font_weight,
-            //     },
-            //     line: 0,
-            //     line_height: 0.0,
-            // });
-
-            self.dimensions.content.width =
-                max_width - (self.dimensions.content.x - saved_block.content.x);
-            self.dimensions.content.height =
-                Au::from_f64_px(line_height) * (text_width as i32 / max_width.to_px());
-        } else {
-            // texts.push(Text {
-            //     rect: {
-            //         let mut r = self.dimensions.border_box();
-            //         r.x = containing_block.content.width + containing_block.content.x;
-            //         r.y = Au(0);
-            //         r
-            //     },
-            //     text: text.clone(),
-            //     font: Font {
-            //         size: font_size,
-            //         weight: font_weight,
-            //     },
-            //     line: 0,
-            //     line_height: 0.0,
-            // });
-            self.dimensions.content.width = Au::from_f64_px(text_width);
-            self.dimensions.content.height = Au::from_f64_px(line_height);
-        };
     }
 
     /// Finish calculating the inline's edge sizes, and position it within its containing block.
@@ -810,7 +699,7 @@ impl<'a> LayoutBox<'a> {
     }
 
     /// Height of a block-level non-replaced element in normal flow with overflow visible.
-    fn calculate_block_height(&mut self, ctx: &Context) {
+    fn calculate_block_height(&mut self) {
         // If the height is set to an explicit length, use that exact length.
         // Otherwise, just keep the value set by `layout_block_children`.
         if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().unwrap().value("height") {
