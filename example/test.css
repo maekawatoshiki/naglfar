@@ -52,6 +52,10 @@ b {
   background: #aaaaaa;
 }
 
+#margin_collapse {
+  background: #f6e5d7;
+}
+
 #fox1 {
   background: #ff8119;
   height: 70px;
