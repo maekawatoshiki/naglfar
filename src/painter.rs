@@ -44,7 +44,7 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
         let text = if let NodeType::Text(ref text) = style.node.data {
             &text.as_str()[text_info.range.clone()]
         } else {
-            panic!()
+            unreachable!()
         };
         list.push(DisplayCommand::Text(
             text.to_string(),

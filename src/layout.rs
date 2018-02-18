@@ -321,13 +321,7 @@ pub fn layout_tree<'a>(
     containing_block.content.height = Au::from_f64_px(0.0);
 
     let mut root_box = build_layout_tree(node, ctx);
-    root_box.layout(
-        ctx,
-        &mut Texts::new(),
-        containing_block,
-        saved_block,
-        viewport,
-    );
+    root_box.layout(ctx, Au(0), containing_block, saved_block, viewport);
     root_box
 }
 
@@ -372,15 +366,19 @@ impl<'a> LayoutBox<'a> {
     fn layout(
         &mut self,
         ctx: &Context,
-        texts: &mut Texts,
+        last_margin_bottom: Au,
         containing_block: Dimensions,
         saved_block: Dimensions,
         viewport: Dimensions,
     ) {
         match self.box_type {
-            BoxType::BlockNode(_) => {
-                self.layout_block(ctx, texts, containing_block, saved_block, viewport)
-            }
+            BoxType::BlockNode(_) => self.layout_block(
+                ctx,
+                last_margin_bottom,
+                containing_block,
+                saved_block,
+                viewport,
+            ),
             BoxType::AnonymousBlock(ref mut _texts) => {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
@@ -421,7 +419,7 @@ impl<'a> LayoutBox<'a> {
     fn layout_block(
         &mut self,
         ctx: &Context,
-        texts: &mut Texts,
+        last_margin_bottom: Au,
         containing_block: Dimensions,
         _saved_block: Dimensions,
         viewport: Dimensions,
@@ -430,9 +428,9 @@ impl<'a> LayoutBox<'a> {
         // laying out its children.
         self.calculate_block_width(containing_block);
 
-        self.calculate_block_position(containing_block);
+        self.calculate_block_position(last_margin_bottom, containing_block);
 
-        self.layout_block_children(ctx, texts, viewport);
+        self.layout_block_children(ctx, viewport);
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
         // children are laid out.
@@ -545,7 +543,7 @@ impl<'a> LayoutBox<'a> {
     /// Finish calculating the block's edge sizes, and position it within its containing block.
     /// http://www.w3.org/TR/CSS2/visudet.html#normal-block
     /// Sets the vertical margin/padding/border dimensions, and the `x`, `y` values.
-    fn calculate_block_position(&mut self, containing_block: Dimensions) {
+    fn calculate_block_position(&mut self, last_margin_bottom: Au, containing_block: Dimensions) {
         let style = self.get_style_node().unwrap().clone();
         let d = &mut self.dimensions;
 
@@ -555,6 +553,8 @@ impl<'a> LayoutBox<'a> {
         // If margin-top or margin-bottom is `auto`, the used value is zero.
         d.margin.top = Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px());
         d.margin.bottom = Au::from_f64_px(style.lookup("margin-bottom", "margin", &zero).to_px());
+
+        d.margin.top = Au::from_f64_px((last_margin_bottom - d.margin.top).to_f64_px().abs());
 
         d.border.top = Au::from_f64_px(
             style
@@ -581,10 +581,12 @@ impl<'a> LayoutBox<'a> {
 
     /// Lay out the block's children within its content area.
     /// Sets `self.dimensions.height` to the total content height.
-    fn layout_block_children(&mut self, ctx: &Context, texts: &mut Texts, viewport: Dimensions) {
+    fn layout_block_children(&mut self, ctx: &Context, viewport: Dimensions) {
         let d = &mut self.dimensions;
+        let mut last_margin_bottom = Au(0);
         for child in &mut self.children {
-            child.layout(ctx, texts, *d, *d, viewport);
+            child.layout(ctx, last_margin_bottom, *d, *d, viewport);
+            last_margin_bottom = child.dimensions.margin.bottom;
             // Increment the height so each child is laid out below the previous one.
             d.content.height += child.dimensions.margin_box().height;
         }
