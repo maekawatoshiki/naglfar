@@ -52,18 +52,20 @@ b {
   background: #aaaaaa;
 }
 
-#fox {
+#fox1 {
   background: #ff8119;
   height: 70px;
-}
-
-#box1 {
-  background: #90ee90;
+  margin: 10px;
 }
 
 #fox2 {
   background: #1e90ff;
   height: 70px;
+  margin: 10px;
+}
+
+#box1 {
+  background: #90ee90;
 }
 
 #highlight {
