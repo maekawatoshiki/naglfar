@@ -647,7 +647,7 @@ impl Rect {
             height: self.height + edge.top + edge.bottom,
         }
     }
-    pub fn add_xy(self, x: Au, y: Au) -> Rect {
+    pub fn add_parent_coordinate(self, x: Au, y: Au) -> Rect {
         Rect {
             x: self.x + x,
             y: self.y + y,

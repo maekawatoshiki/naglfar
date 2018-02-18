@@ -48,7 +48,7 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
         };
         list.push(DisplayCommand::Text(
             text.to_string(),
-            layout_box.dimensions.content.add_xy(x, y),
+            layout_box.dimensions.content.add_parent_coordinate(x, y),
             text_info.font,
         ));
     }
@@ -58,7 +58,10 @@ fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
     get_color(layout_box, "background").map(|color| {
         list.push(DisplayCommand::SolidColor(
             color,
-            layout_box.dimensions.border_box().add_xy(x, y),
+            layout_box
+                .dimensions
+                .border_box()
+                .add_parent_coordinate(x, y),
         ))
     });
 }
@@ -70,7 +73,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
     };
 
     let d = &layout_box.dimensions;
-    let border_box = d.border_box().add_xy(x, y);
+    let border_box = d.border_box().add_parent_coordinate(x, y);
 
     // Left border
     list.push(DisplayCommand::SolidColor(
