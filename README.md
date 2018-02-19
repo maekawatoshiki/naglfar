@@ -19,6 +19,8 @@ By default, naglfar shows `example/test.html` applied `example/test.css`.
 
 ```sh
 $ cargo run
+$ # or...
+$ cargo run --release
 ```
 
 # Reference
