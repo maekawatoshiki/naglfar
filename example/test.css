@@ -28,6 +28,8 @@ h1 {
 
 span.hello {
   background: #00ffff;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 span.big {
