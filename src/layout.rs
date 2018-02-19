@@ -116,7 +116,7 @@ impl<'a> LineMaker<'a> {
     }
     pub fn run(&mut self, ctx: &Context, max_width: f64) {
         loop {
-            let layoutbox = if let Some(layoutbox) = self.work_list.pop_front() {
+            let mut layoutbox = if let Some(layoutbox) = self.work_list.pop_front() {
                 layoutbox
             } else {
                 break;
@@ -132,16 +132,34 @@ impl<'a> LineMaker<'a> {
                 BoxType::TextNode(_, _) => while self.pending.range.len() != 0 {
                     self.run_text_node(layoutbox.clone(), ctx, max_width)
                 },
-                BoxType::InlineNode(style) => {
+                BoxType::InlineNode(_) => {
                     let mut linemaker = self.clone();
-                    linemaker.work_list = VecDeque::from(layoutbox.children);
+                    linemaker.work_list = VecDeque::from(layoutbox.children.clone());
+                    layoutbox.children.clear();
+                    layoutbox.assign_inline_padding();
                     let start = linemaker.end;
+                    linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px();
                     linemaker.run(ctx, max_width);
+                    linemaker.cur_width += layoutbox.dimensions.padding.right.to_f64_px();
                     let end = linemaker.end;
-                    for new_box in &mut linemaker.new_boxes[start..end] {
-                        if let BoxType::TextNode(ref mut s, _) = new_box.box_type {
-                            s.specified_values = style.specified_values.clone();
+                    let new_boxes_len = linemaker.new_boxes[start..end].len();
+                    for (i, new_box) in &mut linemaker.new_boxes[start..end].iter_mut().enumerate()
+                    {
+                        let mut layoutbox = layoutbox.clone();
+                        layoutbox.children.push(new_box.clone());
+                        if new_boxes_len > 1 {
+                            if i == 0 {
+                                layoutbox.dimensions.padding.right = Au(0);
+                            } else if i == new_boxes_len - 1 {
+                                layoutbox.dimensions.padding.left = Au(0);
+                            } else {
+                                layoutbox.dimensions.padding.left = Au(0);
+                                layoutbox.dimensions.padding.right = Au(0);
+                            }
                         }
+                        layoutbox.dimensions.content.width = new_box.dimensions.content.width;
+                        layoutbox.dimensions.content.height = new_box.dimensions.content.height;
+                        *new_box = layoutbox;
                     }
                     self.new_boxes = linemaker.new_boxes;
                     self.lines = linemaker.lines;
@@ -154,26 +172,29 @@ impl<'a> LineMaker<'a> {
             }
         }
     }
-    fn finish(&mut self) {
+    fn end_of_lines(&mut self) {
         // push remainings to `lines`.
         self.lines.push(Line {
             range: self.start..self.end,
             line_height: self.cur_line_height,
         });
         self.start = self.end;
-
+    }
+    fn assign_position(&mut self) {
         self.cur_height = 0.0;
 
         for line in &self.lines {
             self.cur_width = 0.0;
             for new_box in &mut self.new_boxes[line.range.clone()] {
-                new_box.dimensions.content.x = Au::from_f64_px(self.cur_width);
+                new_box.dimensions.content.x =
+                    Au::from_f64_px(self.cur_width) + new_box.dimensions.padding.left;
                 // TODO: fix
                 new_box.dimensions.content.y = Au::from_f64_px(
                     self.cur_height
                         + (line.line_height - new_box.dimensions.content.height.to_f64_px()) / 2.0,
                 );
-                self.cur_width += new_box.dimensions.content.width.to_f64_px();
+                // new_box.lay
+                self.cur_width += new_box.dimensions.padding_box().width.to_f64_px();
             }
             self.cur_height += line.line_height;
         }
@@ -221,9 +242,6 @@ impl<'a> LineMaker<'a> {
             .fold(0.0, |x, y| x.max(y));
 
         if self.cur_width + text_width > max_width {
-            new_layoutbox.dimensions.content.width = Au::from_f64_px(max_width - self.cur_width);
-            new_layoutbox.dimensions.content.height = Au::from_f64_px(font_size);
-
             self.lines.push(Line {
                 range: self.start..self.end,
                 line_height: self.cur_line_height,
@@ -232,6 +250,11 @@ impl<'a> LineMaker<'a> {
             self.start = self.end;
 
             let max_chars = compute_max_chars(text, max_width - self.cur_width, &font_info);
+
+            new_layoutbox.dimensions.content.width =
+                Au::from_f64_px(font_info.text_extents(&text[0..max_chars]).x_advance);
+            new_layoutbox.dimensions.content.height = Au::from_f64_px(font_size);
+
             new_layoutbox.set_text_info(
                 Font {
                     size: font_size,
@@ -267,12 +290,20 @@ impl<'a> LineMaker<'a> {
 }
 
 fn compute_max_chars(s: &str, max_width: f64, font_info: &ScaledFont) -> usize {
-    // TODO: inefficient!
+    // TODO: Inefficient!
+    // TODO: This code doesn't allow other than alphabets.
     let mut buf = "".to_string();
+    let mut last_splittable_pos = s.len();
     for (i, c) in s.chars().enumerate() {
         buf.push(c);
-        if font_info.text_extents(buf.as_str()).x_advance > max_width {
-            return i - 1;
+
+        if c.is_whitespace() {
+            last_splittable_pos = i;
+        }
+
+        let text_width = font_info.text_extents(buf.as_str()).x_advance;
+        if text_width > max_width {
+            return last_splittable_pos + 1; // '1' means whitespace
         }
     }
     s.len()
@@ -388,28 +419,13 @@ impl<'a> LayoutBox<'a> {
 
                 let mut linemaker = LineMaker::new(self.children.clone());
                 linemaker.run(ctx, containing_block.padding_box().width.to_f64_px());
-                linemaker.finish();
+                linemaker.end_of_lines();
+                linemaker.assign_position();
                 self.children = linemaker.new_boxes;
                 self.dimensions.content.width = containing_block.content.width;
                 self.dimensions.content.height = Au::from_f64_px(linemaker.cur_height);
 
                 println!("{}", self.dimensions.content.height.to_f64_px());
-
-                // let new_children = vec![];
-
-                // for child in &mut self.children {
-                //     child.layout(ctx, texts, containing_block, saved_block, viewport);
-                //
-                //     let child_width = child.dimensions.margin_box().width;
-                //
-                //     containing_block.content.width += child_width;
-                //     self.dimensions.content.width += child_width;
-                //     self.dimensions.content.height = vec![
-                //         self.dimensions.content.height,
-                //         child.dimensions.margin_box().height,
-                //     ].into_iter()
-                //         .fold(Au::from_f64_px(0.0), |x, y| if x < y { y } else { x });
-                // }
             }
             BoxType::InlineNode(_) | BoxType::TextNode(_, _) => unreachable!(),
         }
@@ -618,6 +634,21 @@ impl<'a> LayoutBox<'a> {
             }
             BoxType::TextNode(_, _) => panic!(),
         }
+    }
+
+    fn assign_inline_padding(&mut self) {
+        let style = self.get_style_node().unwrap().clone();
+        let d = &mut self.dimensions;
+
+        // margin, border, and padding have initial value 0.
+        let zero = Value::Length(0.0, Unit::Px);
+
+        d.padding.left = Au::from_f64_px(style.lookup("padding-left", "padding", &zero).to_px());
+        d.padding.right = Au::from_f64_px(style.lookup("padding-right", "padding", &zero).to_px());
+
+        d.padding.top = Au::from_f64_px(style.lookup("padding-top", "padding", &zero).to_px());
+        d.padding.bottom =
+            Au::from_f64_px(style.lookup("padding-bottom", "padding", &zero).to_px());
     }
 }
 
