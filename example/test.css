@@ -28,8 +28,6 @@ h1 {
 
 span.hello {
   background: #00ffff;
-  padding-left: 20px;
-  padding-right: 20px;
 }
 
 span.big {
@@ -74,6 +72,8 @@ b {
   background: #90ee90;
 }
 
-#highlight {
-  background: #7cfc00;
+#fox_hightlight {
+  background: #ccff00;
+  padding-left: 10px;
+  padding-right: 10px;
 }
