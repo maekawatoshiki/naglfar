@@ -24,12 +24,13 @@ body {
 h1 {
   font-size: 30px;
   font-weight: bold;
-  background: #eeeeee;
+  background: #dfedfb;
   padding: 10px;
-  margin-top: 10px;
-  margin-bottom: 5px;
-  border-left-width: 5px;
-  border-color: #1b76c4;
+  margin: 10px;
+  color: #1b76c4;
+  border-width: 0px;
+  border-left-color: #1b76c4;
+  border-left-width: 7px;
   border-style: solid;
 }
 
@@ -86,4 +87,5 @@ b {
   background: #ccff00;
   padding-left: 10px;
   padding-right: 10px;
+  color: red;
 }
