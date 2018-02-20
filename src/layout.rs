@@ -137,10 +137,13 @@ impl<'a> LineMaker<'a> {
                     linemaker.work_list = VecDeque::from(layoutbox.children.clone());
                     layoutbox.children.clear();
                     layoutbox.assign_inline_padding();
+                    layoutbox.assign_inline_border_width();
                     let start = linemaker.end;
-                    linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px();
+                    linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px()
+                        + layoutbox.dimensions.border.left.to_f64_px();
                     linemaker.run(ctx, max_width);
-                    linemaker.cur_width += layoutbox.dimensions.padding.right.to_f64_px();
+                    linemaker.cur_width += layoutbox.dimensions.padding.right.to_f64_px()
+                        + layoutbox.dimensions.border.right.to_f64_px();
                     let end = linemaker.end;
                     let new_boxes_len = linemaker.new_boxes[start..end].len();
                     for (i, new_box) in &mut linemaker.new_boxes[start..end].iter_mut().enumerate()
@@ -150,11 +153,15 @@ impl<'a> LineMaker<'a> {
                         if new_boxes_len > 1 {
                             if i == 0 {
                                 layoutbox.dimensions.padding.right = Au(0);
+                                layoutbox.dimensions.border.right = Au(0);
                             } else if i == new_boxes_len - 1 {
                                 layoutbox.dimensions.padding.left = Au(0);
+                                layoutbox.dimensions.border.left = Au(0);
                             } else {
                                 layoutbox.dimensions.padding.left = Au(0);
                                 layoutbox.dimensions.padding.right = Au(0);
+                                layoutbox.dimensions.border.left = Au(0);
+                                layoutbox.dimensions.border.right = Au(0);
                             }
                         }
                         layoutbox.dimensions.content.width = new_box.dimensions.content.width;
@@ -186,15 +193,16 @@ impl<'a> LineMaker<'a> {
         for line in &self.lines {
             self.cur_width = 0.0;
             for new_box in &mut self.new_boxes[line.range.clone()] {
-                new_box.dimensions.content.x =
-                    Au::from_f64_px(self.cur_width) + new_box.dimensions.padding.left;
+                new_box.dimensions.content.x = Au::from_f64_px(self.cur_width)
+                    + new_box.dimensions.padding.left
+                    + new_box.dimensions.border.left;
                 // TODO: fix
                 new_box.dimensions.content.y = Au::from_f64_px(
                     self.cur_height
                         + (line.line_height - new_box.dimensions.content.height.to_f64_px()) / 2.0,
                 );
                 // new_box.lay
-                self.cur_width += new_box.dimensions.padding_box().width.to_f64_px();
+                self.cur_width += new_box.dimensions.border_box().width.to_f64_px();
             }
             self.cur_height += line.line_height;
         }
@@ -649,6 +657,36 @@ impl<'a> LayoutBox<'a> {
         d.padding.top = Au::from_f64_px(style.lookup("padding-top", "padding", &zero).to_px());
         d.padding.bottom =
             Au::from_f64_px(style.lookup("padding-bottom", "padding", &zero).to_px());
+    }
+
+    fn assign_inline_border_width(&mut self) {
+        let style = self.get_style_node().unwrap().clone();
+        let d = &mut self.dimensions;
+
+        // margin, border, and padding have initial value 0.
+        let zero = Value::Length(0.0, Unit::Px);
+
+        d.border.left = Au::from_f64_px(
+            style
+                .lookup("border-left-width", "border-width", &zero)
+                .to_px(),
+        );
+        d.border.right = Au::from_f64_px(
+            style
+                .lookup("border-width-right", "border-width", &zero)
+                .to_px(),
+        );
+
+        d.border.top = Au::from_f64_px(
+            style
+                .lookup("border-width-top", "border-width", &zero)
+                .to_px(),
+        );
+        d.border.bottom = Au::from_f64_px(
+            style
+                .lookup("border-width-bottom", "border-width", &zero)
+                .to_px(),
+        );
     }
 }
 
