@@ -16,18 +16,28 @@ html {
 body {
   padding: 0px;
   margin: 0px;
+  border-color: #000000;
+  border-width: 1px;
+  border-style: solid;
 }
 
 h1 {
   font-size: 30px;
   font-weight: bold;
   background: #eeeeee;
-  padding: 0px;
-  margin: 0px;
+  padding: 10px;
+  margin-top: 10px;
+  margin-bottom: 5px;
+  border-left-width: 5px;
+  border-color: #1b76c4;
+  border-style: solid;
 }
 
 span.hello {
   background: #00ffff;
+  border-width: 1px;
+  border-color: #1b76c4;
+  border-style: solid;
 }
 
 span.big {
