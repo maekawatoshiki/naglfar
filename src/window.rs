@@ -68,15 +68,16 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
                 rect.width.to_px() as f64,
                 rect.height.to_px() as f64,
             );
-            ctx.set_source_rgb(
+            ctx.set_source_rgba(
                 color.r as f64 / 255.0,
                 color.g as f64 / 255.0,
                 color.b as f64 / 255.0,
+                color.a as f64 / 255.0,
             );
             // ctx.stroke_preserve();
             ctx.fill();
         }
-        &DisplayCommand::Text(ref text, rect, ref font) => {
+        &DisplayCommand::Text(ref text, rect, ref color, ref font) => {
             ctx.save();
             ctx.set_font_size(font.size);
             ctx.select_font_face("", FontSlant::Normal, font.weight.to_cairo_font_weight());
@@ -90,7 +91,12 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
                 rect.x.to_px() as f64,
                 l / 2.0 + font_ascent + rect.y.to_px() as f64,
             );
-            ctx.set_source_rgb(0.0, 0.0, 0.0);
+            ctx.set_source_rgba(
+                color.r as f64 / 255.0,
+                color.g as f64 / 255.0,
+                color.b as f64 / 255.0,
+                color.a as f64 / 255.0,
+            );
             ctx.show_text(text.as_str());
             ctx.restore();
         }

@@ -1,12 +1,12 @@
 use layout::{BoxType, Font, LayoutBox, Rect};
 use dom::NodeType;
-use css::{Color, Value};
+use css::{Color, BLACK};
 use app_units::Au;
 
 #[derive(Debug)]
 pub enum DisplayCommand {
     SolidColor(Color, Rect),
-    Text(String, Rect, Font),
+    Text(String, Rect, Color, Font),
 }
 
 pub type DisplayList = Vec<DisplayCommand>;
@@ -49,6 +49,7 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
         list.push(DisplayCommand::Text(
             text.to_string(),
             layout_box.dimensions.content.add_parent_coordinate(x, y),
+            get_color(layout_box, "color").unwrap_or(BLACK),
             text_info.font,
         ));
     }
@@ -67,57 +68,60 @@ fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
 }
 
 fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
-    let color = match get_color(layout_box, "border-color") {
-        Some(color) => color,
-        _ => return,
-    };
-
     let d = &layout_box.dimensions;
     let border_box = d.border_box().add_parent_coordinate(x, y);
 
     // Left border
-    list.push(DisplayCommand::SolidColor(
-        color,
-        Rect {
-            x: border_box.x,
-            y: border_box.y,
-            width: d.border.left,
-            height: border_box.height,
-        },
-    ));
+    if let Some(left_color) = lookup_color(layout_box, "border-left-color", "border-color") {
+        list.push(DisplayCommand::SolidColor(
+            left_color,
+            Rect {
+                x: border_box.x,
+                y: border_box.y,
+                width: d.border.left,
+                height: border_box.height,
+            },
+        ));
+    }
 
     // Right border
-    list.push(DisplayCommand::SolidColor(
-        color,
-        Rect {
-            x: border_box.x + border_box.width - d.border.right,
-            y: border_box.y,
-            width: d.border.right,
-            height: border_box.height,
-        },
-    ));
+    if let Some(right_color) = lookup_color(layout_box, "border-right-color", "border-color") {
+        list.push(DisplayCommand::SolidColor(
+            right_color,
+            Rect {
+                x: border_box.x + border_box.width - d.border.right,
+                y: border_box.y,
+                width: d.border.right,
+                height: border_box.height,
+            },
+        ));
+    }
 
     // Top border
-    list.push(DisplayCommand::SolidColor(
-        color,
-        Rect {
-            x: border_box.x,
-            y: border_box.y,
-            width: border_box.width,
-            height: d.border.top,
-        },
-    ));
+    if let Some(top_color) = lookup_color(layout_box, "border-top-color", "border-color") {
+        list.push(DisplayCommand::SolidColor(
+            top_color,
+            Rect {
+                x: border_box.x,
+                y: border_box.y,
+                width: border_box.width,
+                height: d.border.top,
+            },
+        ));
+    }
 
     // Bottom border
-    list.push(DisplayCommand::SolidColor(
-        color,
-        Rect {
-            x: border_box.x,
-            y: border_box.y + border_box.height - d.border.bottom,
-            width: border_box.width,
-            height: d.border.bottom,
-        },
-    ));
+    if let Some(bottom_color) = lookup_color(layout_box, "border-bottom-color", "border-color") {
+        list.push(DisplayCommand::SolidColor(
+            bottom_color,
+            Rect {
+                x: border_box.x,
+                y: border_box.y + border_box.height - d.border.bottom,
+                width: border_box.width,
+                height: d.border.bottom,
+            },
+        ));
+    }
 }
 
 /// Return the specified color for CSS property `name`, or None if no color was specified.
@@ -126,9 +130,24 @@ fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
         BoxType::BlockNode(ref style)
         | BoxType::InlineNode(ref style)
         | BoxType::TextNode(ref style, _) => match style.value(name) {
-            Some(Value::Color(color)) => Some(color),
+            Some(maybe_color) => maybe_color.to_color(),
             _ => None,
         },
+        BoxType::AnonymousBlock(_) => None,
+    }
+}
+
+/// Return the specified color for CSS property `name` or `fallback_name`, or None if no color was specified.
+fn lookup_color(layout_box: &LayoutBox, name: &str, fallback_name: &str) -> Option<Color> {
+    match layout_box.box_type {
+        BoxType::BlockNode(ref style)
+        | BoxType::InlineNode(ref style)
+        | BoxType::TextNode(ref style, _) => {
+            match style.lookup_without_default(name, fallback_name) {
+                Some(maybe_color) => maybe_color.to_color(),
+                _ => None,
+            }
+        }
         BoxType::AnonymousBlock(_) => None,
     }
 }

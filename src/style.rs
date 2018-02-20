@@ -28,6 +28,10 @@ impl<'a> StyledNode<'a> {
             .unwrap_or_else(|| self.value(fallback_name).unwrap_or_else(|| default.clone()))
     }
 
+    pub fn lookup_without_default(&self, name: &str, fallback_name: &str) -> Option<Value> {
+        self.value(name).or_else(|| self.value(fallback_name))
+    }
+
     pub fn display(&self) -> Display {
         match self.value("display") {
             Some(Value::Keyword(s)) => match &*s {
@@ -70,7 +74,7 @@ pub fn style_tree<'a>(
 
     let inherited_property = inherit_peoperties(
         &specified_values,
-        vec!["font-size", "line-height", "font-weight"],
+        vec!["font-size", "line-height", "font-weight", "color"],
     );
 
     StyledNode {

@@ -52,6 +52,34 @@ pub struct Color {
     pub a: u8,
 }
 
+pub const BLACK: Color = Color {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 255,
+};
+
+pub const RED: Color = Color {
+    r: 255,
+    g: 0,
+    b: 0,
+    a: 255,
+};
+
+pub const GREEN: Color = Color {
+    r: 0,
+    g: 255,
+    b: 0,
+    a: 255,
+};
+
+pub const BLUE: Color = Color {
+    r: 0,
+    g: 0,
+    b: 255,
+    a: 255,
+};
+
 impl Copy for Color {}
 
 impl Value {
@@ -65,6 +93,19 @@ impl Value {
         match *self {
             Value::Num(f) => f,
             _ => 0.0,
+        }
+    }
+    pub fn to_color(&self) -> Option<Color> {
+        match *self {
+            Value::Color(color) => Some(color),
+            Value::Keyword(ref color_name) => match color_name.to_uppercase().as_str() {
+                "BLACK" => Some(BLACK),
+                "RED" => Some(RED),
+                "GREEN" => Some(GREEN),
+                "BLUE" => Some(BLUE),
+                _ => None,
+            },
+            _ => None,
         }
     }
 }
