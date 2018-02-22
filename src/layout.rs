@@ -114,19 +114,12 @@ impl<'a> LineMaker<'a> {
             cur_line_height: 0.0,
         }
     }
-    pub fn run(&mut self, ctx: &Context, max_width: f64) {
-        loop {
-            let mut layoutbox = if let Some(layoutbox) = self.work_list.pop_front() {
-                layoutbox
-            } else {
-                break;
-            };
 
-            self.pending.range = if let BoxType::TextNode(_, ref text_info) = layoutbox.box_type {
-                text_info.range.clone()
-            } else {
-                self.pending.range.clone()
-            };
+    pub fn run(&mut self, ctx: &Context, max_width: f64) {
+        while let Some(mut layoutbox) = self.work_list.pop_front() {
+            if let BoxType::TextNode(_, ref text_info) = layoutbox.box_type {
+                self.pending.range = text_info.range.clone()
+            }
 
             match layoutbox.box_type {
                 BoxType::TextNode(_, _) => while self.pending.range.len() != 0 {
@@ -421,9 +414,6 @@ impl<'a> LayoutBox<'a> {
             BoxType::AnonymousBlock(ref mut _texts) => {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
-
-                // containing_block.content.width = Au::from_f64_px(0.0);
-                // containing_block.content.height = Au::from_f64_px(0.0);
 
                 let mut linemaker = LineMaker::new(self.children.clone());
                 linemaker.run(ctx, containing_block.padding_box().width.to_f64_px());

@@ -15,8 +15,6 @@ struct RenderingWindow {
 }
 
 impl RenderingWindow {
-    // TODO: Make this function receive a closure.
-    // To use font-related info when laying out, layout.rs needs CairoContext.
     fn new<F: 'static>(width: i32, height: i32, f: F) -> RenderingWindow
     where
         F: Fn(&Context) -> DisplayList,
