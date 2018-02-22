@@ -16,9 +16,6 @@ html {
 body {
   padding: 0px;
   margin: 0px;
-  border-color: #000000;
-  border-width: 1px;
-  border-style: solid;
 }
 
 h1 {
@@ -39,6 +36,7 @@ span.hello {
   border-width: 1px;
   border-color: #1b76c4;
   border-style: solid;
+  font-size: 20px;
 }
 
 span.big {
