@@ -81,7 +81,29 @@ pub type Texts = Vec<Text>;
 #[derive(Clone, Debug)]
 pub struct Line {
     pub range: Range<usize>, // layoutbox
-    pub line_height: f64,
+    pub metrics: LineMetrics,
+}
+
+#[derive(Clone, Debug, Copy)]
+pub struct LineMetrics {
+    pub above_baseline: f64,
+    pub under_baseline: f64,
+}
+
+impl LineMetrics {
+    pub fn new(above_baseline: f64, under_baseline: f64) -> LineMetrics {
+        LineMetrics {
+            above_baseline: above_baseline,
+            under_baseline: under_baseline,
+        }
+    }
+    pub fn reset(&mut self) {
+        self.above_baseline = 0.0;
+        self.under_baseline = 0.0;
+    }
+    pub fn calculate_line_height(&self) -> f64 {
+        self.above_baseline + self.under_baseline
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -92,9 +114,9 @@ pub struct LineMaker<'a> {
     pub lines: Vec<Line>,
     pub start: usize,
     pub end: usize,
-    pub cur_line_height: f64,
     pub cur_width: f64,
     pub cur_height: f64,
+    pub cur_metrics: LineMetrics,
 }
 
 impl<'a> LineMaker<'a> {
@@ -102,7 +124,7 @@ impl<'a> LineMaker<'a> {
         LineMaker {
             pending: Line {
                 range: 0..0,
-                line_height: 0.0,
+                metrics: LineMetrics::new(0.0, 0.0),
             },
             work_list: VecDeque::from(boxes),
             new_boxes: vec![],
@@ -111,7 +133,7 @@ impl<'a> LineMaker<'a> {
             end: 0,
             cur_width: 0.0,
             cur_height: 0.0,
-            cur_line_height: 0.0,
+            cur_metrics: LineMetrics::new(0.0, 0.0),
         }
     }
 
@@ -166,7 +188,7 @@ impl<'a> LineMaker<'a> {
                     self.start = linemaker.start;
                     self.end = linemaker.end;
                     self.cur_width = linemaker.cur_width;
-                    self.cur_line_height = linemaker.cur_line_height;
+                    self.cur_metrics = linemaker.cur_metrics;
                 }
                 _ => {}
             }
@@ -176,7 +198,7 @@ impl<'a> LineMaker<'a> {
         // push remainings to `lines`.
         self.lines.push(Line {
             range: self.start..self.end,
-            line_height: self.cur_line_height,
+            metrics: self.cur_metrics,
         });
         self.start = self.end;
     }
@@ -192,12 +214,12 @@ impl<'a> LineMaker<'a> {
                 // TODO: fix
                 new_box.dimensions.content.y = Au::from_f64_px(
                     self.cur_height
-                        + (line.line_height - new_box.dimensions.content.height.to_f64_px()) / 2.0,
+                        + (line.metrics.above_baseline
+                            - new_box.dimensions.content.height.to_f64_px()),
                 );
-                // new_box.lay
                 self.cur_width += new_box.dimensions.border_box().width.to_f64_px();
             }
-            self.cur_height += line.line_height;
+            self.cur_height += line.metrics.calculate_line_height();
         }
     }
     fn run_text_node(&mut self, layoutbox: LayoutBox<'a>, ctx: &Context, max_width: f64) {
@@ -238,14 +260,21 @@ impl<'a> LineMaker<'a> {
 
         self.end += 1;
 
-        self.cur_line_height = vec![self.cur_line_height, line_height]
-            .into_iter()
+        self.cur_metrics.above_baseline = vec![
+            self.cur_metrics.above_baseline,
+            line_height - (line_height - font_size) / 2.0,
+        ].into_iter()
+            .fold(0.0, |x, y| x.max(y));
+        self.cur_metrics.under_baseline = vec![
+            self.cur_metrics.under_baseline,
+            (line_height - font_size) / 2.0,
+        ].into_iter()
             .fold(0.0, |x, y| x.max(y));
 
         if self.cur_width + text_width > max_width {
             self.lines.push(Line {
                 range: self.start..self.end,
-                line_height: self.cur_line_height,
+                metrics: self.cur_metrics,
             });
 
             self.start = self.end;
@@ -268,7 +297,7 @@ impl<'a> LineMaker<'a> {
             self.pending.range = self.pending.range.start + max_chars..self.pending.range.end;
 
             self.cur_width = 0.0;
-            self.cur_line_height = 0.0;
+            self.cur_metrics.reset();
         } else {
             new_layoutbox.dimensions.content.width = Au::from_f64_px(text_width);
             new_layoutbox.dimensions.content.height = Au::from_f64_px(font_size);
