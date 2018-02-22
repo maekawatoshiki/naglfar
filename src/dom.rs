@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 use std::{fmt, iter};
 
 pub type AttrMap = HashMap<String, String>;
@@ -66,6 +67,27 @@ impl Node {
             },
             NodeType::Text(_) => false,
         }
+    }
+
+    pub fn find_first_node_by_tag_name<'a>(&'a self, expected: &str) -> Option<&'a Node> {
+        match self.data {
+            NodeType::Element(ElementData { ref tag_name, .. }) if expected == tag_name => {
+                Some(self)
+            }
+            _ => self.children
+                .iter()
+                .find(|child| child.find_first_node_by_tag_name(expected).is_some()),
+        }
+    }
+
+    pub fn find_stylesheet_path(&self) -> Option<PathBuf> {
+        self.find_first_node_by_tag_name("link")
+            .and_then(|&Node { ref data, .. }| match data {
+                &NodeType::Element(ElementData { ref attrs, .. }) => attrs
+                    .get("href")
+                    .and_then(|filename| Some(Path::new(filename).to_path_buf())),
+                &NodeType::Text(_) => None,
+            })
     }
 }
 

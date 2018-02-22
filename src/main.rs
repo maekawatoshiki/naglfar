@@ -11,6 +11,7 @@ use clap::{App, Arg};
 
 use std::fs::OpenOptions;
 use std::io::prelude::*;
+use std::path::Path;
 
 extern crate app_units;
 use app_units::Au;
@@ -25,11 +26,13 @@ fn main() {
         .arg(Arg::with_name("FILE").help("Input file").index(1));
     let _app_matches = app.get_matches();
 
+    let src_path = Path::new("example");
+
     println!("HTML:");
     let mut html_source = "".to_string();
     OpenOptions::new()
         .read(true)
-        .open("./example/test.html")
+        .open(src_path.join("test.html").to_str().unwrap())
         .unwrap()
         .read_to_string(&mut html_source)
         .ok()
@@ -39,13 +42,17 @@ fn main() {
 
     println!("CSS:");
     let mut css_source = "".to_string();
-    OpenOptions::new()
-        .read(true)
-        .open("./example/test.css")
-        .unwrap()
-        .read_to_string(&mut css_source)
-        .ok()
-        .expect("cannot read file");
+    if let Some(stylesheet_path) = html_tree.find_stylesheet_path() {
+        OpenOptions::new()
+            .read(true)
+            .open(src_path.join(stylesheet_path).to_str().unwrap())
+            .unwrap()
+            .read_to_string(&mut css_source)
+            .ok()
+            .expect("cannot read file");
+    } else {
+        println!("*** Not found any stylesheet but continue ***");
+    }
     let stylesheet = css::parse(css_source);
     print!("{}", stylesheet);
 
