@@ -79,15 +79,10 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
             ctx.save();
             ctx.set_font_size(font.size);
             ctx.select_font_face("", FontSlant::Normal, font.weight.to_cairo_font_weight());
-
             let font_info = ctx.get_scaled_font();
-            // https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#line-height
-            let font_ascent = font_info.extents().ascent;
-            let l = font.size - font_ascent - font_info.extents().descent;
-
             ctx.move_to(
                 rect.x.to_px() as f64,
-                l / 2.0 + font_ascent + rect.y.to_px() as f64,
+                font_info.extents().ascent + rect.y.to_px() as f64,
             );
             ctx.set_source_rgba(
                 color.r as f64 / 255.0,
