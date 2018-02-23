@@ -8,6 +8,7 @@ use std::ops::Range;
 
 use cairo::{Context, ScaledFont};
 use cairo;
+use pango;
 
 use app_units::Au;
 // use render::get_str_width;
@@ -747,6 +748,12 @@ impl FontWeight {
             &FontWeight::Bold => cairo::FontWeight::Bold,
         }
     }
+    pub fn to_pango_font_weight(&self) -> pango::Weight {
+        match self {
+            &FontWeight::Normal => pango::Weight::Normal,
+            &FontWeight::Bold => pango::Weight::Bold,
+        }
+    }
 }
 
 impl FontSlant {
@@ -754,6 +761,12 @@ impl FontSlant {
         match self {
             &FontSlant::Normal => cairo::FontSlant::Normal,
             &FontSlant::Italic => cairo::FontSlant::Italic,
+        }
+    }
+    pub fn to_pango_font_slant(&self) -> pango::Style {
+        match self {
+            &FontSlant::Normal => pango::Style::Normal,
+            &FontSlant::Italic => pango::Style::Italic,
         }
     }
 }

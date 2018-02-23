@@ -1,13 +1,22 @@
 extern crate cairo;
 extern crate gtk;
+extern crate pango;
+extern crate pangocairo;
 
 use gtk::traits::*;
 use gtk::Inhibit;
-// use gtk::{ContainerExt, WidgetExt, Window};
-use cairo::{Context, FontFace, FontSlant};
+
+use cairo::Context;
+use pango::LayoutExt;
 
 use painter::{DisplayCommand, DisplayList};
 use layout::Dimensions;
+
+use std::cell::RefCell;
+
+thread_local!(pub static FONT_DESC: RefCell<pango::FontDescription> = {
+     RefCell::new(pango::FontDescription::from_string("sans-serif normal 16"))
+});
 
 struct RenderingWindow {
     window: gtk::Window,
@@ -22,10 +31,13 @@ impl RenderingWindow {
         let window = gtk::Window::new(gtk::WindowType::Toplevel);
         window.set_title("Naglfar");
         window.set_default_size(width, height);
+
         let drawing_area = gtk::DrawingArea::new();
-        let scrolled_window = gtk::ScrolledWindow::new(None, None);
         drawing_area.set_size_request(width, height);
+
+        let scrolled_window = gtk::ScrolledWindow::new(None, None);
         scrolled_window.add_with_viewport(&drawing_area);
+
         window.add(&scrolled_window);
 
         let instance = RenderingWindow {
@@ -36,12 +48,16 @@ impl RenderingWindow {
         instance
             .drawing_area
             .connect_draw(move |widget, cairo_context| {
+                let pango_ctx = widget.create_pango_context().unwrap();
+                let mut pango_layout = pango::Layout::new(&pango_ctx);
+
                 let items = f(cairo_context);
                 if let DisplayCommand::SolidColor(_, rect) = items[0] {
                     widget.set_size_request(width, rect.height.ceil_to_px())
                 }
+
                 for item in &items {
-                    render_item(cairo_context, item);
+                    render_item(cairo_context, &mut pango_layout, item);
                 }
                 Inhibit(true)
             });
@@ -57,7 +73,7 @@ impl RenderingWindow {
     }
 }
 
-fn render_item(ctx: &Context, item: &DisplayCommand) {
+fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCommand) {
     match item {
         &DisplayCommand::SolidColor(ref color, rect) => {
             ctx.rectangle(
@@ -75,25 +91,30 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
             ctx.fill();
         }
         &DisplayCommand::Text(ref text, rect, ref color, ref font) => {
-            ctx.set_font_size(font.size);
-            // ctx.select_font_face("", FontSlant::Italic, font.weight.to_cairo_font_weight());
-            ctx.set_font_face(FontFace::toy_create(
-                "",
-                FontSlant::Italic,
-                font.weight.to_cairo_font_weight(),
-            ));
+            FONT_DESC.with(|font_desc| {
+                font_desc
+                    .borrow_mut()
+                    .set_size(pango::units_from_double(font.size * 0.752)); // px to pt. TODO: Fix this!
+                font_desc
+                    .borrow_mut()
+                    .set_style(font.slant.to_pango_font_slant());
+                font_desc
+                    .borrow_mut()
+                    .set_weight(font.weight.to_pango_font_weight());
+                pango_layout.set_text(text.as_str());
+                pango_layout.set_font_description(Some(&*font_desc.borrow()));
+            });
+
             ctx.set_source_rgba(
                 color.r as f64 / 255.0,
                 color.g as f64 / 255.0,
                 color.b as f64 / 255.0,
                 color.a as f64 / 255.0,
             );
-            let font_info = ctx.get_scaled_font();
-            ctx.move_to(
-                rect.x.to_px() as f64,
-                font_info.extents().ascent + rect.y.to_px() as f64,
-            );
-            ctx.show_text(text.as_str());
+            ctx.move_to(rect.x.to_px() as f64, rect.y.to_px() as f64);
+
+            pango_layout.context_changed();
+            pangocairo::functions::show_layout(ctx, &pango_layout);
         }
     }
 }
