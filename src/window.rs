@@ -4,7 +4,7 @@ extern crate gtk;
 use gtk::traits::*;
 use gtk::Inhibit;
 // use gtk::{ContainerExt, WidgetExt, Window};
-use cairo::{Context, FontSlant};
+use cairo::{Context, FontFace, FontSlant};
 
 use painter::{DisplayCommand, DisplayList};
 use layout::Dimensions;
@@ -72,26 +72,28 @@ fn render_item(ctx: &Context, item: &DisplayCommand) {
                 color.b as f64 / 255.0,
                 color.a as f64 / 255.0,
             );
-            // ctx.stroke_preserve();
             ctx.fill();
         }
         &DisplayCommand::Text(ref text, rect, ref color, ref font) => {
-            ctx.save();
             ctx.set_font_size(font.size);
-            ctx.select_font_face("", FontSlant::Normal, font.weight.to_cairo_font_weight());
-            let font_info = ctx.get_scaled_font();
-            ctx.move_to(
-                rect.x.to_px() as f64,
-                font_info.extents().ascent + rect.y.to_px() as f64,
-            );
+            // ctx.select_font_face("", FontSlant::Italic, font.weight.to_cairo_font_weight());
+            ctx.set_font_face(FontFace::toy_create(
+                "",
+                FontSlant::Italic,
+                font.weight.to_cairo_font_weight(),
+            ));
             ctx.set_source_rgba(
                 color.r as f64 / 255.0,
                 color.g as f64 / 255.0,
                 color.b as f64 / 255.0,
                 color.a as f64 / 255.0,
             );
+            let font_info = ctx.get_scaled_font();
+            ctx.move_to(
+                rect.x.to_px() as f64,
+                font_info.extents().ascent + rect.y.to_px() as f64,
+            );
             ctx.show_text(text.as_str());
-            ctx.restore();
         }
     }
 }

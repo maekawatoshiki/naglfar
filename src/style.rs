@@ -75,7 +75,13 @@ pub fn style_tree<'a>(
 
     let inherited_property = inherit_peoperties(
         &specified_values,
-        vec!["font-size", "line-height", "font-weight", "color"],
+        vec![
+            "font-size",
+            "line-height",
+            "font-weight",
+            "font-style",
+            "color",
+        ],
     );
 
     StyledNode {

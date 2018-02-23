@@ -62,12 +62,29 @@ pub enum BoxType<'a> {
 pub struct Font {
     pub size: f64,
     pub weight: FontWeight,
+    pub slant: FontSlant,
+}
+
+impl Font {
+    pub fn new_empty() -> Font {
+        Font {
+            size: 0.0,
+            weight: FontWeight::Normal,
+            slant: FontSlant::Normal,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum FontWeight {
     Normal,
     Bold,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum FontSlant {
+    Normal,
+    Italic,
 }
 
 #[derive(Clone, Debug)]
@@ -247,10 +264,15 @@ impl<'a> LineMaker<'a> {
             .lookup("font-weight", "font-weight", &default_font_weight)
             .to_font_weight();
 
+        let default_font_slant = Value::Keyword("normal".to_string());
+        let font_slant = style
+            .lookup("font-style", "font-style", &default_font_slant)
+            .to_font_slant();
+
         ctx.set_font_size(font_size);
         ctx.select_font_face(
             "",
-            cairo::FontSlant::Normal,
+            font_slant.to_cairo_font_slant(),
             font_weight.to_cairo_font_weight(),
         );
         let font_info = ctx.get_scaled_font();
@@ -289,6 +311,7 @@ impl<'a> LineMaker<'a> {
                 Font {
                     size: font_size,
                     weight: font_weight,
+                    slant: font_slant,
                 },
                 self.pending.range.start..self.pending.range.start + max_chars,
             );
@@ -306,6 +329,7 @@ impl<'a> LineMaker<'a> {
                 Font {
                     size: font_size,
                     weight: font_weight,
+                    slant: font_slant,
                 },
                 self.pending.range.start
                     ..self.pending.range.start + compute_max_chars(text, text_width, &font_info),
@@ -399,6 +423,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> Layou
                     font: Font {
                         size: 0.0,
                         weight: FontWeight::Normal,
+                        slant: FontSlant::Normal,
                     },
                     range: 0..s.len(),
                 },
@@ -724,12 +749,28 @@ impl FontWeight {
     }
 }
 
+impl FontSlant {
+    pub fn to_cairo_font_slant(&self) -> cairo::FontSlant {
+        match self {
+            &FontSlant::Normal => cairo::FontSlant::Normal,
+            &FontSlant::Italic => cairo::FontSlant::Italic,
+        }
+    }
+}
+
 impl Value {
     pub fn to_font_weight(&self) -> FontWeight {
         match self {
             &Value::Keyword(ref k) if k.as_str() == "normal" => FontWeight::Normal,
             &Value::Keyword(ref k) if k.as_str() == "bold" => FontWeight::Bold,
             _ => FontWeight::Normal,
+        }
+    }
+    pub fn to_font_slant(&self) -> FontSlant {
+        match self {
+            &Value::Keyword(ref k) if k.as_str() == "normal" => FontSlant::Normal,
+            &Value::Keyword(ref k) if k.as_str() == "italic" => FontSlant::Italic,
+            _ => FontSlant::Normal,
         }
     }
 }
