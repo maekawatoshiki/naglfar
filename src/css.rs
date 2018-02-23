@@ -133,6 +133,22 @@ pub fn parse(source: String) -> Stylesheet {
     }
 }
 
+pub fn parse_attr_style(source: String) -> Vec<Declaration> {
+    let mut decls = Vec::new();
+    let mut parser = Parser {
+        pos: 0,
+        input: source,
+    };
+    loop {
+        parser.consume_whitespace();
+        if parser.eof() {
+            break;
+        }
+        decls.push(parser.parse_declaration());
+    }
+    decls
+}
+
 fn valid_ident_char(c: char) -> bool {
     // TODO: other char codes?
     c.is_alphanumeric() || c == '-' || c == '_'

@@ -1,5 +1,6 @@
 use dom::{ElementData, Node, NodeType};
-use css::{Rule, Selector, SimpleSelector, Specificity, Stylesheet, Value};
+use css::{parse_attr_style, Declaration, Rule, Selector, SimpleSelector, Specificity, Stylesheet,
+          Value};
 use std::collections::HashMap;
 
 pub type PropertyMap = HashMap<String, Value>;
@@ -107,6 +108,14 @@ fn specified_values(
             values.insert(declaration.name.clone(), declaration.value.clone());
         }
     }
+
+    if let Some(attr_style) = elem.attrs.get("style") {
+        let decls = parse_attr_style(attr_style.clone());
+        for Declaration { name, value } in decls {
+            values.insert(name, value);
+        }
+    }
+
     values
 }
 
