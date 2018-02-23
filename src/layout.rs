@@ -597,7 +597,13 @@ impl<'a> LayoutBox<'a> {
         d.margin.top = Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px());
         d.margin.bottom = Au::from_f64_px(style.lookup("margin-bottom", "margin", &zero).to_px());
 
-        d.margin.top = Au::from_f64_px((last_margin_bottom - d.margin.top).to_f64_px().abs());
+        // Margin collapse
+        // TODO: Is this implementation correct?
+        if last_margin_bottom >= d.margin.top {
+            d.margin.top = Au(0);
+        } else {
+            d.margin.top = d.margin.top - last_margin_bottom;
+        }
 
         d.border.top = Au::from_f64_px(
             style
