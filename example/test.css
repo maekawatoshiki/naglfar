@@ -70,12 +70,14 @@ b {
   background: #ff8119;
   height: 70px;
   margin: 10px;
+  text-align: center;
 }
 
 #fox2 {
   background: #1e90ff;
   height: 70px;
   margin: 10px;
+  text-align: right;
 }
 
 #box1 {
