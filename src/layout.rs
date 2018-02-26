@@ -53,9 +53,9 @@ pub struct LayoutBox<'a> {
 
 #[derive(Clone, Debug)]
 pub enum BoxType<'a> {
-    BlockNode(StyledNode<'a>),
-    InlineNode(StyledNode<'a>),
-    TextNode(StyledNode<'a>, Text),
+    BlockNode(&'a StyledNode<'a>),
+    InlineNode(&'a StyledNode<'a>),
+    TextNode(&'a StyledNode<'a>, Text),
     AnonymousBlock(Texts),
 }
 
@@ -100,6 +100,7 @@ pub type Texts = Vec<Text>;
 pub struct Line {
     pub range: Range<usize>, // layoutbox
     pub metrics: LineMetrics,
+    pub width: f64,
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -143,6 +144,7 @@ impl<'a> LineMaker<'a> {
             pending: Line {
                 range: 0..0,
                 metrics: LineMetrics::new(0.0, 0.0),
+                width: 0.0,
             },
             work_list: VecDeque::from(boxes),
             new_boxes: vec![],
@@ -184,6 +186,7 @@ impl<'a> LineMaker<'a> {
                         let mut layoutbox = layoutbox.clone();
                         layoutbox.children.push(new_box.clone());
                         if new_boxes_len > 1 {
+                            // TODO: Makes no sense!
                             if i == 0 {
                                 layoutbox.dimensions.padding.right = Au(0);
                                 layoutbox.dimensions.border.right = Au(0);
@@ -213,23 +216,45 @@ impl<'a> LineMaker<'a> {
         }
     }
     fn end_of_lines(&mut self) {
-        // push remainings to `lines`.
+        // Push remainings to `lines`.
         self.lines.push(Line {
             range: self.start..self.end,
             metrics: self.cur_metrics,
+            width: self.new_boxes[self.start..self.end]
+                .iter()
+                .fold(0.0, |acc, lbox| {
+                    acc + lbox.dimensions.border_box().width.to_f64_px()
+                }),
         });
         self.start = self.end;
     }
-    fn assign_position(&mut self) {
+    fn assign_position(&mut self, max_width: f64) {
         self.cur_height = 0.0;
 
         for line in &self.lines {
             self.cur_width = 0.0;
             for new_box in &mut self.new_boxes[line.range.clone()] {
-                new_box.dimensions.content.x = Au::from_f64_px(self.cur_width)
+                // TODO: Refine
+                let text_align = new_box.get_style_node().lookup(
+                    "text-align",
+                    "text-align",
+                    &Value::Keyword("left".to_string()),
+                );
+                let init_width = match text_align {
+                    Value::Keyword(ref k) => match k.to_lowercase().as_str() {
+                        "center" => (max_width - line.width) / 2.0,
+                        "left" => 0.0,
+                        "right" => max_width - line.width,
+                        _ => 0.0,
+                    },
+                    _ => 0.0,
+                };
+
+                new_box.dimensions.content.x = Au::from_f64_px(init_width)
+                    + Au::from_f64_px(self.cur_width)
                     + new_box.dimensions.padding.left
                     + new_box.dimensions.border.left;
-                // TODO: fix
+                // TODO: Refine
                 new_box.dimensions.content.y = Au::from_f64_px(
                     self.cur_height
                         + (line.metrics.above_baseline
@@ -295,13 +320,6 @@ impl<'a> LineMaker<'a> {
             .fold(0.0, |x, y| x.max(y));
 
         if self.cur_width + text_width > max_width {
-            self.lines.push(Line {
-                range: self.start..self.end,
-                metrics: self.cur_metrics,
-            });
-
-            self.start = self.end;
-
             let max_chars = compute_max_chars(text, max_width - self.cur_width, &font_info);
 
             new_layoutbox.dimensions.content.width =
@@ -319,6 +337,18 @@ impl<'a> LineMaker<'a> {
             self.new_boxes.push(new_layoutbox.clone());
 
             self.pending.range = self.pending.range.start + max_chars..self.pending.range.end;
+
+            self.lines.push(Line {
+                range: self.start..self.end,
+                metrics: self.cur_metrics,
+                width: self.new_boxes[self.start..self.end]
+                    .iter()
+                    .fold(0.0, |acc, lbox| {
+                        acc + lbox.dimensions.border_box().width.to_f64_px()
+                    }),
+            });
+
+            self.start = self.end;
 
             self.cur_width = 0.0;
             self.cur_metrics.reset();
@@ -374,12 +404,12 @@ impl<'a> LayoutBox<'a> {
         }
     }
 
-    pub fn get_style_node(&self) -> Option<&StyledNode<'a>> {
+    pub fn get_style_node(&self) -> &'a StyledNode<'a> {
         match self.box_type {
             BoxType::BlockNode(ref node)
             | BoxType::InlineNode(ref node)
-            | BoxType::TextNode(ref node, _) => Some(node),
-            BoxType::AnonymousBlock(_) => None,
+            | BoxType::TextNode(ref node, _) => node,
+            BoxType::AnonymousBlock(_) => unreachable!(),
         }
     }
 
@@ -415,11 +445,11 @@ pub fn layout_tree<'a>(
 fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> LayoutBox<'a> {
     // Create the root box.
     let mut root = LayoutBox::new(match style_node.display() {
-        Display::Block => BoxType::BlockNode(style_node.clone()),
+        Display::Block => BoxType::BlockNode(style_node),
         Display::Inline => match style_node.node.data {
-            NodeType::Element(_) => BoxType::InlineNode(style_node.clone()),
+            NodeType::Element(_) => BoxType::InlineNode(style_node),
             NodeType::Text(ref s) => BoxType::TextNode(
-                style_node.clone(),
+                style_node,
                 Text {
                     font: Font {
                         size: 0.0,
@@ -471,9 +501,9 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.y = containing_block.content.height;
 
                 let mut linemaker = LineMaker::new(self.children.clone());
-                linemaker.run(ctx, containing_block.padding_box().width.to_f64_px());
+                linemaker.run(ctx, containing_block.content.width.to_f64_px());
                 linemaker.end_of_lines();
-                linemaker.assign_position();
+                linemaker.assign_position(containing_block.content.width.to_f64_px());
                 self.children = linemaker.new_boxes;
                 self.dimensions.content.width = containing_block.content.width;
                 self.dimensions.content.height = Au::from_f64_px(linemaker.cur_height);
@@ -510,7 +540,7 @@ impl<'a> LayoutBox<'a> {
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
     /// ref. http://www.w3.org/TR/CSS2/visudet.html#blockwidth
     fn calculate_block_width(&mut self, containing_block: Dimensions) {
-        let style = self.get_style_node().unwrap().clone();
+        let style = self.get_style_node();
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
@@ -613,7 +643,7 @@ impl<'a> LayoutBox<'a> {
     /// http://www.w3.org/TR/CSS2/visudet.html#normal-block
     /// Sets the vertical margin/padding/border dimensions, and the `x`, `y` values.
     fn calculate_block_position(&mut self, last_margin_bottom: Au, containing_block: Dimensions) {
-        let style = self.get_style_node().unwrap().clone();
+        let style = self.get_style_node();
         let d = &mut self.dimensions;
 
         // margin, border, and padding have initial value 0.
@@ -671,7 +701,7 @@ impl<'a> LayoutBox<'a> {
     fn calculate_block_height(&mut self) {
         // If the height is set to an explicit length, use that exact length.
         // Otherwise, just keep the value set by `layout_block_children`.
-        if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().unwrap().value("height") {
+        if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().value("height") {
             self.dimensions.content.height = Au::from_f64_px(h);
         }
     }
@@ -696,7 +726,7 @@ impl<'a> LayoutBox<'a> {
     }
 
     fn assign_inline_padding(&mut self) {
-        let style = self.get_style_node().unwrap().clone();
+        let style = self.get_style_node();
         let d = &mut self.dimensions;
 
         // margin, border, and padding have initial value 0.
@@ -711,7 +741,7 @@ impl<'a> LayoutBox<'a> {
     }
 
     fn assign_inline_border_width(&mut self) {
-        let style = self.get_style_node().unwrap().clone();
+        let style = self.get_style_node();
         let d = &mut self.dimensions;
 
         // margin, border, and padding have initial value 0.

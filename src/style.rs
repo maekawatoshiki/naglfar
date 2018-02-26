@@ -80,6 +80,7 @@ pub fn style_tree<'a>(
             "line-height",
             "font-weight",
             "font-style",
+            "text-align",
             "color",
         ],
     );
