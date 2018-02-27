@@ -8,7 +8,7 @@ span {
 
 html {
   width: auto;
-  padding: 10px;
+  padding: 3px;
   margin: 0px;
   background: #ffffff;
 }
@@ -24,7 +24,6 @@ h1 {
   font-style: italic;
   background: #dfedfb;
   padding: 10px;
-  margin: 10px;
   color: #1b76c4;
   border-width: 0px;
   border-left-color: #1b76c4;
@@ -49,9 +48,76 @@ span.world {
   background: #ffff00;
 }
 
+div.topbar {
+  height: 50px;
+  background: #019680;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 10px;
+}
+
+span.naglfar {
+  font-weight: bold;
+  font-size: 30px;
+  color: #ffffff;
+}
+
+span.credit {
+  font-weight: normal;
+  font-size: 16px;
+  color: #ffffff;
+}
+
 b {
   font-weight: bold;
   display: inline;
+}
+
+div.card {
+  background: #ffffff;
+  width: 500px;
+  margin: 10px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10px;
+}
+
+div.card_title {
+  font-weight: bold;
+  font-size: 20px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  border-width: 0px;
+  border-bottom-color: black;
+  border-bottom-width: 1px;
+  border-style: solid;
+}
+
+div.card_content {
+  color: black;
+  border-width: 0px;
+  border-bottom-color: #efefef;
+  border-bottom-width: 2px;
+  border-style: solid;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+div.card_footer1 {
+  width: 300px;
+  margin-right: 10px;
+  height: 20px;
+  background: #adadad;
+  display: inline-block;
+}
+
+div.card_footer2 {
+  width: 190px;
+  height: 20px;
+  background: #efefef;
+  display: inline-block;
 }
 
 #x1 {
@@ -62,14 +128,14 @@ b {
   background: #aaaaaa;
 }
 
-#margin_collapse {
-  background: #f6e5d7;
+#margin_collapse_test {
 }
 
 #fox1 {
   background: #ff8119;
   height: 70px;
   margin: 10px;
+  padding: 10px;
   text-align: center;
 }
 
@@ -82,11 +148,4 @@ b {
 
 #box1 {
   background: #90ee90;
-}
-
-#fox_hightlight {
-  background: #ccff00;
-  padding-left: 10px;
-  padding-right: 10px;
-  color: red;
 }
