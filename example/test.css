@@ -8,9 +8,9 @@ span {
 
 html {
   width: auto;
-  padding: 3px;
+  padding: 0px;
   margin: 0px;
-  background: #ffffff;
+  background: #313131;
 }
 
 body {
@@ -31,35 +31,10 @@ h1 {
   border-style: solid;
 }
 
-span.hello {
-  background: #00ffff;
-  border-width: 1px;
-  border-color: #1b76c4;
-  border-style: solid;
+span.hl {
+  background: #dfedfb;
   font-size: 20px;
-}
-
-span.big {
-  background: #00ffff;
-  font-size: 40px;
-}
-
-span.world {
-  background: #ffff00;
-}
-
-div.topbar {
-  height: 50px;
-  background: #019680;
-  padding-left: 20px;
-  padding-right: 20px;
-  padding-top: 10px;
-}
-
-span.naglfar {
   font-weight: bold;
-  font-size: 30px;
-  color: #ffffff;
 }
 
 span.credit {
@@ -73,13 +48,36 @@ b {
   display: inline;
 }
 
+p {
+  background: #fa603c; 
+  color: black;
+  text-align: center;
+  padding: 100px;
+  padding: 100px;
+}
+
+footer {
+  text-align: center;
+  background: #343434;
+  padding: 25px;
+  color: #dddddd;
+  border-width: 0px;
+  border-top-color: white;
+  border-top-width: 1px;
+  border-style: solid;
+}
+
 div.card {
   background: #ffffff;
-  width: 500px;
+  width: 600px;
   margin: 10px;
   margin-left: auto;
   margin-right: auto;
   padding: 10px;
+  padding-left: 5px;
+  border-width: 1px;
+  border-color: #cdcdcd;
+  border-style: solid;
 }
 
 div.card_title {
@@ -87,9 +85,12 @@ div.card_title {
   font-size: 20px;
   margin-top: 5px;
   margin-bottom: 5px;
+  padding-left: 5px;
   border-width: 0px;
   border-bottom-color: black;
   border-bottom-width: 1px;
+  border-left-color: #313131;
+  border-left-width: 5px;
   border-style: solid;
 }
 
@@ -106,18 +107,22 @@ div.card_content {
 }
 
 div.card_footer1 {
-  width: 300px;
-  margin-right: 10px;
+  width: 468px;
   height: 20px;
-  background: #adadad;
   display: inline-block;
+  border-width: 2px;
+  border-color: #efefef;
+  border-style: solid;
 }
 
 div.card_footer2 {
-  width: 190px;
+  width: 50px;
   height: 20px;
-  background: #efefef;
+  margin-left: 10px;
   display: inline-block;
+  border-width: 2px;
+  border-color: #efefef;
+  border-style: solid;
 }
 
 #x1 {
@@ -132,14 +137,22 @@ div.card_footer2 {
 }
 
 #fox1 {
+  display: inline-block;
   background: #ff8119;
-  height: 70px;
+  width: 400px;
   margin: 10px;
   padding: 10px;
-  text-align: center;
 }
 
 #fox2 {
+  display: inline-block;
+  background: #1e90ff;
+  width: 400px;
+  margin: 10px;
+  padding: 10px;
+}
+
+#fox3 {
   background: #1e90ff;
   height: 70px;
   margin: 10px;
