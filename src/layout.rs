@@ -55,6 +55,7 @@ pub struct LayoutBox<'a> {
 pub enum BoxType<'a> {
     BlockNode(&'a StyledNode<'a>),
     InlineNode(&'a StyledNode<'a>),
+    InlineBlockNode(&'a StyledNode<'a>),
     TextNode(&'a StyledNode<'a>, Text),
     AnonymousBlock(Texts),
 }
@@ -167,6 +168,48 @@ impl<'a> LineMaker<'a> {
                 BoxType::TextNode(_, _) => while self.pending.range.len() != 0 {
                     self.run_text_node(layoutbox.clone(), ctx, max_width)
                 },
+                BoxType::InlineBlockNode(_) => {
+                    let mut containing_block: Dimensions = ::std::default::Default::default();
+                    containing_block.content.width = Au::from_f64_px(max_width - self.cur_width);
+                    layoutbox.layout(
+                        ctx,
+                        Au(0),
+                        containing_block,
+                        containing_block,
+                        containing_block,
+                    );
+
+                    let box_width = layoutbox.dimensions.margin_box().width.to_f64_px();
+
+                    if self.cur_width + box_width > max_width {
+                        self.lines.push(Line {
+                            range: self.start..self.end,
+                            metrics: self.cur_metrics,
+                            width: self.new_boxes[self.start..self.end]
+                                .iter()
+                                .fold(0.0, |acc, lbox| {
+                                    acc + lbox.dimensions.margin_box().width.to_f64_px()
+                                }),
+                        });
+
+                        self.new_boxes.push(layoutbox);
+
+                        self.start = self.end;
+                        self.end += 1;
+
+                        self.cur_width = box_width;
+                        self.cur_metrics.reset();
+                    } else {
+                        self.end += 1;
+                        self.cur_width += box_width;
+                        self.cur_metrics.above_baseline = vec![
+                            self.cur_metrics.above_baseline,
+                            layoutbox.dimensions.margin_box().height.to_f64_px(),
+                        ].into_iter()
+                            .fold(0.0, |x, y| x.max(y));
+                        self.new_boxes.push(layoutbox);
+                    }
+                }
                 BoxType::InlineNode(_) => {
                     let mut linemaker = self.clone();
                     linemaker.work_list = VecDeque::from(layoutbox.children.clone());
@@ -223,7 +266,7 @@ impl<'a> LineMaker<'a> {
             width: self.new_boxes[self.start..self.end]
                 .iter()
                 .fold(0.0, |acc, lbox| {
-                    acc + lbox.dimensions.border_box().width.to_f64_px()
+                    acc + lbox.dimensions.margin_box().width.to_f64_px()
                 }),
         });
         self.start = self.end;
@@ -253,14 +296,17 @@ impl<'a> LineMaker<'a> {
                 new_box.dimensions.content.x = Au::from_f64_px(init_width)
                     + Au::from_f64_px(self.cur_width)
                     + new_box.dimensions.padding.left
-                    + new_box.dimensions.border.left;
+                    + new_box.dimensions.border.left
+                    + new_box.dimensions.margin.left;
                 // TODO: Refine
                 new_box.dimensions.content.y = Au::from_f64_px(
                     self.cur_height
                         + (line.metrics.above_baseline
                             - new_box.dimensions.content.height.to_f64_px()),
-                );
-                self.cur_width += new_box.dimensions.border_box().width.to_f64_px();
+                )
+                    - (new_box.dimensions.padding.top + new_box.dimensions.margin.top
+                        + new_box.dimensions.border.top);
+                self.cur_width += new_box.dimensions.margin_box().width.to_f64_px();
             }
             self.cur_height += line.metrics.calculate_line_height();
         }
@@ -408,6 +454,7 @@ impl<'a> LayoutBox<'a> {
         match self.box_type {
             BoxType::BlockNode(ref node)
             | BoxType::InlineNode(ref node)
+            | BoxType::InlineBlockNode(ref node)
             | BoxType::TextNode(ref node, _) => node,
             BoxType::AnonymousBlock(_) => unreachable!(),
         }
@@ -460,6 +507,10 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> Layou
                 },
             ),
         },
+        Display::InlineBlock => match style_node.node.data {
+            NodeType::Element(_) => BoxType::InlineBlockNode(style_node),
+            NodeType::Text(_) => panic!(),
+        },
         Display::None => panic!("Root node has display: none."),
     });
 
@@ -467,7 +518,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> Layou
     for child in &style_node.children {
         match child.display() {
             Display::Block => root.children.push(build_layout_tree(child, ctx)),
-            Display::Inline => root.get_inline_container()
+            Display::Inline | Display::InlineBlock => root.get_inline_container()
                 .children
                 .push(build_layout_tree(child, ctx)),
             Display::None => {} // Don't lay out nodes with `display: none;`
@@ -490,6 +541,13 @@ impl<'a> LayoutBox<'a> {
     ) {
         match self.box_type {
             BoxType::BlockNode(_) => self.layout_block(
+                ctx,
+                last_margin_bottom,
+                containing_block,
+                saved_block,
+                viewport,
+            ),
+            BoxType::InlineBlockNode(_) => self.layout_inline_block(
                 ctx,
                 last_margin_bottom,
                 containing_block,
@@ -706,11 +764,54 @@ impl<'a> LayoutBox<'a> {
         }
     }
 
+    /// Lay out a block-level element and its descendants.
+    fn layout_inline_block(
+        &mut self,
+        ctx: &Context,
+        last_margin_bottom: Au,
+        containing_block: Dimensions,
+        _saved_block: Dimensions,
+        viewport: Dimensions,
+    ) {
+        // Child width can depend on parent width, so we need to calculate this box's width before
+        // laying out its children.
+        self.calculate_inline_block_width(containing_block);
+
+        self.assign_inline_padding();
+        self.assign_inline_border_width();
+        self.assign_margin();
+        // self.calculate_block_position(last_margin_bottom, containing_block);
+
+        self.layout_block_children(ctx, viewport);
+
+        // Parent height can depend on child height, so `calculate_height` must be called after the
+        // children are laid out.
+        self.calculate_block_height();
+    }
+
+    /// Calculate the width of a block-level non-replaced element in normal flow.
+    /// Sets the horizontal margin/padding/border dimensions, and the `width`.
+    /// ref. http://www.w3.org/TR/CSS2/visudet.html#blockwidth
+    fn calculate_inline_block_width(&mut self, containing_block: Dimensions) {
+        let style = self.get_style_node();
+
+        // `width` has initial value `auto`.
+        let auto = Value::Keyword("auto".to_string());
+        let mut width = style.value("width").unwrap_or(auto.clone());
+
+        if width == auto {
+            // TODO
+            panic!("calculating shrink-to-fit width is unsupported.");
+        }
+
+        self.dimensions.content.width = Au::from_f64_px(width.to_px());
+    }
+
     /// Where a new inline child should go.
     fn get_inline_container(&mut self) -> &mut LayoutBox<'a> {
         match self.box_type {
             BoxType::InlineNode(_) | BoxType::AnonymousBlock(_) => self,
-            BoxType::BlockNode(_) => {
+            BoxType::BlockNode(_) | BoxType::InlineBlockNode(_) => {
                 match self.children.last() {
                     Some(&LayoutBox {
                         box_type: BoxType::AnonymousBlock(_),
@@ -738,6 +839,20 @@ impl<'a> LayoutBox<'a> {
         d.padding.top = Au::from_f64_px(style.lookup("padding-top", "padding", &zero).to_px());
         d.padding.bottom =
             Au::from_f64_px(style.lookup("padding-bottom", "padding", &zero).to_px());
+    }
+
+    fn assign_margin(&mut self) {
+        let style = self.get_style_node();
+        let d = &mut self.dimensions;
+
+        // margin has initial value 0.
+        let zero = Value::Length(0.0, Unit::Px);
+
+        d.margin.left = Au::from_f64_px(style.lookup("margin-left", "margin", &zero).to_px());
+        d.margin.right = Au::from_f64_px(style.lookup("margin-right", "margin", &zero).to_px());
+
+        d.margin.top = Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px());
+        d.margin.bottom = Au::from_f64_px(style.lookup("margin-bottom", "margin", &zero).to_px());
     }
 
     fn assign_inline_border_width(&mut self) {

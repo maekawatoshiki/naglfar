@@ -10,7 +10,6 @@ use cairo::Context;
 use pango::LayoutExt;
 
 use painter::{DisplayCommand, DisplayList};
-use layout::Dimensions;
 
 use std::cell::RefCell;
 
@@ -26,7 +25,7 @@ struct RenderingWindow {
 impl RenderingWindow {
     fn new<F: 'static>(width: i32, height: i32, f: F) -> RenderingWindow
     where
-        F: Fn(&Context) -> DisplayList,
+        F: Fn(&Context, &gtk::DrawingArea) -> DisplayList,
     {
         let window = gtk::Window::new(gtk::WindowType::Toplevel);
         window.set_title("Naglfar");
@@ -51,7 +50,7 @@ impl RenderingWindow {
                 let pango_ctx = widget.create_pango_context().unwrap();
                 let mut pango_layout = pango::Layout::new(&pango_ctx);
 
-                let items = f(cairo_context);
+                let items = f(cairo_context, widget);
                 if let DisplayCommand::SolidColor(_, rect) = items[0] {
                     widget.set_size_request(width, rect.height.ceil_to_px())
                 }
@@ -119,17 +118,14 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
     }
 }
 
-pub fn render<F: 'static>(viewport: &Dimensions, f: F)
+pub fn render<F: 'static>(f: F)
 where
-    F: Fn(&Context) -> DisplayList,
+    F: Fn(&Context, &gtk::DrawingArea) -> DisplayList,
 {
     gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
-    let window = RenderingWindow::new(
-        viewport.content.width.to_px(),
-        viewport.content.height.to_px(),
-        f,
-    );
+    let window = RenderingWindow::new(640, 480, f);
     window.exit_on_close();
+
     gtk::main();
 }

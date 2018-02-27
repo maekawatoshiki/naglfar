@@ -129,6 +129,7 @@ fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
     match layout_box.box_type {
         BoxType::BlockNode(ref style)
         | BoxType::InlineNode(ref style)
+        | BoxType::InlineBlockNode(ref style)
         | BoxType::TextNode(ref style, _) => match style.value(name) {
             Some(maybe_color) => maybe_color.to_color(),
             _ => None,
@@ -142,6 +143,7 @@ fn lookup_color(layout_box: &LayoutBox, name: &str, fallback_name: &str) -> Opti
     match layout_box.box_type {
         BoxType::BlockNode(ref style)
         | BoxType::InlineNode(ref style)
+        | BoxType::InlineBlockNode(ref style)
         | BoxType::TextNode(ref style, _) => {
             match style.lookup_without_default(name, fallback_name) {
                 Some(maybe_color) => maybe_color.to_color(),

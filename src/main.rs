@@ -13,6 +13,9 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::Path;
 
+extern crate gtk;
+use gtk::WidgetExt;
+
 extern crate app_units;
 use app_units::Au;
 
@@ -56,11 +59,13 @@ fn main() {
     let stylesheet = css::parse(css_source);
     print!("{}", stylesheet);
 
-    let mut viewport: layout::Dimensions = ::std::default::Default::default();
-    viewport.content.width = Au::from_px(640);
-    viewport.content.height = Au::from_px(480);
+    window::render(move |ctx, widget| {
+        let mut viewport: layout::Dimensions = ::std::default::Default::default();
+        viewport.content.width = Au::from_f64_px(widget.get_allocated_width() as f64);
+        viewport.content.height = Au::from_f64_px(widget.get_allocated_height() as f64);
+        // viewport.content.width = Au(600 + widget.get_allocated_width());
+        // viewport.content.height = Au(500 + widget.get_allocated_height());
 
-    window::render(&viewport, move |ctx| {
         let style_tree = style::style_tree(&html_tree, &stylesheet, &style::PropertyMap::new());
         let layout_tree = layout::layout_tree(&style_tree, ctx, viewport);
         print!("LAYOUT:\n{}", layout_tree);
