@@ -6,7 +6,7 @@
 
 Naglfar is a toy web browser in Rust.
 
-![Naglfar](https://raw.githubusercontent.com/maekawatoshiki/naglfar/master/screenshot.png)
+![Naglfar](https://raw.githubusercontent.com/maekawatoshiki/naglfar/master/screenshot.gif)
 
 # Run
 
