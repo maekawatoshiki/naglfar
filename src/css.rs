@@ -59,6 +59,13 @@ pub const BLACK: Color = Color {
     a: 255,
 };
 
+pub const WHITE: Color = Color {
+    r: 255,
+    g: 255,
+    b: 255,
+    a: 255,
+};
+
 pub const RED: Color = Color {
     r: 255,
     g: 0,
@@ -100,6 +107,7 @@ impl Value {
             Value::Color(color) => Some(color),
             Value::Keyword(ref color_name) => match color_name.to_uppercase().as_str() {
                 "BLACK" => Some(BLACK),
+                "WHITE" => Some(WHITE),
                 "RED" => Some(RED),
                 "GREEN" => Some(GREEN),
                 "BLUE" => Some(BLUE),

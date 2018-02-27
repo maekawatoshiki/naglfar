@@ -192,13 +192,17 @@ impl<'a> LineMaker<'a> {
                                 }),
                         });
 
+                        self.cur_width = box_width;
+                        self.cur_metrics.above_baseline = vec![
+                            self.cur_metrics.above_baseline,
+                            layoutbox.dimensions.margin_box().height.to_f64_px(),
+                        ].into_iter()
+                            .fold(0.0, |x, y| x.max(y));
+
                         self.new_boxes.push(layoutbox);
 
                         self.start = self.end;
                         self.end += 1;
-
-                        self.cur_width = box_width;
-                        self.cur_metrics.reset();
                     } else {
                         self.end += 1;
                         self.cur_width += box_width;
