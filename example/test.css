@@ -29,6 +29,38 @@ h1 {
   border-left-color: #1b76c4;
   border-left-width: 7px;
   border-style: solid;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+h2 {
+  font-size: 24px;
+  font-weight: bold;
+  font-style: italic;
+  background: #ffefaf;
+  padding: 10px;
+  color: #FF9F41;
+  border-width: 0px;
+  border-left-color: #FF9F41;
+  border-left-width: 7px;
+  border-style: solid;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+h3 {
+  font-size: 19px;
+  font-weight: bold;
+  font-style: italic;
+  background: #ebffeb;
+  padding: 10px;
+  color: #0fff0f;
+  border-width: 0px;
+  border-left-color: #0fff0f;
+  border-left-width: 7px;
+  border-style: solid;
+  margin-top: 5px;
+  margin-bottom: 5px;
 }
 
 span.hl {
