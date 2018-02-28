@@ -59,7 +59,7 @@ fn main() {
     let stylesheet = css::parse(css_source);
     print!("{}", stylesheet);
 
-    window::render(move |ctx, widget| {
+    window::render(move |widget| {
         let mut viewport: layout::Dimensions = ::std::default::Default::default();
         viewport.content.width = Au::from_f64_px(widget.get_allocated_width() as f64);
         viewport.content.height = Au::from_f64_px(widget.get_allocated_height() as f64);
@@ -67,7 +67,7 @@ fn main() {
         // viewport.content.height = Au(500 + widget.get_allocated_height());
 
         let style_tree = style::style_tree(&html_tree, &stylesheet, &style::PropertyMap::new());
-        let layout_tree = layout::layout_tree(&style_tree, ctx, viewport);
+        let layout_tree = layout::layout_tree(&style_tree, viewport);
         print!("LAYOUT:\n{}", layout_tree);
 
         let display_command = painter::build_display_list(&layout_tree);

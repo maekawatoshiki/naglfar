@@ -25,7 +25,7 @@ struct RenderingWindow {
 impl RenderingWindow {
     fn new<F: 'static>(width: i32, height: i32, f: F) -> RenderingWindow
     where
-        F: Fn(&Context, &gtk::DrawingArea) -> DisplayList,
+        F: Fn(&gtk::DrawingArea) -> DisplayList,
     {
         let window = gtk::Window::new(gtk::WindowType::Toplevel);
         window.set_title("Naglfar");
@@ -50,7 +50,7 @@ impl RenderingWindow {
                 let pango_ctx = widget.create_pango_context().unwrap();
                 let mut pango_layout = pango::Layout::new(&pango_ctx);
 
-                let items = f(cairo_context, widget);
+                let items = f(widget);
                 if let DisplayCommand::SolidColor(_, rect) = items[0] {
                     widget.set_size_request(width, rect.height.ceil_to_px())
                 }
@@ -120,7 +120,7 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
 
 pub fn render<F: 'static>(f: F)
 where
-    F: Fn(&Context, &gtk::DrawingArea) -> DisplayList,
+    F: Fn(&gtk::DrawingArea) -> DisplayList,
 {
     gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 

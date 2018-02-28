@@ -3,6 +3,7 @@ pub mod css;
 pub mod style;
 pub mod html;
 pub mod dom;
+pub mod font;
 pub mod layout;
 pub mod painter;
 pub mod window;

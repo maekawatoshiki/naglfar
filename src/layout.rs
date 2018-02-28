@@ -5,8 +5,8 @@ use std::default::Default;
 use std::collections::VecDeque;
 use std::fmt;
 use std::ops::Range;
+use font::{Font, FontSlant, FontWeight};
 
-use cairo::{Context, ScaledFont};
 use cairo;
 use pango;
 
@@ -58,35 +58,6 @@ pub enum BoxType<'a> {
     InlineBlockNode(&'a StyledNode<'a>),
     TextNode(&'a StyledNode<'a>, Text),
     AnonymousBlock(Texts),
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Font {
-    pub size: f64,
-    pub weight: FontWeight,
-    pub slant: FontSlant,
-}
-
-impl Font {
-    pub fn new_empty() -> Font {
-        Font {
-            size: 0.0,
-            weight: FontWeight::Normal,
-            slant: FontSlant::Normal,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum FontWeight {
-    Normal,
-    Bold,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum FontSlant {
-    Normal,
-    Italic,
 }
 
 #[derive(Clone, Debug)]
@@ -158,7 +129,7 @@ impl<'a> LineMaker<'a> {
         }
     }
 
-    pub fn run(&mut self, ctx: &Context, max_width: f64) {
+    pub fn run(&mut self, max_width: f64) {
         while let Some(mut layoutbox) = self.work_list.pop_front() {
             if let BoxType::TextNode(_, ref text_info) = layoutbox.box_type {
                 self.pending.range = text_info.range.clone()
@@ -166,18 +137,12 @@ impl<'a> LineMaker<'a> {
 
             match layoutbox.box_type {
                 BoxType::TextNode(_, _) => while self.pending.range.len() != 0 {
-                    self.run_text_node(layoutbox.clone(), ctx, max_width)
+                    self.run_text_node(layoutbox.clone(), max_width)
                 },
                 BoxType::InlineBlockNode(_) => {
                     let mut containing_block: Dimensions = ::std::default::Default::default();
                     containing_block.content.width = Au::from_f64_px(max_width - self.cur_width);
-                    layoutbox.layout(
-                        ctx,
-                        Au(0),
-                        containing_block,
-                        containing_block,
-                        containing_block,
-                    );
+                    layoutbox.layout(Au(0), containing_block, containing_block, containing_block);
 
                     let box_width = layoutbox.dimensions.margin_box().width.to_f64_px();
 
@@ -223,7 +188,7 @@ impl<'a> LineMaker<'a> {
                     let start = linemaker.end;
                     linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px()
                         + layoutbox.dimensions.border.left.to_f64_px();
-                    linemaker.run(ctx, max_width);
+                    linemaker.run(max_width);
                     linemaker.cur_width += layoutbox.dimensions.padding.right.to_f64_px()
                         + layoutbox.dimensions.border.right.to_f64_px();
                     let end = linemaker.end;
@@ -315,7 +280,7 @@ impl<'a> LineMaker<'a> {
             self.cur_height += line.metrics.calculate_line_height();
         }
     }
-    fn run_text_node(&mut self, layoutbox: LayoutBox<'a>, ctx: &Context, max_width: f64) {
+    fn run_text_node(&mut self, layoutbox: LayoutBox<'a>, max_width: f64) {
         let style = if let BoxType::TextNode(s, _) = layoutbox.box_type.clone() {
             s
         } else {
@@ -345,14 +310,9 @@ impl<'a> LineMaker<'a> {
             .lookup("font-style", "font-style", &default_font_slant)
             .to_font_slant();
 
-        ctx.set_font_size(font_size);
-        ctx.select_font_face(
-            "",
-            font_slant.to_cairo_font_slant(),
-            font_weight.to_cairo_font_weight(),
-        );
-        let font_info = ctx.get_scaled_font();
-        let text_width = font_info.text_extents(text).x_advance;
+        // let text_width = font_info.text_extents(text).x_advance;
+        let my_font = Font::new(font_size, font_weight, font_slant);
+        let text_width = my_font.text_width(text);
 
         let mut new_layoutbox = layoutbox.clone();
 
@@ -370,10 +330,10 @@ impl<'a> LineMaker<'a> {
             .fold(0.0, |x, y| x.max(y));
 
         if self.cur_width + text_width > max_width {
-            let max_chars = compute_max_chars(text, max_width - self.cur_width, &font_info);
+            let max_chars = my_font.compute_max_chars(text, max_width - self.cur_width);
 
             new_layoutbox.dimensions.content.width =
-                Au::from_f64_px(font_info.text_extents(&text[0..max_chars]).x_advance);
+                Au::from_f64_px(my_font.text_width(&text[0..max_chars]));
             new_layoutbox.dimensions.content.height = Au::from_f64_px(font_size);
 
             new_layoutbox.set_text_info(
@@ -413,7 +373,7 @@ impl<'a> LineMaker<'a> {
                     slant: font_slant,
                 },
                 self.pending.range.start
-                    ..self.pending.range.start + compute_max_chars(text, text_width, &font_info),
+                    ..self.pending.range.start + my_font.compute_max_chars(text, text_width),
             );
             self.new_boxes.push(new_layoutbox.clone());
 
@@ -422,26 +382,6 @@ impl<'a> LineMaker<'a> {
             self.cur_width += text_width;
         }
     }
-}
-
-fn compute_max_chars(s: &str, max_width: f64, font_info: &ScaledFont) -> usize {
-    // TODO: Inefficient!
-    // TODO: This code doesn't allow other than alphabets.
-    let mut buf = "".to_string();
-    let mut last_splittable_pos = s.len();
-    for (i, c) in s.chars().enumerate() {
-        buf.push(c);
-
-        if c.is_whitespace() {
-            last_splittable_pos = i;
-        }
-
-        let text_width = font_info.text_extents(buf.as_str()).x_advance;
-        if text_width > max_width {
-            return last_splittable_pos + 1; // '1' means whitespace
-        }
-    }
-    s.len()
 }
 
 impl<'a> LayoutBox<'a> {
@@ -478,7 +418,6 @@ pub const DEFAULT_LINE_HEIGHT: f64 = DEFAULT_FONT_SIZE * 1.2f64;
 // Transform a style tree into a layout tree.
 pub fn layout_tree<'a>(
     node: &'a StyledNode<'a>,
-    ctx: &Context,
     mut containing_block: Dimensions,
 ) -> LayoutBox<'a> {
     // Save the initial containing block height for calculating percent heights.
@@ -487,13 +426,13 @@ pub fn layout_tree<'a>(
     // The layout algorithm expects the container height to start at 0.
     containing_block.content.height = Au::from_f64_px(0.0);
 
-    let mut root_box = build_layout_tree(node, ctx);
-    root_box.layout(ctx, Au(0), containing_block, saved_block, viewport);
+    let mut root_box = build_layout_tree(node);
+    root_box.layout(Au(0), containing_block, saved_block, viewport);
     root_box
 }
 
 /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
-fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> LayoutBox<'a> {
+fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
     // Create the root box.
     let mut root = LayoutBox::new(match style_node.display() {
         Display::Block => BoxType::BlockNode(style_node),
@@ -521,10 +460,10 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, ctx: &Context) -> Layou
     // Create the descendant boxes.
     for child in &style_node.children {
         match child.display() {
-            Display::Block => root.children.push(build_layout_tree(child, ctx)),
+            Display::Block => root.children.push(build_layout_tree(child)),
             Display::Inline | Display::InlineBlock => root.get_inline_container()
                 .children
-                .push(build_layout_tree(child, ctx)),
+                .push(build_layout_tree(child)),
             Display::None => {} // Don't lay out nodes with `display: none;`
         }
     }
@@ -537,22 +476,16 @@ impl<'a> LayoutBox<'a> {
     /// width/height and so on.
     fn layout(
         &mut self,
-        ctx: &Context,
         last_margin_bottom: Au,
         containing_block: Dimensions,
         saved_block: Dimensions,
         viewport: Dimensions,
     ) {
         match self.box_type {
-            BoxType::BlockNode(_) => self.layout_block(
-                ctx,
-                last_margin_bottom,
-                containing_block,
-                saved_block,
-                viewport,
-            ),
+            BoxType::BlockNode(_) => {
+                self.layout_block(last_margin_bottom, containing_block, saved_block, viewport)
+            }
             BoxType::InlineBlockNode(_) => self.layout_inline_block(
-                ctx,
                 last_margin_bottom,
                 containing_block,
                 saved_block,
@@ -563,7 +496,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.y = containing_block.content.height;
 
                 let mut linemaker = LineMaker::new(self.children.clone());
-                linemaker.run(ctx, containing_block.content.width.to_f64_px());
+                linemaker.run(containing_block.content.width.to_f64_px());
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width.to_f64_px());
                 self.children = linemaker.new_boxes;
@@ -579,7 +512,6 @@ impl<'a> LayoutBox<'a> {
     /// Lay out a block-level element and its descendants.
     fn layout_block(
         &mut self,
-        ctx: &Context,
         last_margin_bottom: Au,
         containing_block: Dimensions,
         _saved_block: Dimensions,
@@ -591,7 +523,7 @@ impl<'a> LayoutBox<'a> {
 
         self.calculate_block_position(last_margin_bottom, containing_block);
 
-        self.layout_block_children(ctx, viewport);
+        self.layout_block_children(viewport);
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
         // children are laid out.
@@ -748,11 +680,11 @@ impl<'a> LayoutBox<'a> {
 
     /// Lay out the block's children within its content area.
     /// Sets `self.dimensions.height` to the total content height.
-    fn layout_block_children(&mut self, ctx: &Context, viewport: Dimensions) {
+    fn layout_block_children(&mut self, viewport: Dimensions) {
         let d = &mut self.dimensions;
         let mut last_margin_bottom = Au(0);
         for child in &mut self.children {
-            child.layout(ctx, last_margin_bottom, *d, *d, viewport);
+            child.layout(last_margin_bottom, *d, *d, viewport);
             last_margin_bottom = child.dimensions.margin.bottom;
             // Increment the height so each child is laid out below the previous one.
             d.content.height += child.dimensions.margin_box().height;
@@ -768,11 +700,10 @@ impl<'a> LayoutBox<'a> {
         }
     }
 
-    /// Lay out a block-level element and its descendants.
+    /// Lay out a inline-block-level element and its descendants.
     fn layout_inline_block(
         &mut self,
-        ctx: &Context,
-        last_margin_bottom: Au,
+        _last_margin_bottom: Au,
         containing_block: Dimensions,
         _saved_block: Dimensions,
         viewport: Dimensions,
@@ -786,7 +717,7 @@ impl<'a> LayoutBox<'a> {
         self.assign_margin();
         // self.calculate_block_position(last_margin_bottom, containing_block);
 
-        self.layout_block_children(ctx, viewport);
+        self.layout_block_children(viewport);
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
         // children are laid out.
@@ -795,13 +726,14 @@ impl<'a> LayoutBox<'a> {
 
     /// Calculate the width of a block-level non-replaced element in normal flow.
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
-    /// ref. http://www.w3.org/TR/CSS2/visudet.html#blockwidth
-    fn calculate_inline_block_width(&mut self, containing_block: Dimensions) {
+    /// ref. https://www.w3.org/TR/CSS2/visudet.html#inlineblock-width
+    fn calculate_inline_block_width(&mut self, _containing_block: Dimensions) {
         let style = self.get_style_node();
 
         // `width` has initial value `auto`.
+        // TODO: Implement calculating shrink-to-fit width
         let auto = Value::Keyword("auto".to_string());
-        let mut width = style.value("width").unwrap_or(auto.clone());
+        let width = style.value("width").unwrap_or(auto.clone());
 
         if width == auto {
             // TODO
