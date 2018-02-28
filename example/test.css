@@ -39,9 +39,9 @@ h2 {
   font-style: italic;
   background: #ffefaf;
   padding: 10px;
-  color: #FF9F41;
+  color: #ff9f41;
   border-width: 0px;
-  border-left-color: #FF9F41;
+  border-left-color: #ff9f41;
   border-left-width: 7px;
   border-style: solid;
   margin-top: 5px;
@@ -54,7 +54,7 @@ h3 {
   font-style: italic;
   background: #ebffeb;
   padding: 10px;
-  color: #0fff0f;
+  color: #0fee0f;
   border-width: 0px;
   border-left-color: #0fff0f;
   border-left-width: 7px;
@@ -64,7 +64,7 @@ h3 {
 }
 
 span.hl {
-  background: #dfedfb;
+  background: #fefe40;
   font-size: 20px;
   font-weight: bold;
 }
