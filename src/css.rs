@@ -395,7 +395,7 @@ impl fmt::Display for Stylesheet {
 
 #[test]
 fn test1() {
-    let src = "div { width: 100px; height: 50px; color: #ffffff; background-color: #003300; }";
+    let src = "div, h1, #id, .class { width: 100px; height: 50px; font-weight: bold; z-index: 2; color: #ffffff; background-color: #003300; }";
     let stylesheet = parse(src.to_string());
     assert_eq!(
         stylesheet,
@@ -404,7 +404,22 @@ fn test1() {
                 Rule {
                     selectors: vec![
                         Selector::Simple(SimpleSelector {
+                            tag_name: None,
+                            id: Some("id".to_string()),
+                            class: vec![],
+                        }),
+                        Selector::Simple(SimpleSelector {
+                            tag_name: None,
+                            id: None,
+                            class: vec!["class".to_string()],
+                        }),
+                        Selector::Simple(SimpleSelector {
                             tag_name: Some("div".to_string()),
+                            id: None,
+                            class: vec![],
+                        }),
+                        Selector::Simple(SimpleSelector {
+                            tag_name: Some("h1".to_string()),
                             id: None,
                             class: vec![],
                         }),
@@ -417,6 +432,14 @@ fn test1() {
                         Declaration {
                             name: "height".to_string(),
                             value: Value::Length(50.0, Unit::Px),
+                        },
+                        Declaration {
+                            name: "font-weight".to_string(),
+                            value: Value::Keyword("bold".to_string()),
+                        },
+                        Declaration {
+                            name: "z-index".to_string(),
+                            value: Value::Num(2.0),
                         },
                         Declaration {
                             name: "color".to_string(),
@@ -440,5 +463,25 @@ fn test1() {
                 },
             ],
         }
+    );
+}
+
+#[test]
+fn test2() {
+    let src = "color: black; background: white; ";
+    let decls = parse_attr_style(src.to_string());
+
+    assert_eq!(
+        decls,
+        vec![
+            Declaration {
+                name: "color".to_string(),
+                value: Value::Keyword("black".to_string()),
+            },
+            Declaration {
+                name: "background".to_string(),
+                value: Value::Keyword("white".to_string()),
+            },
+        ]
     );
 }

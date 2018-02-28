@@ -57,7 +57,7 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
 }
 
 fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
-    get_color(layout_box, "background").map(|color| {
+    lookup_color(layout_box, "background-color", "background").map(|color| {
         list.push(DisplayCommand::SolidColor(
             color,
             layout_box
