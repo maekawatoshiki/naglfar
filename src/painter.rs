@@ -41,8 +41,8 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
 }
 
 fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
-    if let &BoxType::TextNode(ref style, ref text_info) = &layout_box.box_type {
-        let text = if let NodeType::Text(ref text) = style.node.data {
+    if let &BoxType::TextNode(ref text_info) = &layout_box.box_type {
+        let text = if let NodeType::Text(ref text) = layout_box.style.unwrap().node.data {
             &text.as_str()[text_info.range.clone()]
         } else {
             unreachable!()
@@ -127,30 +127,22 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
 
 /// Return the specified color for CSS property `name`, or None if no color was specified.
 fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
-    match layout_box.box_type {
-        BoxType::BlockNode(ref style)
-        | BoxType::InlineNode(ref style)
-        | BoxType::InlineBlockNode(ref style)
-        | BoxType::TextNode(ref style, _) => match style.value(name) {
+    match layout_box.style {
+        Some(style) => match style.value(name) {
             Some(maybe_color) => maybe_color.to_color(),
             _ => None,
         },
-        BoxType::AnonymousBlock(_) => None,
+        None => None,
     }
 }
 
 /// Return the specified color for CSS property `name` or `fallback_name`, or None if no color was specified.
 fn lookup_color(layout_box: &LayoutBox, name: &str, fallback_name: &str) -> Option<Color> {
-    match layout_box.box_type {
-        BoxType::BlockNode(ref style)
-        | BoxType::InlineNode(ref style)
-        | BoxType::InlineBlockNode(ref style)
-        | BoxType::TextNode(ref style, _) => {
-            match style.lookup_without_default(name, fallback_name) {
-                Some(maybe_color) => maybe_color.to_color(),
-                _ => None,
-            }
-        }
-        BoxType::AnonymousBlock(_) => None,
+    match layout_box.style {
+        Some(style) => match style.lookup_without_default(name, fallback_name) {
+            Some(maybe_color) => maybe_color.to_color(),
+            _ => None,
+        },
+        None => None,
     }
 }

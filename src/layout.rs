@@ -46,17 +46,18 @@ pub struct EdgeSizes {
 pub struct LayoutBox<'a> {
     pub dimensions: Dimensions,
     pub z_index: i32,
-    pub box_type: BoxType<'a>,
+    pub box_type: BoxType,
+    pub style: Option<&'a StyledNode<'a>>,
     pub children: Vec<LayoutBox<'a>>,
 }
 
 #[derive(Clone, Debug)]
-pub enum BoxType<'a> {
-    BlockNode(&'a StyledNode<'a>),
-    InlineNode(&'a StyledNode<'a>),
-    InlineBlockNode(&'a StyledNode<'a>),
-    TextNode(&'a StyledNode<'a>, Text),
-    AnonymousBlock(Texts),
+pub enum BoxType {
+    BlockNode,
+    InlineNode,
+    InlineBlockNode,
+    TextNode(Text),
+    AnonymousBlock,
 }
 
 #[derive(Clone, Debug)]
@@ -68,9 +69,10 @@ pub struct Text {
 pub type Texts = Vec<Text>;
 
 impl<'a> LayoutBox<'a> {
-    pub fn new(box_type: BoxType) -> LayoutBox {
+    pub fn new(box_type: BoxType, style: Option<&'a StyledNode<'a>>) -> LayoutBox<'a> {
         LayoutBox {
             box_type: box_type,
+            style: style,
             z_index: 0,
             dimensions: Default::default(),
             children: Vec::new(),
@@ -78,17 +80,14 @@ impl<'a> LayoutBox<'a> {
     }
 
     pub fn get_style_node(&self) -> &'a StyledNode<'a> {
-        match self.box_type {
-            BoxType::BlockNode(ref node)
-            | BoxType::InlineNode(ref node)
-            | BoxType::InlineBlockNode(ref node)
-            | BoxType::TextNode(ref node, _) => node,
-            BoxType::AnonymousBlock(_) => unreachable!(),
+        match self.style {
+            Some(style) => style,
+            None => panic!(),
         }
     }
 
     pub fn set_text_info(&mut self, font: Font, range: Range<usize>) {
-        if let BoxType::TextNode(_, ref mut r) = self.box_type {
+        if let BoxType::TextNode(ref mut r) = self.box_type {
             r.font = font;
             r.range = range;
         }
@@ -117,28 +116,28 @@ pub fn layout_tree<'a>(
 /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
 fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
     // Create the root box.
-    let mut root = LayoutBox::new(match style_node.display() {
-        Display::Block => BoxType::BlockNode(style_node),
-        Display::Inline => match style_node.node.data {
-            NodeType::Element(_) => BoxType::InlineNode(style_node),
-            NodeType::Text(ref s) => BoxType::TextNode(
-                style_node,
-                Text {
+    let mut root = LayoutBox::new(
+        match style_node.display() {
+            Display::Block => BoxType::BlockNode,
+            Display::Inline => match style_node.node.data {
+                NodeType::Element(_) => BoxType::InlineNode,
+                NodeType::Text(ref s) => BoxType::TextNode(Text {
                     font: Font {
                         size: 0.0,
                         weight: FontWeight::Normal,
                         slant: FontSlant::Normal,
                     },
                     range: 0..s.len(),
-                },
-            ),
+                }),
+            },
+            Display::InlineBlock => match style_node.node.data {
+                NodeType::Element(_) => BoxType::InlineBlockNode,
+                NodeType::Text(_) => panic!(),
+            },
+            Display::None => panic!("Root node has display: none."),
         },
-        Display::InlineBlock => match style_node.node.data {
-            NodeType::Element(_) => BoxType::InlineBlockNode(style_node),
-            NodeType::Text(_) => panic!(),
-        },
-        Display::None => panic!("Root node has display: none."),
-    });
+        Some(style_node),
+    );
 
     // Create the descendant boxes.
     for child in &style_node.children {
@@ -165,16 +164,16 @@ impl<'a> LayoutBox<'a> {
         viewport: Dimensions,
     ) {
         match self.box_type {
-            BoxType::BlockNode(_) => {
+            BoxType::BlockNode => {
                 self.layout_block(last_margin_bottom, containing_block, saved_block, viewport)
             }
-            BoxType::InlineBlockNode(_) => self.layout_inline_block(
+            BoxType::InlineBlockNode => self.layout_inline_block(
                 last_margin_bottom,
                 containing_block,
                 saved_block,
                 viewport,
             ),
-            BoxType::AnonymousBlock(ref mut _texts) => {
+            BoxType::AnonymousBlock => {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
 
@@ -188,7 +187,7 @@ impl<'a> LayoutBox<'a> {
 
                 println!("{}", self.dimensions.content.height.to_f64_px());
             }
-            BoxType::InlineNode(_) | BoxType::TextNode(_, _) => unreachable!(),
+            BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
         }
     }
 
@@ -395,8 +394,8 @@ impl<'a> LayoutBox<'a> {
         // laying out its children.
         self.calculate_inline_block_width(containing_block);
 
-        self.assign_inline_padding();
-        self.assign_inline_border_width();
+        self.assign_padding();
+        self.assign_border_width();
         self.assign_margin();
         // self.calculate_block_position(last_margin_bottom, containing_block);
 
@@ -429,23 +428,23 @@ impl<'a> LayoutBox<'a> {
     /// Where a new inline child should go.
     fn get_inline_container(&mut self) -> &mut LayoutBox<'a> {
         match self.box_type {
-            BoxType::InlineNode(_) | BoxType::AnonymousBlock(_) => self,
-            BoxType::BlockNode(_) | BoxType::InlineBlockNode(_) => {
+            BoxType::InlineNode | BoxType::AnonymousBlock => self,
+            BoxType::BlockNode | BoxType::InlineBlockNode => {
                 match self.children.last() {
                     Some(&LayoutBox {
-                        box_type: BoxType::AnonymousBlock(_),
+                        box_type: BoxType::AnonymousBlock,
                         ..
                     }) => {}
                     _ => self.children
-                        .push(LayoutBox::new(BoxType::AnonymousBlock(Texts::new()))),
+                        .push(LayoutBox::new(BoxType::AnonymousBlock, None)),
                 }
                 self.children.last_mut().unwrap()
             }
-            BoxType::TextNode(_, _) => panic!(),
+            BoxType::TextNode(_) => panic!(),
         }
     }
 
-    pub fn assign_inline_padding(&mut self) {
+    pub fn assign_padding(&mut self) {
         let style = self.get_style_node();
         let d = &mut self.dimensions;
 
@@ -474,7 +473,7 @@ impl<'a> LayoutBox<'a> {
         d.margin.bottom = Au::from_f64_px(style.lookup("margin-bottom", "margin", &zero).to_px());
     }
 
-    pub fn assign_inline_border_width(&mut self) {
+    pub fn assign_border_width(&mut self) {
         let style = self.get_style_node();
         let d = &mut self.dimensions;
 

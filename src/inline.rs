@@ -70,15 +70,15 @@ impl<'a> LineMaker<'a> {
 
     pub fn run(&mut self, max_width: f64) {
         while let Some(mut layoutbox) = self.work_list.pop_front() {
-            if let BoxType::TextNode(_, ref text_info) = layoutbox.box_type {
+            if let BoxType::TextNode(ref text_info) = layoutbox.box_type {
                 self.pending.range = text_info.range.clone()
             }
 
             match layoutbox.box_type {
-                BoxType::TextNode(_, _) => while self.pending.range.len() != 0 {
+                BoxType::TextNode(_) => while self.pending.range.len() != 0 {
                     self.run_text_node(layoutbox.clone(), max_width)
                 },
-                BoxType::InlineBlockNode(_) => {
+                BoxType::InlineBlockNode => {
                     let mut containing_block: Dimensions = ::std::default::Default::default();
                     containing_block.content.width = Au::from_f64_px(max_width - self.cur_width);
                     layoutbox.layout(Au(0), containing_block, containing_block, containing_block);
@@ -118,12 +118,12 @@ impl<'a> LineMaker<'a> {
                         self.new_boxes.push(layoutbox);
                     }
                 }
-                BoxType::InlineNode(_) => {
+                BoxType::InlineNode => {
                     let mut linemaker = self.clone();
                     linemaker.work_list = VecDeque::from(layoutbox.children.clone());
                     layoutbox.children.clear();
-                    layoutbox.assign_inline_padding();
-                    layoutbox.assign_inline_border_width();
+                    layoutbox.assign_padding();
+                    layoutbox.assign_border_width();
                     let start = linemaker.end;
                     linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px()
                         + layoutbox.dimensions.border.left.to_f64_px();
@@ -220,11 +220,7 @@ impl<'a> LineMaker<'a> {
         }
     }
     fn run_text_node(&mut self, layoutbox: LayoutBox<'a>, max_width: f64) {
-        let style = if let BoxType::TextNode(s, _) = layoutbox.box_type.clone() {
-            s
-        } else {
-            return;
-        };
+        let style = layoutbox.style.unwrap();
 
         let text = if let NodeType::Text(ref text) = style.node.data {
             &text[self.pending.range.clone()]
