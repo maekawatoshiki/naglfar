@@ -10,12 +10,7 @@ use cairo::Context;
 use pango::LayoutExt;
 
 use painter::{DisplayCommand, DisplayList};
-
-use std::cell::RefCell;
-
-thread_local!(pub static FONT_DESC: RefCell<pango::FontDescription> = {
-     RefCell::new(pango::FontDescription::from_string("sans-serif normal 16"))
-});
+use font::FONT_DESC;
 
 struct RenderingWindow {
     window: gtk::Window,

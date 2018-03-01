@@ -2,16 +2,20 @@ use cairo;
 use pango;
 use pangocairo;
 
-use window::FONT_DESC;
 use std::cell::RefCell;
 use pango::LayoutExt;
 
-thread_local!(pub static PANGO_LAYOUT: RefCell<pango::Layout> = {
-    let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, 0, 0).unwrap();
-    let ctx = pangocairo::functions::create_context(&cairo::Context::new(&surface)).unwrap();
-    let layout = pango::Layout::new(&ctx);
-    RefCell::new(layout)
-});
+thread_local!(
+    pub static PANGO_LAYOUT: RefCell<pango::Layout> = {
+        let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, 0, 0).unwrap();
+        let ctx = pangocairo::functions::create_context(&cairo::Context::new(&surface)).unwrap();
+        let layout = pango::Layout::new(&ctx);
+        RefCell::new(layout)
+    };
+    pub static FONT_DESC: RefCell<pango::FontDescription> = {
+        RefCell::new(pango::FontDescription::from_string("sans-serif normal 16"))
+    }
+);
 
 #[derive(Clone, Copy, Debug)]
 pub struct Font {
