@@ -122,11 +122,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
             Display::Inline => match style_node.node.data {
                 NodeType::Element(_) => BoxType::InlineNode,
                 NodeType::Text(ref s) => BoxType::TextNode(Text {
-                    font: Font {
-                        size: 0.0,
-                        weight: FontWeight::Normal,
-                        slant: FontSlant::Normal,
-                    },
+                    font: Font::new_empty(),
                     range: 0..s.len(),
                 }),
             },
@@ -181,11 +177,10 @@ impl<'a> LayoutBox<'a> {
                 linemaker.run(containing_block.content.width.to_f64_px());
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width.to_f64_px());
+
                 self.children = linemaker.new_boxes;
                 self.dimensions.content.width = containing_block.content.width;
                 self.dimensions.content.height = Au::from_f64_px(linemaker.cur_height);
-
-                println!("{}", self.dimensions.content.height.to_f64_px());
             }
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
         }
