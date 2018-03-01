@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use pango::LayoutExt;
 
 thread_local!(pub static PANGO_LAYOUT: RefCell<pango::Layout> = {
-    let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, 640, 480).unwrap();
+    let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, 0, 0).unwrap();
     let ctx = pangocairo::functions::create_context(&cairo::Context::new(&surface)).unwrap();
     let layout = pango::Layout::new(&ctx);
     RefCell::new(layout)
@@ -52,7 +52,7 @@ impl Font {
     pub fn text_width(&self, text: &str) -> f64 {
         FONT_DESC.with(|font_desc| {
             let mut font_desc = font_desc.borrow_mut();
-            font_desc.set_size(pango::units_from_double(self.size * 0.752)); // px to pt. TODO: Fix this!
+            font_desc.set_size(pango::units_from_double(px_to_pt(self.size)));
             font_desc.set_style(self.slant.to_pango_font_slant());
             font_desc.set_weight(self.weight.to_pango_font_weight());
             PANGO_LAYOUT.with(|layout| {
@@ -83,4 +83,9 @@ impl Font {
         }
         s.len()
     }
+}
+
+// TODO: any other better way?
+fn px_to_pt(f: f64) -> f64 {
+    f * 0.752
 }
