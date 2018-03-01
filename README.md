@@ -11,12 +11,12 @@ Naglfar is a toy web browser in Rust.
 # Run
 
 ## Requirements
-- latest Rust (recommend [rustup](https://www.rustup.rs/))
+- Latest Rust (recommend [rustup](https://www.rustup.rs/))
 - GTK (for gtk-rs)
 
 ## Build & Run
 
-By default, naglfar shows `example/test.html` applied `example/test.css`.
+By default, Naglfar shows `example/test.html` applied `example/test.css`.
 
 ```sh
 $ cargo run

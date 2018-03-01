@@ -22,10 +22,10 @@ use app_units::Au;
 const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() {
-    let app = App::new("naglfar")
+    let app = App::new("Naglfar")
         .version(VERSION_STR)
         .author("uint256_t")
-        .about("naglfar is a web browser implementation in Rust")
+        .about("Naglfar is a web browser implementation in Rust")
         .arg(Arg::with_name("FILE").help("Input file").index(1));
     let _app_matches = app.get_matches();
 
@@ -63,8 +63,6 @@ fn main() {
         let mut viewport: layout::Dimensions = ::std::default::Default::default();
         viewport.content.width = Au::from_f64_px(widget.get_allocated_width() as f64);
         viewport.content.height = Au::from_f64_px(widget.get_allocated_height() as f64);
-        // viewport.content.width = Au(600 + widget.get_allocated_width());
-        // viewport.content.height = Au(500 + widget.get_allocated_height());
 
         let style_tree = style::style_tree(&html_tree, &stylesheet, &style::PropertyMap::new());
         let layout_tree = layout::layout_tree(&style_tree, viewport);
