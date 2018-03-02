@@ -63,6 +63,10 @@ h3 {
   margin-bottom: 5px;
 }
 
+img {
+  display: inline;
+}
+
 span.hl {
   background: #fefe40;
   font-size: 20px;
