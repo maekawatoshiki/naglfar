@@ -1,6 +1,6 @@
 use style::{Display, StyledNode};
 use css::{Unit, Value};
-use dom::NodeType;
+use dom::{LayoutType, NodeType};
 use std::default::Default;
 use std::fmt;
 use std::ops::Range;
@@ -9,6 +9,7 @@ use inline::LineMaker;
 
 use cairo;
 use pango;
+use gdk_pixbuf;
 
 use app_units::Au;
 
@@ -41,12 +42,19 @@ pub struct EdgeSizes {
     pub bottom: Au,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum LayoutInfo {
+    Generic,
+    Image(gdk_pixbuf::Pixbuf),
+}
+
 // A node in the layout tree.
 #[derive(Clone, Debug)]
 pub struct LayoutBox<'a> {
     pub dimensions: Dimensions,
     pub z_index: i32,
     pub box_type: BoxType,
+    pub info: LayoutInfo,
     pub style: Option<&'a StyledNode<'a>>,
     pub children: Vec<LayoutBox<'a>>,
 }
@@ -69,10 +77,15 @@ pub struct Text {
 pub type Texts = Vec<Text>;
 
 impl<'a> LayoutBox<'a> {
-    pub fn new(box_type: BoxType, style: Option<&'a StyledNode<'a>>) -> LayoutBox<'a> {
+    pub fn new(
+        box_type: BoxType,
+        style: Option<&'a StyledNode<'a>>,
+        info: LayoutInfo,
+    ) -> LayoutBox<'a> {
         LayoutBox {
             box_type: box_type,
             style: style,
+            info: info,
             z_index: 0,
             dimensions: Default::default(),
             children: Vec::new(),
@@ -133,6 +146,13 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
             Display::None => panic!("Root node has display: none."),
         },
         Some(style_node),
+        match style_node.node.layout_type() {
+            LayoutType::Generic => LayoutInfo::Generic,
+            LayoutType::Image => {
+                // TODO: unwrap()
+                LayoutInfo::Image(gdk_pixbuf::Pixbuf::new_from_file("./example/image.jpg").unwrap())
+            }
+        },
     );
 
     // Create the descendant boxes.
@@ -430,8 +450,11 @@ impl<'a> LayoutBox<'a> {
                         box_type: BoxType::AnonymousBlock,
                         ..
                     }) => {}
-                    _ => self.children
-                        .push(LayoutBox::new(BoxType::AnonymousBlock, None)),
+                    _ => self.children.push(LayoutBox::new(
+                        BoxType::AnonymousBlock,
+                        None,
+                        LayoutInfo::Generic,
+                    )),
                 }
                 self.children.last_mut().unwrap()
             }

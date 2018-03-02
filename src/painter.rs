@@ -1,12 +1,15 @@
-use layout::{BoxType, LayoutBox, Rect};
+use layout::{BoxType, LayoutBox, LayoutInfo, Rect};
 use font::Font;
-use dom::NodeType;
+use dom::{ElementData, LayoutType, NodeType};
 use css::{Color, BLACK};
 use app_units::Au;
+
+use gdk_pixbuf;
 
 #[derive(Debug)]
 pub enum DisplayCommand {
     SolidColor(Color, Rect),
+    Image(gdk_pixbuf::Pixbuf, Rect),
     Text(String, Rect, Color, Font),
 }
 
@@ -37,7 +40,9 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
             &child,
         );
     }
+
     render_text(list, x, y, layout_box);
+    render_image(list, x, y, layout_box);
 }
 
 fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
@@ -53,6 +58,29 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
             get_color(layout_box, "color").unwrap_or(BLACK),
             text_info.font,
         ));
+    }
+}
+
+fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+    match layout_box.box_type {
+        BoxType::InlineNode => {
+            if let NodeType::Element(ElementData {
+                ref layout_type, ..
+            }) = layout_box.style.unwrap().node.data
+            {
+                if layout_type == &LayoutType::Image {
+                    list.push(DisplayCommand::Image(
+                        if let &LayoutInfo::Image(ref pixbuf) = &layout_box.info {
+                            pixbuf.clone()
+                        } else {
+                            panic!()
+                        },
+                        layout_box.dimensions.content.add_parent_coordinate(x, y),
+                    ))
+                }
+            }
+        }
+        _ => {}
     }
 }
 

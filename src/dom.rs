@@ -19,8 +19,15 @@ pub enum NodeType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum LayoutType {
+    Image,
+    Generic,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ElementData {
     pub tag_name: String,
+    pub layout_type: LayoutType,
     pub attrs: AttrMap,
 }
 
@@ -36,6 +43,10 @@ impl Node {
         Node {
             children: children,
             data: NodeType::Element(ElementData {
+                layout_type: match name.to_lowercase().as_str() {
+                    "img" => LayoutType::Image,
+                    _ => LayoutType::Generic,
+                },
                 tag_name: name,
                 attrs: attrs,
             }),
@@ -53,6 +64,15 @@ impl Node {
                 false
             }
             NodeType::Text(_) => true,
+        }
+    }
+
+    pub fn layout_type(&self) -> LayoutType {
+        match self.data {
+            NodeType::Element(ElementData {
+                ref layout_type, ..
+            }) => layout_type.clone(),
+            NodeType::Text(_) => LayoutType::Generic,
         }
     }
 
@@ -133,6 +153,7 @@ impl fmt::Display for NodeType {
             &NodeType::Element(ElementData {
                 ref tag_name,
                 ref attrs,
+                ..
             }) => {
                 try!(write!(f, "<{}", tag_name));
                 for (name, val) in attrs.iter() {

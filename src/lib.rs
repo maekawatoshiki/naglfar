@@ -11,6 +11,7 @@ pub mod window;
 extern crate app_units;
 extern crate cairo;
 extern crate gdk;
+extern crate gdk_pixbuf;
 extern crate gtk;
 extern crate pango;
 extern crate pangocairo;

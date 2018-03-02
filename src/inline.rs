@@ -3,7 +3,7 @@ use dom::NodeType;
 use std::ops::Range;
 use font::Font;
 use std::collections::VecDeque;
-use layout::{BoxType, Dimensions, LayoutBox, DEFAULT_FONT_SIZE};
+use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, DEFAULT_FONT_SIZE};
 
 use app_units::Au;
 
@@ -119,48 +119,71 @@ impl<'a> LineMaker<'a> {
                     }
                 }
                 BoxType::InlineNode => {
-                    let mut linemaker = self.clone();
-                    linemaker.work_list = VecDeque::from(layoutbox.children.clone());
-                    layoutbox.children.clear();
-                    layoutbox.assign_padding();
-                    layoutbox.assign_border_width();
-                    let start = linemaker.end;
-                    linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px()
-                        + layoutbox.dimensions.border.left.to_f64_px();
-                    linemaker.run(max_width);
-                    linemaker.cur_width += layoutbox.dimensions.padding.right.to_f64_px()
-                        + layoutbox.dimensions.border.right.to_f64_px();
-                    let end = linemaker.end;
-                    let new_boxes_len = linemaker.new_boxes[start..end].len();
-                    for (i, new_box) in &mut linemaker.new_boxes[start..end].iter_mut().enumerate()
-                    {
-                        let mut layoutbox = layoutbox.clone();
-                        layoutbox.children.push(new_box.clone());
-                        if new_boxes_len > 1 {
-                            // TODO: Makes no sense!
-                            if i == 0 {
-                                layoutbox.dimensions.padding.right = Au(0);
-                                layoutbox.dimensions.border.right = Au(0);
-                            } else if i == new_boxes_len - 1 {
-                                layoutbox.dimensions.padding.left = Au(0);
-                                layoutbox.dimensions.border.left = Au(0);
-                            } else {
-                                layoutbox.dimensions.padding.left = Au(0);
-                                layoutbox.dimensions.padding.right = Au(0);
-                                layoutbox.dimensions.border.left = Au(0);
-                                layoutbox.dimensions.border.right = Au(0);
+                    if layoutbox.style.unwrap().node.contains_text() {
+                        let mut linemaker = self.clone();
+                        linemaker.work_list = VecDeque::from(layoutbox.children.clone());
+                        layoutbox.children.clear();
+                        layoutbox.assign_padding();
+                        layoutbox.assign_border_width();
+                        let start = linemaker.end;
+                        linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px()
+                            + layoutbox.dimensions.border.left.to_f64_px();
+                        linemaker.run(max_width);
+                        linemaker.cur_width += layoutbox.dimensions.padding.right.to_f64_px()
+                            + layoutbox.dimensions.border.right.to_f64_px();
+                        let end = linemaker.end;
+                        let new_boxes_len = linemaker.new_boxes[start..end].len();
+                        for (i, new_box) in
+                            &mut linemaker.new_boxes[start..end].iter_mut().enumerate()
+                        {
+                            let mut layoutbox = layoutbox.clone();
+                            layoutbox.children.push(new_box.clone());
+                            if new_boxes_len > 1 {
+                                // TODO: Makes no sense!
+                                if i == 0 {
+                                    layoutbox.dimensions.padding.right = Au(0);
+                                    layoutbox.dimensions.border.right = Au(0);
+                                } else if i == new_boxes_len - 1 {
+                                    layoutbox.dimensions.padding.left = Au(0);
+                                    layoutbox.dimensions.border.left = Au(0);
+                                } else {
+                                    layoutbox.dimensions.padding.left = Au(0);
+                                    layoutbox.dimensions.padding.right = Au(0);
+                                    layoutbox.dimensions.border.left = Au(0);
+                                    layoutbox.dimensions.border.right = Au(0);
+                                }
                             }
+                            layoutbox.dimensions.content.width = new_box.dimensions.content.width;
+                            layoutbox.dimensions.content.height = new_box.dimensions.content.height;
+                            *new_box = layoutbox;
                         }
-                        layoutbox.dimensions.content.width = new_box.dimensions.content.width;
-                        layoutbox.dimensions.content.height = new_box.dimensions.content.height;
-                        *new_box = layoutbox;
+                        self.new_boxes = linemaker.new_boxes;
+                        self.lines = linemaker.lines;
+                        self.start = linemaker.start;
+                        self.end = linemaker.end;
+                        self.cur_width = linemaker.cur_width;
+                        self.cur_metrics = linemaker.cur_metrics;
+                    } else {
+                        // Replaced Inline Element (<img>)
+                        let mut layoutbox = layoutbox;
+                        let (img_w, img_h) = if let &LayoutInfo::Image(ref pixbuf) = &layoutbox.info
+                        {
+                            (pixbuf.get_width(), pixbuf.get_height())
+                        } else {
+                            panic!()
+                        };
+                        layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
+                        layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
+                        self.new_boxes.push(layoutbox);
+                        // self.lines = linemaker.lines;
+                        // self.start = linemaker.start;
+                        self.end += 1;
+                        self.cur_width = img_w as f64;
+                        self.cur_metrics.above_baseline =
+                            vec![self.cur_metrics.above_baseline, img_h as f64]
+                                .into_iter()
+                                .fold(0.0, |x, y| x.max(y));
                     }
-                    self.new_boxes = linemaker.new_boxes;
-                    self.lines = linemaker.lines;
-                    self.start = linemaker.start;
-                    self.end = linemaker.end;
-                    self.cur_width = linemaker.cur_width;
-                    self.cur_metrics = linemaker.cur_metrics;
                 }
                 _ => {}
             }

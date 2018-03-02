@@ -1,10 +1,13 @@
 extern crate cairo;
+extern crate gdk_pixbuf;
 extern crate gtk;
 extern crate pango;
 extern crate pangocairo;
 
 use gtk::traits::*;
 use gtk::Inhibit;
+
+use gdk::ContextExt;
 
 use cairo::Context;
 use pango::LayoutExt;
@@ -83,6 +86,10 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
                 color.a as f64 / 255.0,
             );
             ctx.fill();
+        }
+        &DisplayCommand::Image(ref pixbuf, rect) => {
+            ctx.set_source_pixbuf(&pixbuf, rect.x.to_f64_px(), rect.y.to_f64_px());
+            ctx.paint();
         }
         &DisplayCommand::Text(ref text, rect, ref color, ref font) => {
             FONT_DESC.with(|font_desc| {
