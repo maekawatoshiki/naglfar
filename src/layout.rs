@@ -4,6 +4,7 @@ use dom::{LayoutType, NodeType};
 use std::default::Default;
 use std::fmt;
 use std::ops::Range;
+use std::collections::HashMap;
 use font::{Font, FontSlant, FontWeight};
 use inline::LineMaker;
 
@@ -126,6 +127,14 @@ pub fn layout_tree<'a>(
     root_box
 }
 
+use std::cell::RefCell;
+
+thread_local!(
+    pub static IMG_CACHE: RefCell<HashMap<String, gdk_pixbuf::Pixbuf>> = {
+        RefCell::new(HashMap::new())
+    };
+);
+
 /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
 fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
     // Create the root box.
@@ -150,7 +159,14 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
             LayoutType::Generic => LayoutInfo::Generic,
             LayoutType::Image => {
                 // TODO: unwrap()
-                LayoutInfo::Image(gdk_pixbuf::Pixbuf::new_from_file("./example/image.jpg").unwrap())
+                LayoutInfo::Image(IMG_CACHE.with(|c| {
+                    let mut c = c.borrow_mut();
+                    c.entry("./example/image.jpg".to_string())
+                        .or_insert_with(|| {
+                            gdk_pixbuf::Pixbuf::new_from_file("./example/image.jpg").unwrap()
+                        })
+                        .clone()
+                }))
             }
         },
     );
