@@ -90,10 +90,10 @@ pub const BLUE: Color = Color {
 impl Copy for Color {}
 
 impl Value {
-    pub fn to_px(&self) -> f64 {
+    pub fn to_px(&self) -> Option<f64> {
         match *self {
-            Value::Length(f, Unit::Px) => f,
-            _ => 0.0,
+            Value::Length(f, Unit::Px) | Value::Num(f) => Some(f),
+            _ => None,
         }
     }
     pub fn to_num(&self) -> f64 {
@@ -155,6 +155,14 @@ pub fn parse_attr_style(source: String) -> Vec<Declaration> {
         decls.push(parser.parse_declaration());
     }
     decls
+}
+
+pub fn parse_value(source: String) -> Value {
+    let mut parser = Parser {
+        pos: 0,
+        input: source,
+    };
+    parser.parse_value()
 }
 
 fn valid_ident_char(c: char) -> bool {
@@ -277,7 +285,7 @@ impl Parser {
 
     fn parse_length(&mut self) -> Value {
         let num = self.parse_float();
-        if self.next_char().is_alphabetic() {
+        if !self.eof() && self.next_char().is_alphabetic() {
             Value::Length(num, self.parse_unit())
         } else {
             Value::Num(num)

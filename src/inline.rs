@@ -275,7 +275,8 @@ impl<'a> LineMaker<'a> {
         let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
         let font_size = style
             .lookup("font-size", "font-size", &default_font_size)
-            .to_px();
+            .to_px()
+            .unwrap();
 
         let line_height = font_size * 1.2; // TODO: magic number '1.2'
 

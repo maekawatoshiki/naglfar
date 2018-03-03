@@ -160,9 +160,24 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
             LayoutType::Image => LayoutInfo::Image(IMG_CACHE.with(|c| {
                 let mut c = c.borrow_mut();
                 let image_url = style_node.node.image_url().unwrap();
+                let specified_width_px = style_node
+                    .node
+                    .attr_width()
+                    .and_then(|w| Some(w.to_px().unwrap_or(-1.0) as i32))
+                    .unwrap_or(-1);
+                let specified_height_px = style_node
+                    .node
+                    .attr_height()
+                    .and_then(|h| Some(h.to_px().unwrap_or(-1.0) as i32))
+                    .unwrap_or(-1);
                 c.entry(image_url.clone())
                     .or_insert_with(|| {
-                        gdk_pixbuf::Pixbuf::new_from_file(image_url.as_str()).unwrap()
+                        gdk_pixbuf::Pixbuf::new_from_file_at_scale(
+                            image_url.as_str(),
+                            specified_width_px,
+                            specified_height_px,
+                            specified_width_px == -1 || specified_height_px == -1,
+                        ).unwrap()
                     })
                     .clone()
             })),
@@ -272,7 +287,7 @@ impl<'a> LayoutBox<'a> {
             &padding_right,
             &width,
         ].iter()
-            .map(|v| v.to_px()));
+            .map(|v| v.to_px().unwrap_or(0.0)));
 
         // If width is not auto and the total is wider than the container, treat auto margins as 0.
         if width != auto && total > containing_block.content.width.to_f64_px() {
@@ -292,8 +307,10 @@ impl<'a> LayoutBox<'a> {
         match (width == auto, margin_left == auto, margin_right == auto) {
             // If the values are overconstrained, calculate margin_right.
             (false, false, false) => {
-                margin_right =
-                    Value::Length(margin_right.to_px() + underflow.to_f64_px(), Unit::Px);
+                margin_right = Value::Length(
+                    margin_right.to_px().unwrap() + underflow.to_f64_px(),
+                    Unit::Px,
+                );
             }
 
             // If exactly one size is auto, its used value follows from the equality.
@@ -319,8 +336,10 @@ impl<'a> LayoutBox<'a> {
                 } else {
                     // Width can't be negative. Adjust the right margin instead.
                     width = Value::Length(0.0, Unit::Px);
-                    margin_right =
-                        Value::Length(margin_right.to_px() + underflow.to_f64_px(), Unit::Px);
+                    margin_right = Value::Length(
+                        margin_right.to_px().unwrap() + underflow.to_f64_px(),
+                        Unit::Px,
+                    );
                 }
             }
 
@@ -332,16 +351,30 @@ impl<'a> LayoutBox<'a> {
         }
 
         let d = &mut self.dimensions;
-        d.content.width = Au::from_f64_px(width.to_px());
+        if let Some(width) = width.to_px() {
+            d.content.width = Au::from_f64_px(width)
+        }
 
-        d.padding.left = Au::from_f64_px(padding_left.to_px());
-        d.padding.right = Au::from_f64_px(padding_right.to_px());
+        if let Some(padding_left) = padding_left.to_px() {
+            d.padding.left = Au::from_f64_px(padding_left)
+        }
+        if let Some(padding_right) = padding_right.to_px() {
+            d.padding.right = Au::from_f64_px(padding_right)
+        }
 
-        d.border.left = Au::from_f64_px(border_left.to_px());
-        d.border.right = Au::from_f64_px(border_right.to_px());
+        if let Some(border_left) = border_left.to_px() {
+            d.border.left = Au::from_f64_px(border_left)
+        }
+        if let Some(border_right) = border_right.to_px() {
+            d.border.right = Au::from_f64_px(border_right)
+        }
 
-        d.margin.left = Au::from_f64_px(margin_left.to_px());
-        d.margin.right = Au::from_f64_px(margin_right.to_px());
+        if let Some(margin_left) = margin_left.to_px() {
+            d.margin.left = Au::from_f64_px(margin_left)
+        }
+        if let Some(margin_right) = margin_right.to_px() {
+            d.margin.right = Au::from_f64_px(margin_right)
+        }
     }
 
     /// Finish calculating the block's edge sizes, and position it within its containing block.
@@ -355,8 +388,14 @@ impl<'a> LayoutBox<'a> {
         let zero = Value::Length(0.0, Unit::Px);
 
         // If margin-top or margin-bottom is `auto`, the used value is zero.
-        d.margin.top = Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px());
-        d.margin.bottom = Au::from_f64_px(style.lookup("margin-bottom", "margin", &zero).to_px());
+        d.margin.top =
+            Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px().unwrap());
+        d.margin.bottom = Au::from_f64_px(
+            style
+                .lookup("margin-bottom", "margin", &zero)
+                .to_px()
+                .unwrap(),
+        );
 
         // Margin collapse
         // TODO: Is this implementation correct?
@@ -369,17 +408,28 @@ impl<'a> LayoutBox<'a> {
         d.border.top = Au::from_f64_px(
             style
                 .lookup("border-top-width", "border-width", &zero)
-                .to_px(),
+                .to_px()
+                .unwrap(),
         );
         d.border.bottom = Au::from_f64_px(
             style
                 .lookup("border-bottom-width", "border-width", &zero)
-                .to_px(),
+                .to_px()
+                .unwrap(),
         );
 
-        d.padding.top = Au::from_f64_px(style.lookup("padding-top", "padding", &zero).to_px());
-        d.padding.bottom =
-            Au::from_f64_px(style.lookup("padding-bottom", "padding", &zero).to_px());
+        d.padding.top = Au::from_f64_px(
+            style
+                .lookup("padding-top", "padding", &zero)
+                .to_px()
+                .unwrap(),
+        );
+        d.padding.bottom = Au::from_f64_px(
+            style
+                .lookup("padding-bottom", "padding", &zero)
+                .to_px()
+                .unwrap(),
+        );
 
         self.z_index = style.lookup("z-index", "z-index", &zero).to_num() as i32;
 
@@ -451,7 +501,7 @@ impl<'a> LayoutBox<'a> {
             panic!("calculating shrink-to-fit width is unsupported.");
         }
 
-        self.dimensions.content.width = Au::from_f64_px(width.to_px());
+        self.dimensions.content.width = Au::from_f64_px(width.to_px().unwrap());
     }
 
     /// Where a new inline child should go.
@@ -483,12 +533,31 @@ impl<'a> LayoutBox<'a> {
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        d.padding.left = Au::from_f64_px(style.lookup("padding-left", "padding", &zero).to_px());
-        d.padding.right = Au::from_f64_px(style.lookup("padding-right", "padding", &zero).to_px());
+        d.padding.left = Au::from_f64_px(
+            style
+                .lookup("padding-left", "padding", &zero)
+                .to_px()
+                .unwrap(),
+        );
+        d.padding.right = Au::from_f64_px(
+            style
+                .lookup("padding-right", "padding", &zero)
+                .to_px()
+                .unwrap(),
+        );
 
-        d.padding.top = Au::from_f64_px(style.lookup("padding-top", "padding", &zero).to_px());
-        d.padding.bottom =
-            Au::from_f64_px(style.lookup("padding-bottom", "padding", &zero).to_px());
+        d.padding.top = Au::from_f64_px(
+            style
+                .lookup("padding-top", "padding", &zero)
+                .to_px()
+                .unwrap(),
+        );
+        d.padding.bottom = Au::from_f64_px(
+            style
+                .lookup("padding-bottom", "padding", &zero)
+                .to_px()
+                .unwrap(),
+        );
     }
 
     pub fn assign_margin(&mut self) {
@@ -498,11 +567,27 @@ impl<'a> LayoutBox<'a> {
         // margin has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        d.margin.left = Au::from_f64_px(style.lookup("margin-left", "margin", &zero).to_px());
-        d.margin.right = Au::from_f64_px(style.lookup("margin-right", "margin", &zero).to_px());
+        d.margin.left = Au::from_f64_px(
+            style
+                .lookup("margin-left", "margin", &zero)
+                .to_px()
+                .unwrap(),
+        );
+        d.margin.right = Au::from_f64_px(
+            style
+                .lookup("margin-right", "margin", &zero)
+                .to_px()
+                .unwrap(),
+        );
 
-        d.margin.top = Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px());
-        d.margin.bottom = Au::from_f64_px(style.lookup("margin-bottom", "margin", &zero).to_px());
+        d.margin.top =
+            Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px().unwrap());
+        d.margin.bottom = Au::from_f64_px(
+            style
+                .lookup("margin-bottom", "margin", &zero)
+                .to_px()
+                .unwrap(),
+        );
     }
 
     pub fn assign_border_width(&mut self) {
@@ -515,23 +600,27 @@ impl<'a> LayoutBox<'a> {
         d.border.left = Au::from_f64_px(
             style
                 .lookup("border-left-width", "border-width", &zero)
-                .to_px(),
+                .to_px()
+                .unwrap(),
         );
         d.border.right = Au::from_f64_px(
             style
                 .lookup("border-width-right", "border-width", &zero)
-                .to_px(),
+                .to_px()
+                .unwrap(),
         );
 
         d.border.top = Au::from_f64_px(
             style
                 .lookup("border-width-top", "border-width", &zero)
-                .to_px(),
+                .to_px()
+                .unwrap(),
         );
         d.border.bottom = Au::from_f64_px(
             style
                 .lookup("border-width-bottom", "border-width", &zero)
-                .to_px(),
+                .to_px()
+                .unwrap(),
         );
     }
 }

@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::{fmt, iter};
+use css;
 
 pub type AttrMap = HashMap<String, String>;
 
@@ -76,13 +77,6 @@ impl Node {
         }
     }
 
-    pub fn image_url(&self) -> Option<&String> {
-        match self.data {
-            NodeType::Element(ElementData { ref attrs, .. }) => attrs.get("src"),
-            NodeType::Text(_) => None,
-        }
-    }
-
     pub fn is_inline(&self) -> bool {
         match self.data {
             NodeType::Element(ElementData { ref tag_name, .. }) => match tag_name.as_str() {
@@ -115,6 +109,30 @@ impl Node {
                     .and_then(|filename| Some(Path::new(filename).to_path_buf())),
                 &NodeType::Text(_) => None,
             })
+    }
+
+    pub fn image_url(&self) -> Option<&String> {
+        match self.data {
+            NodeType::Element(ElementData { ref attrs, .. }) => attrs.get("src"),
+            NodeType::Text(_) => None,
+        }
+    }
+
+    pub fn attr_width(&self) -> Option<css::Value> {
+        match self.data {
+            NodeType::Element(ElementData { ref attrs, .. }) => attrs
+                .get("width")
+                .and_then(|width| Some(css::parse_value(width.clone()))),
+            NodeType::Text(_) => None,
+        }
+    }
+    pub fn attr_height(&self) -> Option<css::Value> {
+        match self.data {
+            NodeType::Element(ElementData { ref attrs, .. }) => attrs
+                .get("height")
+                .and_then(|width| Some(css::parse_value(width.clone()))),
+            NodeType::Text(_) => None,
+        }
     }
 }
 
