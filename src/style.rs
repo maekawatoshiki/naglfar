@@ -184,9 +184,10 @@ fn matches_simple_selector(elem: &ElementData, selector: &SimpleSelector) -> boo
 fn test1() {
     use html;
     use css;
+    use std::path::Path;
 
     let src = "<html><head></head><body><div id=\"x\">test</div><p>paragrapgh</p><span>aa</span>\n  space</body></html>";
-    let dom_node = html::parse(src.to_string());
+    let dom_node = html::parse(src.to_string(), Path::new("a.html").to_path_buf());
 
     let src = "div { width: 100px; height: 50px; color: #ffffff; background-color: #003300; }";
     let stylesheet = css::parse(src.to_string());

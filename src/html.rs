@@ -184,8 +184,9 @@ fn url_conv(attr: (String, String)) -> (String, String) {
 
 #[test]
 fn test1() {
+    use std::path::Path;
     let src = "<html><head></head><body><div id=\"x\">test</div><p>paragrapgh</p><span>aa</span>\n  space</body></html>";
-    let dom_node = parse(src.to_string());
+    let dom_node = parse(src.to_string(), Path::new("a.html").to_path_buf());
     assert_eq!(
         dom_node,
         dom::Node::elem(
