@@ -40,7 +40,7 @@ fn main() {
         .read_to_string(&mut html_source)
         .ok()
         .expect("cannot read file");
-    let html_tree = html::parse(html_source);
+    let html_tree = html::parse(html_source, src_path.join("test.html"));
     print!("{}", html_tree);
 
     println!("CSS:");

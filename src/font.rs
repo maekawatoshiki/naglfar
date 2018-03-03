@@ -71,6 +71,10 @@ impl Font {
     pub fn compute_max_chars(&self, s: &str, max_width: f64) -> usize {
         // TODO: Inefficient!
         // TODO: This code doesn't allow other than alphabets.
+        if max_width < 0f64 {
+            return 0;
+        }
+
         let mut buf = "".to_string();
         let mut last_splittable_pos = s.len();
         for (i, c) in s.chars().enumerate() {

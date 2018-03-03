@@ -1,7 +1,17 @@
 use dom;
 use std::collections::HashMap;
 
-pub fn parse(source: String) -> dom::Node {
+use std::cell::RefCell;
+use std::path::PathBuf;
+
+thread_local!(
+    pub static CUR_DIR: RefCell<PathBuf> = {
+        RefCell::new(PathBuf::new())
+    };
+);
+
+pub fn parse(source: String, file_path: PathBuf) -> dom::Node {
+    CUR_DIR.with(|cur_dir| *cur_dir.borrow_mut() = file_path.parent().unwrap().to_path_buf());
     let mut nodes = Parser {
         pos: 0,
         input: source,
@@ -90,7 +100,7 @@ impl Parser {
             if self.next_char() == '>' {
                 break;
             }
-            let (name, value) = self.parse_attr();
+            let (name, value) = url_conv(self.parse_attr());
             attributes.insert(name, value);
         }
         attributes
@@ -158,6 +168,17 @@ impl Parser {
 
     fn eof(&self) -> bool {
         self.pos >= self.input.len()
+    }
+}
+
+fn url_conv(attr: (String, String)) -> (String, String) {
+    if attr.0.to_lowercase().as_str() == "src" {
+        (
+            attr.0.clone(),
+            CUR_DIR.with(|dir| dir.borrow().join(attr.1).to_str().unwrap().to_string()),
+        )
+    } else {
+        (attr.0, attr.1)
     }
 }
 

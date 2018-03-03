@@ -157,17 +157,15 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
         Some(style_node),
         match style_node.node.layout_type() {
             LayoutType::Generic => LayoutInfo::Generic,
-            LayoutType::Image => {
-                // TODO: unwrap()
-                LayoutInfo::Image(IMG_CACHE.with(|c| {
-                    let mut c = c.borrow_mut();
-                    c.entry("./example/image.jpg".to_string())
-                        .or_insert_with(|| {
-                            gdk_pixbuf::Pixbuf::new_from_file("./example/image.jpg").unwrap()
-                        })
-                        .clone()
-                }))
-            }
+            LayoutType::Image => LayoutInfo::Image(IMG_CACHE.with(|c| {
+                let mut c = c.borrow_mut();
+                let image_url = style_node.node.image_url().unwrap();
+                c.entry(image_url.clone())
+                    .or_insert_with(|| {
+                        gdk_pixbuf::Pixbuf::new_from_file(image_url.as_str()).unwrap()
+                    })
+                    .clone()
+            })),
         },
     );
 

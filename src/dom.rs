@@ -76,6 +76,13 @@ impl Node {
         }
     }
 
+    pub fn image_url(&self) -> Option<&String> {
+        match self.data {
+            NodeType::Element(ElementData { ref attrs, .. }) => attrs.get("src"),
+            NodeType::Text(_) => None,
+        }
+    }
+
     pub fn is_inline(&self) -> bool {
         match self.data {
             NodeType::Element(ElementData { ref tag_name, .. }) => match tag_name.as_str() {

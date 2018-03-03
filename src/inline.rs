@@ -168,21 +168,42 @@ impl<'a> LineMaker<'a> {
                         let mut layoutbox = layoutbox;
                         let (img_w, img_h) = if let &LayoutInfo::Image(ref pixbuf) = &layoutbox.info
                         {
-                            (pixbuf.get_width(), pixbuf.get_height())
+                            (pixbuf.get_width() as f64, pixbuf.get_height() as f64)
                         } else {
                             panic!()
                         };
-                        layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
-                        layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
-                        self.new_boxes.push(layoutbox);
-                        // self.lines = linemaker.lines;
-                        // self.start = linemaker.start;
-                        self.end += 1;
-                        self.cur_width = img_w as f64;
-                        self.cur_metrics.above_baseline =
-                            vec![self.cur_metrics.above_baseline, img_h as f64]
-                                .into_iter()
-                                .fold(0.0, |x, y| x.max(y));
+                        if self.cur_width + img_w > max_width {
+                            self.lines.push(Line {
+                                range: self.start..self.end,
+                                metrics: self.cur_metrics,
+                                width: self.new_boxes[self.start..self.end].iter().fold(
+                                    0.0,
+                                    |acc, lbox| {
+                                        acc + lbox.dimensions.margin_box().width.to_f64_px()
+                                    },
+                                ),
+                            });
+                            self.cur_width = img_w;
+                            self.cur_metrics.above_baseline =
+                                vec![self.cur_metrics.above_baseline, img_h as f64]
+                                    .into_iter()
+                                    .fold(0.0, |x, y| x.max(y));
+                            layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
+                            layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
+                            self.new_boxes.push(layoutbox);
+                            self.start = self.end;
+                            self.end += 1;
+                        } else {
+                            self.end += 1;
+                            self.cur_width += img_w;
+                            self.cur_metrics.above_baseline =
+                                vec![self.cur_metrics.above_baseline, img_h as f64]
+                                    .into_iter()
+                                    .fold(0.0, |x, y| x.max(y));
+                            layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
+                            layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
+                            self.new_boxes.push(layoutbox);
+                        }
                     }
                 }
                 _ => {}
