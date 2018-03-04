@@ -160,14 +160,16 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
             LayoutType::Image => LayoutInfo::Image(IMG_CACHE.with(|c| {
                 let mut c = c.borrow_mut();
                 let image_url = style_node.node.image_url().unwrap();
+                // If 'width' is specified, use its value. Otherwise, -1.
                 let specified_width_px = style_node
                     .node
-                    .attr_width()
+                    .attr("width")
                     .and_then(|w| Some(w.to_px().unwrap_or(-1.0) as i32))
                     .unwrap_or(-1);
+                // The same as above
                 let specified_height_px = style_node
                     .node
-                    .attr_height()
+                    .attr("height")
                     .and_then(|h| Some(h.to_px().unwrap_or(-1.0) as i32))
                     .unwrap_or(-1);
                 c.entry(image_url.clone())
@@ -176,6 +178,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
                             image_url.as_str(),
                             specified_width_px,
                             specified_height_px,
+                            // Preserve scale if at least one of width and height is -1.
                             specified_width_px == -1 || specified_height_px == -1,
                         ).unwrap()
                     })

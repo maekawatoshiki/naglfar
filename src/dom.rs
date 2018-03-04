@@ -118,19 +118,11 @@ impl Node {
         }
     }
 
-    pub fn attr_width(&self) -> Option<css::Value> {
+    pub fn attr(&self, name: &str) -> Option<css::Value> {
         match self.data {
             NodeType::Element(ElementData { ref attrs, .. }) => attrs
-                .get("width")
-                .and_then(|width| Some(css::parse_value(width.clone()))),
-            NodeType::Text(_) => None,
-        }
-    }
-    pub fn attr_height(&self) -> Option<css::Value> {
-        match self.data {
-            NodeType::Element(ElementData { ref attrs, .. }) => attrs
-                .get("height")
-                .and_then(|width| Some(css::parse_value(width.clone()))),
+                .get(name)
+                .and_then(|val| Some(css::parse_value(val.clone()))),
             NodeType::Text(_) => None,
         }
     }

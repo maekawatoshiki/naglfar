@@ -69,148 +69,23 @@ impl<'a> LineMaker<'a> {
     }
 
     pub fn run(&mut self, max_width: f64) {
-        while let Some(mut layoutbox) = self.work_list.pop_front() {
+        while let Some(layoutbox) = self.work_list.pop_front() {
             if let BoxType::TextNode(ref text_info) = layoutbox.box_type {
                 self.pending.range = text_info.range.clone()
             }
 
             match layoutbox.box_type {
                 BoxType::TextNode(_) => while self.pending.range.len() != 0 {
-                    self.run_text_node(layoutbox.clone(), max_width)
+                    self.run_on_text_node(layoutbox.clone(), max_width)
                 },
-                BoxType::InlineBlockNode => {
-                    let mut containing_block: Dimensions = ::std::default::Default::default();
-                    containing_block.content.width = Au::from_f64_px(max_width - self.cur_width);
-                    layoutbox.layout(Au(0), containing_block, containing_block, containing_block);
-
-                    let box_width = layoutbox.dimensions.margin_box().width.to_f64_px();
-
-                    if self.cur_width + box_width > max_width {
-                        self.lines.push(Line {
-                            range: self.start..self.end,
-                            metrics: self.cur_metrics,
-                            width: self.new_boxes[self.start..self.end]
-                                .iter()
-                                .fold(0.0, |acc, lbox| {
-                                    acc + lbox.dimensions.margin_box().width.to_f64_px()
-                                }),
-                        });
-
-                        self.cur_width = box_width;
-                        self.cur_metrics.above_baseline = vec![
-                            self.cur_metrics.above_baseline,
-                            layoutbox.dimensions.margin_box().height.to_f64_px(),
-                        ].into_iter()
-                            .fold(0.0, |x, y| x.max(y));
-
-                        self.new_boxes.push(layoutbox);
-
-                        self.start = self.end;
-                        self.end += 1;
-                    } else {
-                        self.end += 1;
-                        self.cur_width += box_width;
-                        self.cur_metrics.above_baseline = vec![
-                            self.cur_metrics.above_baseline,
-                            layoutbox.dimensions.margin_box().height.to_f64_px(),
-                        ].into_iter()
-                            .fold(0.0, |x, y| x.max(y));
-                        self.new_boxes.push(layoutbox);
-                    }
-                }
-                BoxType::InlineNode => {
-                    if layoutbox.style.unwrap().node.contains_text() {
-                        let mut linemaker = self.clone();
-                        linemaker.work_list = VecDeque::from(layoutbox.children.clone());
-                        layoutbox.children.clear();
-                        layoutbox.assign_padding();
-                        layoutbox.assign_border_width();
-                        let start = linemaker.end;
-                        linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px()
-                            + layoutbox.dimensions.border.left.to_f64_px();
-                        linemaker.run(max_width);
-                        linemaker.cur_width += layoutbox.dimensions.padding.right.to_f64_px()
-                            + layoutbox.dimensions.border.right.to_f64_px();
-                        let end = linemaker.end;
-                        let new_boxes_len = linemaker.new_boxes[start..end].len();
-                        for (i, new_box) in
-                            &mut linemaker.new_boxes[start..end].iter_mut().enumerate()
-                        {
-                            let mut layoutbox = layoutbox.clone();
-                            layoutbox.children.push(new_box.clone());
-                            if new_boxes_len > 1 {
-                                // TODO: Makes no sense!
-                                if i == 0 {
-                                    layoutbox.dimensions.padding.right = Au(0);
-                                    layoutbox.dimensions.border.right = Au(0);
-                                } else if i == new_boxes_len - 1 {
-                                    layoutbox.dimensions.padding.left = Au(0);
-                                    layoutbox.dimensions.border.left = Au(0);
-                                } else {
-                                    layoutbox.dimensions.padding.left = Au(0);
-                                    layoutbox.dimensions.padding.right = Au(0);
-                                    layoutbox.dimensions.border.left = Au(0);
-                                    layoutbox.dimensions.border.right = Au(0);
-                                }
-                            }
-                            layoutbox.dimensions.content.width = new_box.dimensions.content.width;
-                            layoutbox.dimensions.content.height = new_box.dimensions.content.height;
-                            *new_box = layoutbox;
-                        }
-                        self.new_boxes = linemaker.new_boxes;
-                        self.lines = linemaker.lines;
-                        self.start = linemaker.start;
-                        self.end = linemaker.end;
-                        self.cur_width = linemaker.cur_width;
-                        self.cur_metrics = linemaker.cur_metrics;
-                    } else {
-                        // Replaced Inline Element (<img>)
-                        let mut layoutbox = layoutbox;
-                        let (img_w, img_h) = if let &LayoutInfo::Image(ref pixbuf) = &layoutbox.info
-                        {
-                            (pixbuf.get_width() as f64, pixbuf.get_height() as f64)
-                        } else {
-                            panic!()
-                        };
-                        if self.cur_width + img_w > max_width {
-                            self.lines.push(Line {
-                                range: self.start..self.end,
-                                metrics: self.cur_metrics,
-                                width: self.new_boxes[self.start..self.end].iter().fold(
-                                    0.0,
-                                    |acc, lbox| {
-                                        acc + lbox.dimensions.margin_box().width.to_f64_px()
-                                    },
-                                ),
-                            });
-                            self.cur_width = img_w;
-                            self.cur_metrics.above_baseline =
-                                vec![self.cur_metrics.above_baseline, img_h as f64]
-                                    .into_iter()
-                                    .fold(0.0, |x, y| x.max(y));
-                            layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
-                            layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
-                            self.new_boxes.push(layoutbox);
-                            self.start = self.end;
-                            self.end += 1;
-                        } else {
-                            self.end += 1;
-                            self.cur_width += img_w;
-                            self.cur_metrics.above_baseline =
-                                vec![self.cur_metrics.above_baseline, img_h as f64]
-                                    .into_iter()
-                                    .fold(0.0, |x, y| x.max(y));
-                            layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
-                            layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
-                            self.new_boxes.push(layoutbox);
-                        }
-                    }
-                }
-                _ => {}
+                BoxType::InlineBlockNode => self.run_on_inline_block_node(layoutbox, max_width),
+                BoxType::InlineNode => self.run_on_inline_node(layoutbox, max_width),
+                _ => unimplemented!(),
             }
         }
     }
-    pub fn end_of_lines(&mut self) {
+
+    pub fn new_line(&mut self) {
         // Push remainings to `lines`.
         self.lines.push(Line {
             range: self.start..self.end,
@@ -223,6 +98,10 @@ impl<'a> LineMaker<'a> {
         });
         self.start = self.end;
     }
+    pub fn end_of_lines(&mut self) {
+        self.new_line()
+    }
+
     pub fn assign_position(&mut self, max_width: f64) {
         self.cur_height = 0.0;
 
@@ -230,17 +109,14 @@ impl<'a> LineMaker<'a> {
             self.cur_width = 0.0;
             for new_box in &mut self.new_boxes[line.range.clone()] {
                 // TODO: Refine
-                let text_align = new_box.get_style_node().lookup(
-                    "text-align",
-                    "text-align",
-                    &Value::Keyword("left".to_string()),
-                );
+                let text_align = new_box
+                    .get_style_node()
+                    .value_with_default("text-align", &Value::Keyword("left".to_string()));
                 let init_width = match text_align {
                     Value::Keyword(ref k) => match k.to_lowercase().as_str() {
                         "center" => (max_width - line.width) / 2.0,
-                        "left" => 0.0,
                         "right" => max_width - line.width,
-                        _ => 0.0,
+                        "left" | _ => 0.0,
                     },
                     _ => 0.0,
                 };
@@ -263,7 +139,118 @@ impl<'a> LineMaker<'a> {
             self.cur_height += line.metrics.calculate_line_height();
         }
     }
-    fn run_text_node(&mut self, layoutbox: LayoutBox<'a>, max_width: f64) {
+
+    fn run_on_inline_node(&mut self, mut layoutbox: LayoutBox<'a>, max_width: f64) {
+        // Non-replaced inline elements(like <span>)
+        if layoutbox.style.unwrap().node.contains_text() {
+            let mut linemaker = self.clone();
+            linemaker.work_list = VecDeque::from(layoutbox.children.clone());
+            layoutbox.children.clear();
+            layoutbox.assign_padding();
+            layoutbox.assign_border_width();
+            let start = linemaker.end;
+            linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px()
+                + layoutbox.dimensions.border.left.to_f64_px();
+            linemaker.run(max_width);
+            linemaker.cur_width += layoutbox.dimensions.padding.right.to_f64_px()
+                + layoutbox.dimensions.border.right.to_f64_px();
+            let end = linemaker.end;
+            let new_boxes_len = linemaker.new_boxes[start..end].len();
+            for (i, new_box) in &mut linemaker.new_boxes[start..end].iter_mut().enumerate() {
+                let mut layoutbox = layoutbox.clone();
+                layoutbox.children.push(new_box.clone());
+                if new_boxes_len > 1 {
+                    // TODO: Makes no sense!
+                    if i == 0 {
+                        layoutbox.dimensions.padding.right = Au(0);
+                        layoutbox.dimensions.border.right = Au(0);
+                    } else if i == new_boxes_len - 1 {
+                        layoutbox.dimensions.padding.left = Au(0);
+                        layoutbox.dimensions.border.left = Au(0);
+                    } else {
+                        layoutbox.dimensions.padding.left = Au(0);
+                        layoutbox.dimensions.padding.right = Au(0);
+                        layoutbox.dimensions.border.left = Au(0);
+                        layoutbox.dimensions.border.right = Au(0);
+                    }
+                }
+                layoutbox.dimensions.content.width = new_box.dimensions.content.width;
+                layoutbox.dimensions.content.height = new_box.dimensions.content.height;
+                *new_box = layoutbox;
+            }
+            self.new_boxes = linemaker.new_boxes;
+            self.lines = linemaker.lines;
+            self.start = linemaker.start;
+            self.end = linemaker.end;
+            self.cur_width = linemaker.cur_width;
+            self.cur_metrics = linemaker.cur_metrics;
+        } else {
+            // Replaced Inline Element (<img>)
+            let mut layoutbox = layoutbox;
+            let (img_w, img_h) = if let &LayoutInfo::Image(ref pixbuf) = &layoutbox.info {
+                (pixbuf.get_width() as f64, pixbuf.get_height() as f64)
+            } else {
+                panic!()
+            };
+            if self.cur_width + img_w > max_width {
+                self.new_line();
+                self.end += 1;
+
+                self.cur_width = img_w;
+                self.cur_metrics.above_baseline =
+                    vec![self.cur_metrics.above_baseline, img_h as f64]
+                        .into_iter()
+                        .fold(0.0, |x, y| x.max(y));
+                layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
+                layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
+
+                self.new_boxes.push(layoutbox);
+            } else {
+                self.end += 1;
+                self.cur_width += img_w;
+                self.cur_metrics.above_baseline =
+                    vec![self.cur_metrics.above_baseline, img_h as f64]
+                        .into_iter()
+                        .fold(0.0, |x, y| x.max(y));
+                layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
+                layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
+                self.new_boxes.push(layoutbox);
+            }
+        }
+    }
+
+    fn run_on_inline_block_node(&mut self, mut layoutbox: LayoutBox<'a>, max_width: f64) {
+        let mut containing_block: Dimensions = ::std::default::Default::default();
+        containing_block.content.width = Au::from_f64_px(max_width - self.cur_width);
+        layoutbox.layout(Au(0), containing_block, containing_block, containing_block);
+
+        let box_width = layoutbox.dimensions.margin_box().width.to_f64_px();
+
+        if self.cur_width + box_width > max_width {
+            self.new_line();
+            self.end += 1;
+
+            self.cur_width = box_width;
+            self.cur_metrics.above_baseline = vec![
+                self.cur_metrics.above_baseline,
+                layoutbox.dimensions.margin_box().height.to_f64_px(),
+            ].into_iter()
+                .fold(0.0, |x, y| x.max(y));
+
+            self.new_boxes.push(layoutbox);
+        } else {
+            self.end += 1;
+            self.cur_width += box_width;
+            self.cur_metrics.above_baseline = vec![
+                self.cur_metrics.above_baseline,
+                layoutbox.dimensions.margin_box().height.to_f64_px(),
+            ].into_iter()
+                .fold(0.0, |x, y| x.max(y));
+            self.new_boxes.push(layoutbox);
+        }
+    }
+
+    fn run_on_text_node(&mut self, layoutbox: LayoutBox<'a>, max_width: f64) {
         let style = layoutbox.style.unwrap();
 
         let text = if let NodeType::Text(ref text) = style.node.data {
@@ -328,17 +315,7 @@ impl<'a> LineMaker<'a> {
 
             self.pending.range = self.pending.range.start + max_chars..self.pending.range.end;
 
-            self.lines.push(Line {
-                range: self.start..self.end,
-                metrics: self.cur_metrics,
-                width: self.new_boxes[self.start..self.end]
-                    .iter()
-                    .fold(0.0, |acc, lbox| {
-                        acc + lbox.dimensions.border_box().width.to_f64_px()
-                    }),
-            });
-
-            self.start = self.end;
+            self.new_line();
 
             self.cur_width = 0.0;
             self.cur_metrics.reset();

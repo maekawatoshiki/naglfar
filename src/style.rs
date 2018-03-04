@@ -25,6 +25,10 @@ impl<'a> StyledNode<'a> {
         self.specified_values.get(name).cloned()
     }
 
+    pub fn value_with_default(&self, name: &str, default: &Value) -> Value {
+        self.value(name).unwrap_or(default.clone())
+    }
+
     pub fn lookup(&self, name: &str, fallback_name: &str, default: &Value) -> Value {
         self.value(name)
             .unwrap_or_else(|| self.value(fallback_name).unwrap_or_else(|| default.clone()))
