@@ -197,10 +197,9 @@ impl<'a> LineMaker<'a> {
                 self.end += 1;
 
                 self.cur_width = img_w;
-                self.cur_metrics.above_baseline =
-                    vec![self.cur_metrics.above_baseline, img_h as f64]
-                        .into_iter()
-                        .fold(0.0, |x, y| x.max(y));
+                self.cur_metrics.above_baseline = vec![0.0, img_h as f64]
+                    .into_iter()
+                    .fold(0.0, |x, y| x.max(y));
                 layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
                 layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
 
