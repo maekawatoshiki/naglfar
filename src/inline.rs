@@ -277,7 +277,7 @@ impl<'a> LineMaker<'a> {
             .to_font_slant();
 
         // let text_width = font_info.text_extents(text).x_advance;
-        let my_font = Font::new(font_size, font_weight, font_slant);
+        let my_font = Font::new(Au::from_f64_px(font_size), font_weight, font_slant);
         let text_width = my_font.text_width(text);
 
         let mut new_layoutbox = layoutbox.clone();
@@ -304,7 +304,7 @@ impl<'a> LineMaker<'a> {
 
             new_layoutbox.set_text_info(
                 Font {
-                    size: font_size,
+                    size: Au::from_f64_px(font_size),
                     weight: font_weight,
                     slant: font_slant,
                 },
@@ -324,7 +324,7 @@ impl<'a> LineMaker<'a> {
 
             new_layoutbox.set_text_info(
                 Font {
-                    size: font_size,
+                    size: Au::from_f64_px(font_size),
                     weight: font_weight,
                     slant: font_slant,
                 },

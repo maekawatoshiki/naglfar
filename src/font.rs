@@ -5,6 +5,8 @@ use pangocairo;
 use std::cell::RefCell;
 use pango::LayoutExt;
 
+use app_units::Au;
+
 thread_local!(
     pub static PANGO_LAYOUT: RefCell<pango::Layout> = {
         let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, 0, 0).unwrap();
@@ -19,7 +21,7 @@ thread_local!(
 
 #[derive(Clone, Copy, Debug)]
 pub struct Font {
-    pub size: f64,
+    pub size: Au,
     pub weight: FontWeight,
     pub slant: FontSlant,
 }
@@ -37,7 +39,7 @@ pub enum FontSlant {
 }
 
 impl Font {
-    pub fn new(size: f64, weight: FontWeight, slant: FontSlant) -> Font {
+    pub fn new(size: Au, weight: FontWeight, slant: FontSlant) -> Font {
         Font {
             size: size,
             weight: weight,
@@ -47,7 +49,7 @@ impl Font {
 
     pub fn new_empty() -> Font {
         Font {
-            size: 0.0,
+            size: Au(0),
             weight: FontWeight::Normal,
             slant: FontSlant::Normal,
         }
@@ -56,7 +58,7 @@ impl Font {
     pub fn text_width(&self, text: &str) -> f64 {
         FONT_DESC.with(|font_desc| {
             let mut font_desc = font_desc.borrow_mut();
-            font_desc.set_size(pango::units_from_double(px_to_pt(self.size)));
+            font_desc.set_size(pango::units_from_double(px_to_pt(self.size.to_f64_px())));
             font_desc.set_style(self.slant.to_pango_font_slant());
             font_desc.set_weight(self.weight.to_pango_font_weight());
             PANGO_LAYOUT.with(|layout| {

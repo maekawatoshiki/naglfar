@@ -95,7 +95,7 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
             FONT_DESC.with(|font_desc| {
                 font_desc
                     .borrow_mut()
-                    .set_size(pango::units_from_double(font.size * 0.752)); // px to pt. TODO: Fix this!
+                    .set_size(pango::units_from_double(font.size.to_f64_px() * 0.752)); // px to pt. TODO: Fix this!
                 font_desc
                     .borrow_mut()
                     .set_style(font.slant.to_pango_font_slant());
