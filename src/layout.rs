@@ -226,13 +226,13 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.y = containing_block.content.height;
 
                 let mut linemaker = LineMaker::new(self.children.clone());
-                linemaker.run(containing_block.content.width.to_f64_px());
+                linemaker.run(containing_block.content.width);
                 linemaker.end_of_lines();
-                linemaker.assign_position(containing_block.content.width.to_f64_px());
+                linemaker.assign_position(containing_block.content.width);
 
                 self.children = linemaker.new_boxes;
                 self.dimensions.content.width = containing_block.content.width;
-                self.dimensions.content.height = Au::from_f64_px(linemaker.cur_height);
+                self.dimensions.content.height = linemaker.cur_height;
             }
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
         }

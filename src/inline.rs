@@ -11,27 +11,27 @@ use app_units::Au;
 pub struct Line {
     pub range: Range<usize>, // layoutbox
     pub metrics: LineMetrics,
-    pub width: f64,
+    pub width: Au,
 }
 
 #[derive(Clone, Debug, Copy)]
 pub struct LineMetrics {
-    pub above_baseline: f64,
-    pub under_baseline: f64,
+    pub above_baseline: Au,
+    pub under_baseline: Au,
 }
 
 impl LineMetrics {
-    pub fn new(above_baseline: f64, under_baseline: f64) -> LineMetrics {
+    pub fn new(above_baseline: Au, under_baseline: Au) -> LineMetrics {
         LineMetrics {
             above_baseline: above_baseline,
             under_baseline: under_baseline,
         }
     }
     pub fn reset(&mut self) {
-        self.above_baseline = 0.0;
-        self.under_baseline = 0.0;
+        self.above_baseline = Au(0);
+        self.under_baseline = Au(0);
     }
-    pub fn calculate_line_height(&self) -> f64 {
+    pub fn calculate_line_height(&self) -> Au {
         self.above_baseline + self.under_baseline
     }
 }
@@ -44,8 +44,8 @@ pub struct LineMaker<'a> {
     pub lines: Vec<Line>,
     pub start: usize,
     pub end: usize,
-    pub cur_width: f64,
-    pub cur_height: f64,
+    pub cur_width: Au,
+    pub cur_height: Au,
     pub cur_metrics: LineMetrics,
 }
 
@@ -54,21 +54,21 @@ impl<'a> LineMaker<'a> {
         LineMaker {
             pending: Line {
                 range: 0..0,
-                metrics: LineMetrics::new(0.0, 0.0),
-                width: 0.0,
+                metrics: LineMetrics::new(Au(0), Au(0)),
+                width: Au(0),
             },
             work_list: VecDeque::from(boxes),
             new_boxes: vec![],
             lines: vec![],
             start: 0,
             end: 0,
-            cur_width: 0.0,
-            cur_height: 0.0,
-            cur_metrics: LineMetrics::new(0.0, 0.0),
+            cur_width: Au(0),
+            cur_height: Au(0),
+            cur_metrics: LineMetrics::new(Au(0), Au(0)),
         }
     }
 
-    pub fn run(&mut self, max_width: f64) {
+    pub fn run(&mut self, max_width: Au) {
         while let Some(layoutbox) = self.work_list.pop_front() {
             if let BoxType::TextNode(ref text_info) = layoutbox.box_type {
                 self.pending.range = text_info.range.clone()
@@ -92,9 +92,7 @@ impl<'a> LineMaker<'a> {
             metrics: self.cur_metrics,
             width: self.new_boxes[self.start..self.end]
                 .iter()
-                .fold(0.0, |acc, lbox| {
-                    acc + lbox.dimensions.margin_box().width.to_f64_px()
-                }),
+                .fold(Au(0), |acc, lbox| acc + lbox.dimensions.margin_box().width),
         });
         self.start = self.end;
     }
@@ -102,11 +100,11 @@ impl<'a> LineMaker<'a> {
         self.new_line()
     }
 
-    pub fn assign_position(&mut self, max_width: f64) {
-        self.cur_height = 0.0;
+    pub fn assign_position(&mut self, max_width: Au) {
+        self.cur_height = Au(0);
 
         for line in &self.lines {
-            self.cur_width = 0.0;
+            self.cur_width = Au(0);
             for new_box in &mut self.new_boxes[line.range.clone()] {
                 // TODO: Refine
                 let text_align = new_box
@@ -114,33 +112,29 @@ impl<'a> LineMaker<'a> {
                     .value_with_default("text-align", &Value::Keyword("left".to_string()));
                 let init_width = match text_align {
                     Value::Keyword(ref k) => match k.to_lowercase().as_str() {
-                        "center" => (max_width - line.width) / 2.0,
+                        "center" => (max_width - line.width) / 2,
                         "right" => max_width - line.width,
-                        "left" | _ => 0.0,
+                        "left" | _ => Au(0),
                     },
-                    _ => 0.0,
+                    _ => Au(0),
                 };
 
-                new_box.dimensions.content.x = Au::from_f64_px(init_width)
-                    + Au::from_f64_px(self.cur_width)
+                new_box.dimensions.content.x = init_width + self.cur_width
                     + new_box.dimensions.padding.left
                     + new_box.dimensions.border.left
                     + new_box.dimensions.margin.left;
                 // TODO: Refine
-                new_box.dimensions.content.y = Au::from_f64_px(
-                    self.cur_height
-                        + (line.metrics.above_baseline
-                            - new_box.dimensions.content.height.to_f64_px()),
-                )
+                new_box.dimensions.content.y = self.cur_height
+                    + (line.metrics.above_baseline - new_box.dimensions.content.height)
                     - (new_box.dimensions.padding.top + new_box.dimensions.margin.top
                         + new_box.dimensions.border.top);
-                self.cur_width += new_box.dimensions.margin_box().width.to_f64_px();
+                self.cur_width += new_box.dimensions.margin_box().width;
             }
             self.cur_height += line.metrics.calculate_line_height();
         }
     }
 
-    fn run_on_inline_node(&mut self, mut layoutbox: LayoutBox<'a>, max_width: f64) {
+    fn run_on_inline_node(&mut self, mut layoutbox: LayoutBox<'a>, max_width: Au) {
         // Non-replaced inline elements(like <span>)
         if layoutbox.style.unwrap().node.contains_text() {
             let mut linemaker = self.clone();
@@ -149,11 +143,11 @@ impl<'a> LineMaker<'a> {
             layoutbox.assign_padding();
             layoutbox.assign_border_width();
             let start = linemaker.end;
-            linemaker.cur_width += layoutbox.dimensions.padding.left.to_f64_px()
-                + layoutbox.dimensions.border.left.to_f64_px();
+            linemaker.cur_width +=
+                layoutbox.dimensions.padding.left + layoutbox.dimensions.border.left;
             linemaker.run(max_width);
-            linemaker.cur_width += layoutbox.dimensions.padding.right.to_f64_px()
-                + layoutbox.dimensions.border.right.to_f64_px();
+            linemaker.cur_width +=
+                layoutbox.dimensions.padding.right + layoutbox.dimensions.border.right;
             let end = linemaker.end;
             let new_boxes_len = linemaker.new_boxes[start..end].len();
             for (i, new_box) in &mut linemaker.new_boxes[start..end].iter_mut().enumerate() {
@@ -188,7 +182,10 @@ impl<'a> LineMaker<'a> {
             // Replaced Inline Element (<img>)
             let mut layoutbox = layoutbox;
             let (img_w, img_h) = if let &LayoutInfo::Image(ref pixbuf) = &layoutbox.info {
-                (pixbuf.get_width() as f64, pixbuf.get_height() as f64)
+                (
+                    Au::from_f64_px(pixbuf.get_width() as f64),
+                    Au::from_f64_px(pixbuf.get_height() as f64),
+                )
             } else {
                 panic!()
             };
@@ -197,33 +194,30 @@ impl<'a> LineMaker<'a> {
                 self.end += 1;
 
                 self.cur_width = img_w;
-                self.cur_metrics.above_baseline = vec![0.0, img_h as f64]
-                    .into_iter()
-                    .fold(0.0, |x, y| x.max(y));
-                layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
-                layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
+                self.cur_metrics.above_baseline = img_h;
+                layoutbox.dimensions.content.width = img_w;
+                layoutbox.dimensions.content.height = img_h;
 
                 self.new_boxes.push(layoutbox);
             } else {
                 self.end += 1;
                 self.cur_width += img_w;
-                self.cur_metrics.above_baseline =
-                    vec![self.cur_metrics.above_baseline, img_h as f64]
-                        .into_iter()
-                        .fold(0.0, |x, y| x.max(y));
-                layoutbox.dimensions.content.width = Au::from_f64_px(img_w as f64);
-                layoutbox.dimensions.content.height = Au::from_f64_px(img_h as f64);
+                self.cur_metrics.above_baseline = vec![self.cur_metrics.above_baseline, img_h]
+                    .into_iter()
+                    .fold(Au(0), |x, y| x.max(y));
+                layoutbox.dimensions.content.width = img_w;
+                layoutbox.dimensions.content.height = img_h;
                 self.new_boxes.push(layoutbox);
             }
         }
     }
 
-    fn run_on_inline_block_node(&mut self, mut layoutbox: LayoutBox<'a>, max_width: f64) {
+    fn run_on_inline_block_node(&mut self, mut layoutbox: LayoutBox<'a>, max_width: Au) {
         let mut containing_block: Dimensions = ::std::default::Default::default();
-        containing_block.content.width = Au::from_f64_px(max_width - self.cur_width);
+        containing_block.content.width = max_width - self.cur_width;
         layoutbox.layout(Au(0), containing_block, containing_block, containing_block);
 
-        let box_width = layoutbox.dimensions.margin_box().width.to_f64_px();
+        let box_width = layoutbox.dimensions.margin_box().width;
 
         if self.cur_width + box_width > max_width {
             self.new_line();
@@ -232,9 +226,9 @@ impl<'a> LineMaker<'a> {
             self.cur_width = box_width;
             self.cur_metrics.above_baseline = vec![
                 self.cur_metrics.above_baseline,
-                layoutbox.dimensions.margin_box().height.to_f64_px(),
+                layoutbox.dimensions.margin_box().height,
             ].into_iter()
-                .fold(0.0, |x, y| x.max(y));
+                .fold(Au(0), |x, y| x.max(y));
 
             self.new_boxes.push(layoutbox);
         } else {
@@ -242,14 +236,14 @@ impl<'a> LineMaker<'a> {
             self.cur_width += box_width;
             self.cur_metrics.above_baseline = vec![
                 self.cur_metrics.above_baseline,
-                layoutbox.dimensions.margin_box().height.to_f64_px(),
+                layoutbox.dimensions.margin_box().height,
             ].into_iter()
-                .fold(0.0, |x, y| x.max(y));
+                .fold(Au(0), |x, y| x.max(y));
             self.new_boxes.push(layoutbox);
         }
     }
 
-    fn run_on_text_node(&mut self, layoutbox: LayoutBox<'a>, max_width: f64) {
+    fn run_on_text_node(&mut self, layoutbox: LayoutBox<'a>, max_width: Au) {
         let style = layoutbox.style.unwrap();
 
         let text = if let NodeType::Text(ref text) = style.node.data {
@@ -259,12 +253,14 @@ impl<'a> LineMaker<'a> {
         };
 
         let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-        let font_size = style
-            .lookup("font-size", "font-size", &default_font_size)
-            .to_px()
-            .unwrap();
+        let font_size = Au::from_f64_px(
+            style
+                .lookup("font-size", "font-size", &default_font_size)
+                .to_px()
+                .unwrap(),
+        );
 
-        let line_height = font_size * 1.2; // TODO: magic number '1.2'
+        let line_height = Au::from_f64_px(font_size.to_f64_px() * 1.2); // TODO: magic number '1.2'
 
         let default_font_weight = Value::Keyword("normal".to_string());
         let font_weight = style
@@ -277,8 +273,8 @@ impl<'a> LineMaker<'a> {
             .to_font_slant();
 
         // let text_width = font_info.text_extents(text).x_advance;
-        let my_font = Font::new(Au::from_f64_px(font_size), font_weight, font_slant);
-        let text_width = my_font.text_width(text);
+        let my_font = Font::new(font_size, font_weight, font_slant);
+        let text_width = Au::from_f64_px(my_font.text_width(text));
 
         let mut new_layoutbox = layoutbox.clone();
 
@@ -286,25 +282,26 @@ impl<'a> LineMaker<'a> {
 
         self.cur_metrics.above_baseline = vec![
             self.cur_metrics.above_baseline,
-            line_height - (line_height - font_size) / 2.0,
+            line_height - (line_height - font_size) / 2,
         ].into_iter()
-            .fold(0.0, |x, y| x.max(y));
+            .fold(Au(0), |x, y| x.max(y));
         self.cur_metrics.under_baseline = vec![
             self.cur_metrics.under_baseline,
-            (line_height - font_size) / 2.0,
+            (line_height - font_size) / 2,
         ].into_iter()
-            .fold(0.0, |x, y| x.max(y));
+            .fold(Au(0), |x, y| x.max(y));
 
         if self.cur_width + text_width > max_width {
-            let max_chars = my_font.compute_max_chars(text, max_width - self.cur_width);
+            let max_chars =
+                my_font.compute_max_chars(text, (max_width - self.cur_width).to_f64_px());
 
             new_layoutbox.dimensions.content.width =
                 Au::from_f64_px(my_font.text_width(&text[0..max_chars]));
-            new_layoutbox.dimensions.content.height = Au::from_f64_px(font_size);
+            new_layoutbox.dimensions.content.height = font_size;
 
             new_layoutbox.set_text_info(
                 Font {
-                    size: Au::from_f64_px(font_size),
+                    size: font_size,
                     weight: font_weight,
                     slant: font_slant,
                 },
@@ -316,20 +313,21 @@ impl<'a> LineMaker<'a> {
 
             self.new_line();
 
-            self.cur_width = 0.0;
+            self.cur_width = Au(0);
             self.cur_metrics.reset();
         } else {
-            new_layoutbox.dimensions.content.width = Au::from_f64_px(text_width);
-            new_layoutbox.dimensions.content.height = Au::from_f64_px(font_size);
+            new_layoutbox.dimensions.content.width = text_width;
+            new_layoutbox.dimensions.content.height = font_size;
 
             new_layoutbox.set_text_info(
                 Font {
-                    size: Au::from_f64_px(font_size),
+                    size: font_size,
                     weight: font_weight,
                     slant: font_slant,
                 },
                 self.pending.range.start
-                    ..self.pending.range.start + my_font.compute_max_chars(text, text_width),
+                    ..self.pending.range.start
+                        + my_font.compute_max_chars(text, text_width.to_f64_px()),
             );
             self.new_boxes.push(new_layoutbox.clone());
 
