@@ -75,7 +75,7 @@ pub const RED: Color = Color {
 
 pub const GREEN: Color = Color {
     r: 0,
-    g: 255,
+    g: 128,
     b: 0,
     a: 255,
 };
