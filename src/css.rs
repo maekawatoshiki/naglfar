@@ -40,7 +40,7 @@ pub enum Value {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Unit {
     Px,
-    // Pt,
+    Pt,
     // Em,
 }
 
@@ -93,6 +93,14 @@ impl Value {
     pub fn to_px(&self) -> Option<f64> {
         match *self {
             Value::Length(f, Unit::Px) | Value::Num(f) => Some(f),
+            Value::Length(f, Unit::Pt) => Some(pt_to_px(f)),
+            _ => None,
+        }
+    }
+    pub fn to_pt(&self) -> Option<f64> {
+        match *self {
+            Value::Length(f, Unit::Pt) | Value::Num(f) => Some(f),
+            Value::Length(f, Unit::Px) => Some(px_to_pt(f)),
             _ => None,
         }
     }
@@ -116,6 +124,16 @@ impl Value {
             _ => None,
         }
     }
+}
+
+// TODO: any other better way?
+pub fn px_to_pt(f: f64) -> f64 {
+    f * 0.752
+}
+
+// TODO: any other better way?
+pub fn pt_to_px(f: f64) -> f64 {
+    f / 0.752
 }
 
 pub type Specificity = (usize, usize, usize);
@@ -303,6 +321,7 @@ impl Parser {
     fn parse_unit(&mut self) -> Unit {
         match &*self.parse_identifier().to_ascii_lowercase() {
             "px" => Unit::Px,
+            "pt" => Unit::Pt,
             _ => panic!("unrecognized unit"),
         }
     }
@@ -388,6 +407,7 @@ impl fmt::Display for Stylesheet {
                     match decl.value {
                         Value::Keyword(ref kw) => kw.clone(),
                         Value::Length(ref f, Unit::Px) => format!("{}px", f),
+                        Value::Length(ref f, Unit::Pt) => format!("{}pt", f),
                         Value::Num(ref f) => format!("{}", f),
                         Value::Color(ref color) => {
                             format!("rgba({}, {}, {}, {})", color.r, color.g, color.b, color.a)
@@ -403,7 +423,7 @@ impl fmt::Display for Stylesheet {
 
 #[test]
 fn test1() {
-    let src = "div, h1, #id, .class { width: 100px; height: 50px; font-weight: bold; z-index: 2; color: #ffffff; background-color: #003300; }";
+    let src = "div, h1, #id, .class { width: 100px; height: 50px; font-weight: bold; z-index: 2; font-size: 10pt; color: #ffffff; background-color: #003300; }";
     let stylesheet = parse(src.to_string());
     assert_eq!(
         stylesheet,
@@ -448,6 +468,10 @@ fn test1() {
                         Declaration {
                             name: "z-index".to_string(),
                             value: Value::Num(2.0),
+                        },
+                        Declaration {
+                            name: "font-size".to_string(),
+                            value: Value::Length(10.0, Unit::Pt),
                         },
                         Declaration {
                             name: "color".to_string(),

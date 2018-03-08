@@ -2,6 +2,8 @@ use cairo;
 use pango;
 use pangocairo;
 
+use css::px_to_pt;
+
 use std::cell::RefCell;
 use pango::LayoutExt;
 
@@ -93,9 +95,4 @@ impl Font {
         }
         s.len()
     }
-}
-
-// TODO: any other better way?
-fn px_to_pt(f: f64) -> f64 {
-    f * 0.752
 }
