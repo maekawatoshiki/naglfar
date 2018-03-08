@@ -85,7 +85,7 @@ impl<'a> LineMaker<'a> {
         }
     }
 
-    pub fn new_line(&mut self) {
+    pub fn flush_cur_line(&mut self) {
         // Push remainings to `lines`.
         self.lines.push(Line {
             range: self.start..self.end,
@@ -97,7 +97,7 @@ impl<'a> LineMaker<'a> {
         self.start = self.end;
     }
     pub fn end_of_lines(&mut self) {
-        self.new_line()
+        self.flush_cur_line()
     }
 
     pub fn assign_position(&mut self, max_width: Au) {
@@ -145,7 +145,10 @@ impl<'a> LineMaker<'a> {
             let start = linemaker.end;
             linemaker.cur_width +=
                 layoutbox.dimensions.padding.left + layoutbox.dimensions.border.left;
-            linemaker.run(max_width);
+            linemaker.run(
+                max_width
+                    - (layoutbox.dimensions.padding.right + layoutbox.dimensions.border.right),
+            );
             linemaker.cur_width +=
                 layoutbox.dimensions.padding.right + layoutbox.dimensions.border.right;
             let end = linemaker.end;
@@ -180,35 +183,31 @@ impl<'a> LineMaker<'a> {
             self.cur_metrics = linemaker.cur_metrics;
         } else {
             // Replaced Inline Element (<img>)
-            let mut layoutbox = layoutbox;
-            let (img_w, img_h) = if let &LayoutInfo::Image(ref pixbuf) = &layoutbox.info {
-                (
+            let (width, height) = match &layoutbox.info {
+                &LayoutInfo::Image(ref pixbuf) => (
                     Au::from_f64_px(pixbuf.get_width() as f64),
                     Au::from_f64_px(pixbuf.get_height() as f64),
-                )
-            } else {
-                panic!()
+                ),
+                _ => unimplemented!(),
             };
-            if self.cur_width + img_w > max_width {
-                self.new_line();
+
+            if self.cur_width + width > max_width {
+                self.flush_cur_line();
                 self.end += 1;
 
-                self.cur_width = img_w;
-                self.cur_metrics.above_baseline = img_h;
-                layoutbox.dimensions.content.width = img_w;
-                layoutbox.dimensions.content.height = img_h;
-
-                self.new_boxes.push(layoutbox);
+                self.cur_width = width;
+                self.cur_metrics.above_baseline = height;
             } else {
                 self.end += 1;
-                self.cur_width += img_w;
-                self.cur_metrics.above_baseline = vec![self.cur_metrics.above_baseline, img_h]
+                self.cur_width += width;
+                self.cur_metrics.above_baseline = vec![self.cur_metrics.above_baseline, height]
                     .into_iter()
                     .fold(Au(0), |x, y| x.max(y));
-                layoutbox.dimensions.content.width = img_w;
-                layoutbox.dimensions.content.height = img_h;
-                self.new_boxes.push(layoutbox);
             }
+            layoutbox.dimensions.content.width = width;
+            layoutbox.dimensions.content.height = height;
+
+            self.new_boxes.push(layoutbox);
         }
     }
 
@@ -220,7 +219,7 @@ impl<'a> LineMaker<'a> {
         let box_width = layoutbox.dimensions.margin_box().width;
 
         if self.cur_width + box_width > max_width {
-            self.new_line();
+            self.flush_cur_line();
             self.end += 1;
 
             self.cur_width = box_width;
@@ -272,7 +271,6 @@ impl<'a> LineMaker<'a> {
             .lookup("font-style", "font-style", &default_font_slant)
             .to_font_slant();
 
-        // let text_width = font_info.text_extents(text).x_advance;
         let my_font = Font::new(font_size, font_weight, font_slant);
         let text_width = Au::from_f64_px(my_font.text_width(text));
 
@@ -292,8 +290,8 @@ impl<'a> LineMaker<'a> {
             .fold(Au(0), |x, y| x.max(y));
 
         if self.cur_width + text_width > max_width {
-            let max_chars =
-                my_font.compute_max_chars(text, (max_width - self.cur_width).to_f64_px());
+            let remaining_width = max_width - self.cur_width; // Is this correc?
+            let max_chars = my_font.compute_max_chars(text, remaining_width.to_f64_px());
 
             new_layoutbox.dimensions.content.width =
                 Au::from_f64_px(my_font.text_width(&text[0..max_chars]));
@@ -311,7 +309,7 @@ impl<'a> LineMaker<'a> {
 
             self.pending.range = self.pending.range.start + max_chars..self.pending.range.end;
 
-            self.new_line();
+            self.flush_cur_line();
 
             self.cur_width = Au(0);
             self.cur_metrics.reset();
