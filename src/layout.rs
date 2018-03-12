@@ -315,6 +315,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.y = containing_block.content.height;
                 self.dimensions.content.width = width;
                 self.dimensions.content.height = height;
+                self.z_index = 100000; //??
             }
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
         }
@@ -530,14 +531,18 @@ impl<'a> LayoutBox<'a> {
         let d = &mut self.dimensions;
         let mut last_margin_bottom = Au(0);
         for child in &mut self.children {
-            let mut floats = self.floats.clone();
-            if !floats.float_list.is_empty() {
-                floats.ceiling = vec![floats.ceiling, d.content.height]
-                    .into_iter()
-                    .fold(Au(0), |x, y| x.max(y));
-            }
-            child.floats = floats;
+            child.floats = {
+                let mut floats = self.floats.clone();
+                if !floats.float_list.is_empty() {
+                    floats.ceiling = vec![floats.ceiling, d.content.height]
+                        .into_iter()
+                        .fold(Au(0), |x, y| x.max(y));
+                }
+                floats
+            };
+
             child.layout(last_margin_bottom, *d, *d, viewport);
+
             match child.box_type {
                 BoxType::Float => {
                     self.floats
@@ -547,6 +552,7 @@ impl<'a> LayoutBox<'a> {
                 }
                 _ => {}
             }
+
             last_margin_bottom = child.dimensions.margin.bottom;
             // Increment the height so each child is laid out below the previous one.
             d.content.height += child.dimensions.margin_box().height;
