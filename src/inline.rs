@@ -3,7 +3,7 @@ use dom::NodeType;
 use std::ops::Range;
 use font::Font;
 use std::collections::VecDeque;
-use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, DEFAULT_FONT_SIZE};
+use layout::{BoxType, Dimensions, Floats, LayoutBox, LayoutInfo, DEFAULT_FONT_SIZE};
 
 use app_units::Au;
 
@@ -41,6 +41,7 @@ pub struct LineMaker<'a> {
     pub pending: Line,
     pub work_list: VecDeque<LayoutBox<'a>>,
     pub new_boxes: Vec<LayoutBox<'a>>,
+    pub floats: Floats,
     pub lines: Vec<Line>,
     pub start: usize,
     pub end: usize,
@@ -50,7 +51,7 @@ pub struct LineMaker<'a> {
 }
 
 impl<'a> LineMaker<'a> {
-    pub fn new(boxes: Vec<LayoutBox<'a>>) -> LineMaker {
+    pub fn new(boxes: Vec<LayoutBox<'a>>, floats: Floats) -> LineMaker {
         LineMaker {
             pending: Line {
                 range: 0..0,
@@ -59,6 +60,7 @@ impl<'a> LineMaker<'a> {
             },
             work_list: VecDeque::from(boxes),
             new_boxes: vec![],
+            floats: floats,
             lines: vec![],
             start: 0,
             end: 0,
@@ -74,12 +76,20 @@ impl<'a> LineMaker<'a> {
                 self.pending.range = text_info.range.clone()
             }
 
+            let mut max_width_with_float =
+                max_width - self.floats.available_area(self.cur_height).width;
+            println!("{} a", self.cur_height.to_f64_px());
+
             match layoutbox.box_type {
                 BoxType::TextNode(_) => while self.pending.range.len() != 0 {
-                    self.run_on_text_node(layoutbox.clone(), max_width)
+                    self.run_on_text_node(layoutbox.clone(), max_width_with_float);
+                    max_width_with_float =
+                        max_width - self.floats.available_area(self.cur_height).width;
                 },
-                BoxType::InlineBlockNode => self.run_on_inline_block_node(layoutbox, max_width),
-                BoxType::InlineNode => self.run_on_inline_node(layoutbox, max_width),
+                BoxType::InlineBlockNode => {
+                    self.run_on_inline_block_node(layoutbox, max_width_with_float)
+                }
+                BoxType::InlineNode => self.run_on_inline_node(layoutbox, max_width_with_float),
                 _ => unimplemented!(),
             }
         }
@@ -94,6 +104,7 @@ impl<'a> LineMaker<'a> {
                 .iter()
                 .fold(Au(0), |acc, lbox| acc + lbox.dimensions.margin_box().width),
         });
+        self.cur_height += self.cur_metrics.calculate_line_height();
         self.start = self.end;
     }
     pub fn end_of_lines(&mut self) {
@@ -117,7 +128,7 @@ impl<'a> LineMaker<'a> {
                         "left" | _ => Au(0),
                     },
                     _ => Au(0),
-                };
+                } + self.floats.available_area(self.cur_height).x;
 
                 new_box.dimensions.content.x = init_width + self.cur_width
                     + new_box.dimensions.padding.left
@@ -180,6 +191,7 @@ impl<'a> LineMaker<'a> {
             self.start = linemaker.start;
             self.end = linemaker.end;
             self.cur_width = linemaker.cur_width;
+            self.cur_height = linemaker.cur_height;
             self.cur_metrics = linemaker.cur_metrics;
         } else {
             // Replaced Inline Element (<img>)

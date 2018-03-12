@@ -7,6 +7,7 @@ use std::ops::Range;
 use std::collections::HashMap;
 use font::{Font, FontSlant, FontWeight};
 use inline::LineMaker;
+use style;
 
 use cairo;
 use pango;
@@ -49,6 +50,16 @@ pub enum LayoutInfo {
     Image(gdk_pixbuf::Pixbuf),
 }
 
+#[derive(Clone, Debug)]
+pub enum BoxType {
+    BlockNode,
+    InlineNode,
+    InlineBlockNode,
+    Float,
+    TextNode(Text),
+    AnonymousBlock,
+}
+
 // A node in the layout tree.
 #[derive(Clone, Debug)]
 pub struct LayoutBox<'a> {
@@ -56,17 +67,56 @@ pub struct LayoutBox<'a> {
     pub z_index: i32,
     pub box_type: BoxType,
     pub info: LayoutInfo,
+    pub floats: Floats,
     pub style: Option<&'a StyledNode<'a>>,
     pub children: Vec<LayoutBox<'a>>,
 }
 
 #[derive(Clone, Debug)]
-pub enum BoxType {
-    BlockNode,
-    InlineNode,
-    InlineBlockNode,
-    TextNode(Text),
-    AnonymousBlock,
+pub struct Floats {
+    pub float_list: FloatList,
+    pub ceiling: Au,
+}
+pub type FloatList = Vec<Float>;
+#[derive(Clone, Debug)]
+pub struct Float {
+    pub dimensions: Dimensions,
+    pub float_type: style::FloatType,
+}
+impl Float {
+    pub fn new(dimensions: Dimensions, float_type: style::FloatType) -> Float {
+        Float {
+            dimensions: dimensions,
+            float_type: float_type,
+        }
+    }
+}
+impl Floats {
+    pub fn new() -> Floats {
+        Floats {
+            float_list: vec![],
+            ceiling: Au(0),
+        }
+    }
+    pub fn add_float(&mut self, float: Float) {
+        self.float_list.push(float)
+    }
+    pub fn available_area(&mut self, y: Au) -> Rect {
+        let y = y + self.ceiling;
+        let mut width = Au(0);
+        for float in &self.float_list {
+            let margin_box = float.dimensions.margin_box();
+            if margin_box.y <= y && y <= margin_box.y + margin_box.height {
+                width += margin_box.width;
+            }
+        }
+        Rect {
+            x: width,
+            y: Au(0),
+            width: width,
+            height: Au(0),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -88,6 +138,7 @@ impl<'a> LayoutBox<'a> {
             style: style,
             info: info,
             z_index: 0,
+            floats: Floats::new(),
             dimensions: Default::default(),
             children: Vec::new(),
         }
@@ -187,14 +238,25 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
         },
     );
 
+    match style_node.float() {
+        style::FloatType::None => {}
+        _ => root.box_type = BoxType::Float,
+    }
+
     // Create the descendant boxes.
     for child in &style_node.children {
-        match child.display() {
-            Display::Block => root.children.push(build_layout_tree(child)),
-            Display::Inline | Display::InlineBlock => root.get_inline_container()
+        match (child.display(), child.float()) {
+            (Display::Block, style::FloatType::None) => {
+                root.children.push(build_layout_tree(child))
+            }
+            (Display::Inline, style::FloatType::None)
+            | (Display::InlineBlock, style::FloatType::None) => root.get_inline_container()
                 .children
                 .push(build_layout_tree(child)),
-            Display::None => {} // Don't lay out nodes with `display: none;`
+            (_, style::FloatType::Left) | (_, style::FloatType::Right) => {
+                root.children.push(build_layout_tree(child))
+            }
+            (Display::None, _) => {} // Don't lay out nodes with `display: none;`
         }
     }
     root
@@ -225,7 +287,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
 
-                let mut linemaker = LineMaker::new(self.children.clone());
+                let mut linemaker = LineMaker::new(self.children.clone(), self.floats.clone());
                 linemaker.run(containing_block.content.width);
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width);
@@ -233,6 +295,20 @@ impl<'a> LayoutBox<'a> {
                 self.children = linemaker.new_boxes;
                 self.dimensions.content.width = containing_block.content.width;
                 self.dimensions.content.height = linemaker.cur_height;
+            }
+            BoxType::Float => {
+                // Replaced Inline Element (<img>)
+                let (width, height) = match &self.info {
+                    &LayoutInfo::Image(ref pixbuf) => (
+                        Au::from_f64_px(pixbuf.get_width() as f64),
+                        Au::from_f64_px(pixbuf.get_height() as f64),
+                    ),
+                    _ => unimplemented!(),
+                };
+                self.dimensions.content.x = Au(0);
+                self.dimensions.content.y = containing_block.content.height;
+                self.dimensions.content.width = width;
+                self.dimensions.content.height = height;
             }
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
         }
@@ -448,7 +524,23 @@ impl<'a> LayoutBox<'a> {
         let d = &mut self.dimensions;
         let mut last_margin_bottom = Au(0);
         for child in &mut self.children {
+            let mut floats = self.floats.clone();
+            if !floats.float_list.is_empty() {
+                floats.ceiling = vec![floats.ceiling, d.content.height]
+                    .into_iter()
+                    .fold(Au(0), |x, y| x.max(y));
+            }
+            child.floats = floats;
             child.layout(last_margin_bottom, *d, *d, viewport);
+            match child.box_type {
+                BoxType::Float => {
+                    self.floats
+                        .add_float(Float::new(child.dimensions, child.style.unwrap().float()));
+                    child.dimensions.content.width = Au(0);
+                    child.dimensions.content.height = Au(0);
+                }
+                _ => {}
+            }
             last_margin_bottom = child.dimensions.margin.bottom;
             // Increment the height so each child is laid out below the previous one.
             d.content.height += child.dimensions.margin_box().height;
@@ -511,7 +603,7 @@ impl<'a> LayoutBox<'a> {
     fn get_inline_container(&mut self) -> &mut LayoutBox<'a> {
         match self.box_type {
             BoxType::InlineNode | BoxType::AnonymousBlock => self,
-            BoxType::BlockNode | BoxType::InlineBlockNode => {
+            BoxType::Float | BoxType::BlockNode | BoxType::InlineBlockNode => {
                 match self.children.last() {
                     Some(&LayoutBox {
                         box_type: BoxType::AnonymousBlock,

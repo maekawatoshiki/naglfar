@@ -63,7 +63,7 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
 
 fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     match layout_box.box_type {
-        BoxType::InlineNode => {
+        BoxType::InlineNode | BoxType::Float => {
             if let NodeType::Element(ElementData {
                 ref layout_type, ..
             }) = layout_box.style.unwrap().node.data

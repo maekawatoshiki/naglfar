@@ -20,6 +20,13 @@ pub enum Display {
     None,
 }
 
+#[derive(Clone, PartialEq, Debug)]
+pub enum FloatType {
+    Left,
+    Right,
+    None,
+}
+
 impl<'a> StyledNode<'a> {
     pub fn value(&self, name: &str) -> Option<Value> {
         self.specified_values.get(name).cloned()
@@ -47,6 +54,18 @@ impl<'a> StyledNode<'a> {
                 _ => Display::Inline,
             },
             _ => Display::Inline,
+        }
+    }
+
+    pub fn float(&self) -> FloatType {
+        match self.value("float") {
+            Some(Value::Keyword(s)) => match &*s {
+                "left" => FloatType::Left,
+                "right" => FloatType::Right,
+                "none" => FloatType::None,
+                _ => FloatType::None,
+            },
+            _ => FloatType::None,
         }
     }
 
