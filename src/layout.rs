@@ -117,6 +117,11 @@ impl Floats {
             height: Au(0),
         }
     }
+    pub fn left_width(&mut self) -> Au {
+        self.float_list.iter().fold(Au(0), |acc, float| {
+            acc + float.dimensions.margin_box().width
+        })
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -297,6 +302,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.height = linemaker.cur_height;
             }
             BoxType::Float => {
+                // TODO: Implement correctly ASAP!
                 // Replaced Inline Element (<img>)
                 let (width, height) = match &self.info {
                     &LayoutInfo::Image(ref pixbuf) => (
@@ -305,7 +311,7 @@ impl<'a> LayoutBox<'a> {
                     ),
                     _ => unimplemented!(),
                 };
-                self.dimensions.content.x = Au(0);
+                self.dimensions.content.x = self.floats.left_width();
                 self.dimensions.content.y = containing_block.content.height;
                 self.dimensions.content.width = width;
                 self.dimensions.content.height = height;

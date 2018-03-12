@@ -78,7 +78,6 @@ impl<'a> LineMaker<'a> {
 
             let mut max_width_with_float =
                 max_width - self.floats.available_area(self.cur_height).width;
-            println!("{} a", self.cur_height.to_f64_px());
 
             match layoutbox.box_type {
                 BoxType::TextNode(_) => while self.pending.range.len() != 0 {
