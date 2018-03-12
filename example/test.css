@@ -184,10 +184,12 @@ div.card_footer2 {
 #title {
   font-size: 30px;
   font-weight: bold;
+  margin-left: 10px;
 }
 
 .description {
   color: #808080;
+  margin-left: 10px;
 }
 
 #x1 {
