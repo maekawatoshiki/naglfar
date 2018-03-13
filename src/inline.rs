@@ -77,13 +77,13 @@ impl<'a> LineMaker<'a> {
             }
 
             let mut max_width_with_float =
-                max_width - self.floats.available_area(self.cur_height).width;
+                self.floats.available_area(max_width, self.cur_height).width;
 
             match layoutbox.box_type {
                 BoxType::TextNode(_) => while self.pending.range.len() != 0 {
                     self.run_on_text_node(layoutbox.clone(), max_width_with_float);
                     max_width_with_float =
-                        max_width - self.floats.available_area(self.cur_height).width;
+                        self.floats.available_area(max_width, self.cur_height).width;
                 },
                 BoxType::InlineBlockNode => {
                     self.run_on_inline_block_node(layoutbox, max_width_with_float)
@@ -127,7 +127,8 @@ impl<'a> LineMaker<'a> {
                         "left" | _ => Au(0),
                     },
                     _ => Au(0),
-                } + self.floats.available_area(self.cur_height).x;
+                }
+                    + self.floats.available_area(max_width, self.cur_height).x;
 
                 new_box.dimensions.content.x = init_width + self.cur_width
                     + new_box.dimensions.padding.left

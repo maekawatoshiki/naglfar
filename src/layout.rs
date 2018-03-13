@@ -76,7 +76,7 @@ pub struct LayoutBox<'a> {
 pub struct Floats {
     pub float_list: FloatList,
     pub ceiling: Au,
-    pub offset: Au,
+    pub offset: EdgeSizes,
 }
 pub type FloatList = Vec<Float>;
 #[derive(Clone, Debug)]
@@ -97,39 +97,76 @@ impl Floats {
         Floats {
             float_list: vec![],
             ceiling: Au(0),
-            offset: Au(0),
+            offset: EdgeSizes {
+                top: Au(0),
+                bottom: Au(0),
+                left: Au(0),
+                right: Au(0),
+            },
         }
     }
-    pub fn translate(&mut self, delta: Au) {
-        self.offset += delta;
+    pub fn translate(&mut self, delta: EdgeSizes) {
+        self.offset.left += delta.left;
+        self.offset.right += delta.right;
+        // Need?
+        // self.offset.top += delta.top;
+        // self.offset.bottom += delta.bottom;
     }
     pub fn add_float(&mut self, float: Float) {
         self.float_list.push(float)
     }
-    pub fn available_area(&mut self, y: Au) -> Rect {
+    pub fn available_area(&mut self, max_width: Au, y: Au) -> Rect {
         let y = y + self.ceiling;
-        let mut width = Au(0);
-        for float in &self.float_list {
+        let mut left = Au(0);
+        let mut right = Au(0);
+        for float in self.float_list.iter().rev() {
             let margin_box = float.dimensions.margin_box();
-            if margin_box.y <= y && y <= margin_box.y + margin_box.height {
-                width += margin_box.width;
+            match float.float_type {
+                style::FloatType::Left => {
+                    if left > Au(0) || (margin_box.y <= y && y <= margin_box.y + margin_box.height)
+                    {
+                        left += margin_box.width;
+                    }
+                }
+                style::FloatType::Right => {
+                    if right > Au(0) || (margin_box.y <= y && y <= margin_box.y + margin_box.height)
+                    {
+                        right += margin_box.width;
+                    }
+                }
+                _ => unreachable!(),
             }
         }
-        // TODO: Consider the floating element in the right side.
 
-        width = Au::from_f64_px((width.to_f64_px() - self.offset.to_f64_px()).abs());
+        if left > Au(0) {
+            left = Au::from_f64_px((left.to_f64_px() - self.offset.left.to_f64_px()).abs());
+        }
+        if right > Au(0) {
+            right = Au::from_f64_px((right.to_f64_px() - self.offset.right.to_f64_px()).abs());
+        }
 
         Rect {
-            x: width,
+            x: left,
             y: Au(0),
-            width: width,
+            width: max_width - left - right,
             height: Au(0),
         }
     }
     pub fn left_width(&mut self) -> Au {
         self.float_list.iter().fold(Au(0), |acc, float| {
-            acc + float.dimensions.margin_box().width
-        }) - self.offset
+            acc + match float.float_type {
+                style::FloatType::Left => float.dimensions.margin_box().width,
+                _ => Au(0),
+            }
+        }) - self.offset.left
+    }
+    pub fn right_width(&mut self) -> Au {
+        self.float_list.iter().fold(Au(0), |acc, float| {
+            acc + match float.float_type {
+                style::FloatType::Right => float.dimensions.margin_box().width,
+                _ => Au(0),
+            }
+        }) - self.offset.right
     }
 }
 
@@ -302,7 +339,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.y = containing_block.content.height;
 
                 let mut floats = self.floats.clone();
-                floats.translate(containing_block.left_offset());
+                floats.translate(containing_block.left_right_offset());
                 let mut linemaker = LineMaker::new(self.children.clone(), floats);
                 linemaker.run(containing_block.content.width);
                 linemaker.end_of_lines();
@@ -322,10 +359,17 @@ impl<'a> LayoutBox<'a> {
                     ),
                     _ => unimplemented!(),
                 };
-                self.dimensions.content.x = self.floats.left_width();
-                self.dimensions.content.y = containing_block.content.height;
                 self.dimensions.content.width = width;
                 self.dimensions.content.height = height;
+                self.dimensions.content.x = match self.style.unwrap().float() {
+                    style::FloatType::Left => self.floats.left_width(),
+                    style::FloatType::Right => {
+                        containing_block.content.width - self.floats.right_width()
+                            - self.dimensions.content.width
+                    }
+                    _ => unreachable!(),
+                };
+                self.dimensions.content.y = containing_block.content.height;
                 self.z_index = 100000; //??
             }
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
@@ -822,8 +866,20 @@ impl Dimensions {
     pub fn margin_box(self) -> Rect {
         self.border_box().expanded_by(self.margin)
     }
+
     pub fn left_offset(self) -> Au {
         self.margin.left + self.border.left + self.padding.left
+    }
+    pub fn right_offset(self) -> Au {
+        self.margin.right + self.border.right + self.padding.right
+    }
+    pub fn left_right_offset(self) -> EdgeSizes {
+        EdgeSizes {
+            top: Au(0),
+            bottom: Au(0),
+            left: self.left_offset(),
+            right: self.right_offset(),
+        }
     }
 }
 
