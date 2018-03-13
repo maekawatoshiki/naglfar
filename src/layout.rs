@@ -76,6 +76,7 @@ pub struct LayoutBox<'a> {
 pub struct Floats {
     pub float_list: FloatList,
     pub ceiling: Au,
+    pub offset: Au,
 }
 pub type FloatList = Vec<Float>;
 #[derive(Clone, Debug)]
@@ -96,7 +97,11 @@ impl Floats {
         Floats {
             float_list: vec![],
             ceiling: Au(0),
+            offset: Au(0),
         }
+    }
+    pub fn translate(&mut self, delta: Au) {
+        self.offset += delta;
     }
     pub fn add_float(&mut self, float: Float) {
         self.float_list.push(float)
@@ -110,6 +115,10 @@ impl Floats {
                 width += margin_box.width;
             }
         }
+        // TODO: Consider the floating element in the right side.
+
+        width = Au::from_f64_px((width.to_f64_px() - self.offset.to_f64_px()).abs());
+
         Rect {
             x: width,
             y: Au(0),
@@ -120,7 +129,7 @@ impl Floats {
     pub fn left_width(&mut self) -> Au {
         self.float_list.iter().fold(Au(0), |acc, float| {
             acc + float.dimensions.margin_box().width
-        })
+        }) - self.offset
     }
 }
 
@@ -292,7 +301,9 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
 
-                let mut linemaker = LineMaker::new(self.children.clone(), self.floats.clone());
+                let mut floats = self.floats.clone();
+                floats.translate(containing_block.left_offset());
+                let mut linemaker = LineMaker::new(self.children.clone(), floats);
                 linemaker.run(containing_block.content.width);
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width);
@@ -810,6 +821,9 @@ impl Dimensions {
     // The area covered by the content area plus padding, borders, and margin.
     pub fn margin_box(self) -> Rect {
         self.border_box().expanded_by(self.margin)
+    }
+    pub fn left_offset(self) -> Au {
+        self.margin.left + self.border.left + self.padding.left
     }
 }
 
