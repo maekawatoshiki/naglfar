@@ -147,7 +147,6 @@ impl Floats {
         if right != Au(0) {
             right = Au::from_f64_px((right.to_f64_px() - self.offset.right.to_f64_px()).abs());
         }
-        println!("{} {}", left.to_f64_px(), right.to_f64_px());
 
         Rect {
             x: left,
