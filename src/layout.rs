@@ -235,7 +235,7 @@ pub fn layout_tree<'a>(
 use std::cell::RefCell;
 
 thread_local!(
-    pub static IMG_CACHE: RefCell<HashMap<String, gdk_pixbuf::Pixbuf>> = {
+    pub static IMG_CACHE: RefCell<HashMap<(String, i32, i32), gdk_pixbuf::Pixbuf>> = {
         RefCell::new(HashMap::new())
     };
 );
@@ -277,7 +277,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
                     .attr("height")
                     .and_then(|h| Some(h.to_px().unwrap_or(-1.0) as i32))
                     .unwrap_or(-1);
-                c.entry(image_url.clone())
+                c.entry((image_url.clone(), specified_width_px, specified_height_px))
                     .or_insert_with(|| {
                         gdk_pixbuf::Pixbuf::new_from_file_at_scale(
                             image_url.as_str(),
