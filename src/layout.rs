@@ -105,6 +105,9 @@ impl Floats {
             },
         }
     }
+    pub fn is_present(&self) -> bool {
+        !self.float_list.is_empty()
+    }
     pub fn translate(&mut self, delta: EdgeSizes) {
         self.offset.left += delta.left;
         self.offset.right += delta.right;
@@ -138,12 +141,13 @@ impl Floats {
             }
         }
 
-        if left > Au(0) {
+        if left != Au(0) {
             left = Au::from_f64_px((left.to_f64_px() - self.offset.left.to_f64_px()).abs());
         }
-        if right > Au(0) {
+        if right != Au(0) {
             right = Au::from_f64_px((right.to_f64_px() - self.offset.right.to_f64_px()).abs());
         }
+        println!("{} {}", left.to_f64_px(), right.to_f64_px());
 
         Rect {
             x: left,
@@ -338,9 +342,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
 
-                let mut floats = self.floats.clone();
-                floats.translate(containing_block.left_right_offset());
-                let mut linemaker = LineMaker::new(self.children.clone(), floats);
+                let mut linemaker = LineMaker::new(self.children.clone(), self.floats.clone());
                 linemaker.run(containing_block.content.width);
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width);
@@ -515,6 +517,10 @@ impl<'a> LayoutBox<'a> {
         }
         if let Some(margin_right) = margin_right.to_px() {
             d.margin.right = Au::from_f64_px(margin_right)
+        }
+
+        if self.floats.is_present() {
+            self.floats.translate(d.left_right_offset());
         }
     }
 
