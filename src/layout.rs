@@ -298,21 +298,33 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
     }
 
     // Create the descendant boxes.
-    for child in &style_node.children {
+    let mut float_insert_point: Option<usize> = None;
+    for (i, child) in style_node.children.iter().enumerate() {
         match (child.display(), child.float()) {
             (Display::Block, style::FloatType::None) => {
-                root.children.push(build_layout_tree(child))
+                root.children.push(build_layout_tree(child));
+                if float_insert_point.is_some() {
+                    float_insert_point = None;
+                }
             }
             (Display::Inline, style::FloatType::None)
-            | (Display::InlineBlock, style::FloatType::None) => root.get_inline_container()
-                .children
-                .push(build_layout_tree(child)),
+            | (Display::InlineBlock, style::FloatType::None) => {
+                root.get_inline_container()
+                    .children
+                    .push(build_layout_tree(child));
+                float_insert_point = Some(i);
+            }
             (_, style::FloatType::Left) | (_, style::FloatType::Right) => {
-                root.children.push(build_layout_tree(child))
+                if let Some(pos) = float_insert_point {
+                    root.children.insert(pos, build_layout_tree(child));
+                } else {
+                    root.children.push(build_layout_tree(child));
+                }
             }
             (Display::None, _) => {} // Don't lay out nodes with `display: none;`
         }
     }
+
     root
 }
 
@@ -346,22 +358,35 @@ impl<'a> LayoutBox<'a> {
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width);
 
-                self.children = linemaker.new_boxes;
+                self.children = linemaker
+                    .new_boxes
+                    .into_iter()
+                    .map(|mut layoutbox| {
+                        layoutbox.z_index = self.z_index;
+                        layoutbox
+                    })
+                    .collect::<Vec<_>>();
                 self.dimensions.content.width = containing_block.content.width;
                 self.dimensions.content.height = linemaker.cur_height;
             }
             BoxType::Float => {
                 // TODO: Implement correctly ASAP!
                 // Replaced Inline Element (<img>)
-                let (width, height) = match &self.info {
-                    &LayoutInfo::Image(ref pixbuf) => (
-                        Au::from_f64_px(pixbuf.get_width() as f64),
-                        Au::from_f64_px(pixbuf.get_height() as f64),
-                    ),
-                    _ => unimplemented!(),
+                match self.info {
+                    LayoutInfo::Image(ref pixbuf) => {
+                        self.dimensions.content.width = Au::from_f64_px(pixbuf.get_width() as f64);
+                        self.dimensions.content.height =
+                            Au::from_f64_px(pixbuf.get_height() as f64);
+                    }
+                    LayoutInfo::Generic => {
+                        // self.calculate_block_width(containing_block);
+                        // self.dimensions.content.width = Au::from_f64_px(100.0);
+                        self.calculate_float_width();
+                        self.z_index = 10000000; //??
+                        self.layout_block_children(viewport);
+                        self.calculate_block_height();
+                    }
                 };
-                self.dimensions.content.width = width;
-                self.dimensions.content.height = height;
                 self.dimensions.content.x = match self.style.unwrap().float() {
                     style::FloatType::Left => self.floats.left_width(),
                     style::FloatType::Right => {
@@ -371,7 +396,6 @@ impl<'a> LayoutBox<'a> {
                     _ => unreachable!(),
                 };
                 self.dimensions.content.y = containing_block.content.height;
-                self.z_index = 100000; //??
             }
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
         }
@@ -601,21 +625,21 @@ impl<'a> LayoutBox<'a> {
                 floats
             };
 
+            child.z_index = self.z_index;
+
             child.layout(last_margin_bottom, *d, *d, viewport);
 
             match child.box_type {
                 BoxType::Float => {
                     self.floats
                         .add_float(Float::new(child.dimensions, child.style.unwrap().float()));
-                    child.dimensions.content.width = Au(0);
-                    child.dimensions.content.height = Au(0);
                 }
-                _ => {}
+                _ => {
+                    last_margin_bottom = child.dimensions.margin.bottom;
+                    // Increment the height so each child is laid out below the previous one.
+                    d.content.height += child.dimensions.margin_box().height;
+                }
             }
-
-            last_margin_bottom = child.dimensions.margin.bottom;
-            // Increment the height so each child is laid out below the previous one.
-            d.content.height += child.dimensions.margin_box().height;
         }
     }
 
@@ -669,6 +693,60 @@ impl<'a> LayoutBox<'a> {
         }
 
         self.dimensions.content.width = Au::from_f64_px(width.to_px().unwrap());
+    }
+
+    /// Calculate the width of a float (non-replaced) element.
+    /// Sets the horizontal margin/padding/border dimensions, and the `width`.
+    /// ref. https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html#float-width
+    // TODO: Implement correctly!
+    fn calculate_float_width(&mut self) {
+        let style = self.get_style_node();
+
+        // `width` has initial value `auto`.
+        let auto = Value::Keyword("auto".to_string());
+        let mut width = style.value("width").unwrap_or(auto.clone());
+
+        // margin, border, and padding have initial value 0.
+        let zero = Value::Length(0.0, Unit::Px);
+
+        let mut margin_left = style.lookup("margin-left", "margin", &zero);
+        let mut margin_right = style.lookup("margin-right", "margin", &zero);
+
+        let border_left = style.lookup("border-left-width", "border-width", &zero);
+        let border_right = style.lookup("border-right-width", "border-width", &zero);
+
+        let padding_left = style.lookup("padding-left", "padding", &zero);
+        let padding_right = style.lookup("padding-right", "padding", &zero);
+
+        let d = &mut self.dimensions;
+        if let Some(width) = width.to_px() {
+            d.content.width = Au::from_f64_px(width)
+        }
+
+        if let Some(padding_left) = padding_left.to_px() {
+            d.padding.left = Au::from_f64_px(padding_left)
+        }
+        if let Some(padding_right) = padding_right.to_px() {
+            d.padding.right = Au::from_f64_px(padding_right)
+        }
+
+        if let Some(border_left) = border_left.to_px() {
+            d.border.left = Au::from_f64_px(border_left)
+        }
+        if let Some(border_right) = border_right.to_px() {
+            d.border.right = Au::from_f64_px(border_right)
+        }
+
+        if let Some(margin_left) = margin_left.to_px() {
+            d.margin.left = Au::from_f64_px(margin_left)
+        }
+        if let Some(margin_right) = margin_right.to_px() {
+            d.margin.right = Au::from_f64_px(margin_right)
+        }
+
+        if self.floats.is_present() {
+            self.floats.translate(d.left_right_offset());
+        }
     }
 
     /// Where a new inline child should go.
