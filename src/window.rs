@@ -12,7 +12,7 @@ use gdk::ContextExt;
 use cairo::Context;
 use pango::LayoutExt;
 
-use painter::{DisplayCommand, DisplayCommandInfo, DisplayList};
+use painter::{DisplayCommand, DisplayList};
 use font::FONT_DESC;
 
 struct RenderingWindow {
@@ -48,15 +48,11 @@ impl RenderingWindow {
                 let pango_ctx = widget.create_pango_context().unwrap();
                 let mut pango_layout = pango::Layout::new(&pango_ctx);
 
-                let mut items = f(widget);
+                let items = f(widget);
                 if let DisplayCommand::SolidColor(_, rect) = items[0].command {
                     widget.set_size_request(width, rect.height.ceil_to_px())
                 }
 
-                items.sort_by(
-                    |&DisplayCommandInfo { z_index: a, .. },
-                     &DisplayCommandInfo { z_index: b, .. }| { a.cmp(&b) },
-                );
                 for item in &items {
                     render_item(cairo_context, &mut pango_layout, &item.command);
                 }

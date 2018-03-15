@@ -358,14 +358,7 @@ impl<'a> LayoutBox<'a> {
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width);
 
-                self.children = linemaker
-                    .new_boxes
-                    .into_iter()
-                    .map(|mut layoutbox| {
-                        layoutbox.z_index = self.z_index;
-                        layoutbox
-                    })
-                    .collect::<Vec<_>>();
+                self.children = linemaker.new_boxes;
                 self.dimensions.content.width = containing_block.content.width;
                 self.dimensions.content.height = linemaker.cur_height;
             }
@@ -379,10 +372,7 @@ impl<'a> LayoutBox<'a> {
                             Au::from_f64_px(pixbuf.get_height() as f64);
                     }
                     LayoutInfo::Generic => {
-                        // self.calculate_block_width(containing_block);
-                        // self.dimensions.content.width = Au::from_f64_px(100.0);
                         self.calculate_float_width();
-                        self.z_index = 10000000; //??
                         self.layout_block_children(viewport);
                         self.calculate_block_height();
                     }
@@ -625,8 +615,6 @@ impl<'a> LayoutBox<'a> {
                 floats
             };
 
-            child.z_index = self.z_index;
-
             child.layout(last_margin_bottom, *d, *d, viewport);
 
             match child.box_type {
@@ -704,13 +692,13 @@ impl<'a> LayoutBox<'a> {
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
-        let mut width = style.value("width").unwrap_or(auto.clone());
+        let width = style.value("width").unwrap_or(auto.clone());
 
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        let mut margin_left = style.lookup("margin-left", "margin", &zero);
-        let mut margin_right = style.lookup("margin-right", "margin", &zero);
+        let margin_left = style.lookup("margin-left", "margin", &zero);
+        let margin_right = style.lookup("margin-right", "margin", &zero);
 
         let border_left = style.lookup("border-left-width", "border-width", &zero);
         let border_right = style.lookup("border-right-width", "border-width", &zero);

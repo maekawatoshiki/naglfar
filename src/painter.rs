@@ -1,4 +1,5 @@
 use layout::{BoxType, LayoutBox, LayoutInfo, Rect};
+use style::FloatType;
 use font::Font;
 use dom::{ElementData, LayoutType, NodeType};
 use css::{Color, BLACK};
@@ -6,25 +7,36 @@ use app_units::Au;
 
 use gdk_pixbuf;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DisplayCommand {
     SolidColor(Color, Rect),
     Image(gdk_pixbuf::Pixbuf, Rect),
     Text(String, Rect, Color, Font),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum ContentType {
+    Float,
+    None,
+}
+
+#[derive(Debug, Clone)]
 pub struct DisplayCommandInfo {
     pub command: DisplayCommand,
+    pub content_type: ContentType,
     pub z_index: i32,
 }
 
 impl DisplayCommandInfo {
-    pub fn new(command: DisplayCommand, z_index: i32) -> DisplayCommandInfo {
-        println!("z: {}", z_index);
+    pub fn new(
+        command: DisplayCommand,
+        z_index: i32,
+        content_type: ContentType,
+    ) -> DisplayCommandInfo {
         DisplayCommandInfo {
             command: command,
             z_index: z_index,
+            content_type: content_type,
         }
     }
 }
@@ -38,13 +50,45 @@ pub fn build_display_list(layout_root: &LayoutBox) -> DisplayList {
         Au::from_f64_px(0.0),
         Au::from_f64_px(0.0),
         layout_root,
+        ContentType::None,
     );
-    list
+
+    list.sort_by(
+        |&DisplayCommandInfo { z_index: a, .. }, &DisplayCommandInfo { z_index: b, .. }| a.cmp(&b),
+    );
+    let mut ordered_list = Vec::new();
+    for item in list.iter()
+        .filter(|item| item.content_type == ContentType::None)
+    {
+        ordered_list.push(item.clone());
+    }
+    for item in list.iter()
+        .filter(|item| item.content_type == ContentType::Float)
+    {
+        ordered_list.push(item.clone());
+    }
+    ordered_list
 }
 
-fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
-    render_background(list, x, y, layout_box);
-    render_borders(list, x, y, layout_box);
+fn render_layout_box(
+    list: &mut DisplayList,
+    x: Au,
+    y: Au,
+    layout_box: &LayoutBox,
+    content_type: ContentType,
+) {
+    let content_type = if content_type == ContentType::None && match layout_box.style {
+        Some(style) => style.float(),
+        None => FloatType::None,
+    } != FloatType::None
+    {
+        ContentType::Float
+    } else {
+        content_type
+    };
+
+    render_background(list, x, y, layout_box, content_type);
+    render_borders(list, x, y, layout_box, content_type);
 
     let children = layout_box.children.clone();
     for child in children {
@@ -53,14 +97,21 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
             x + layout_box.dimensions.content.x,
             y + layout_box.dimensions.content.y,
             &child,
+            content_type,
         );
     }
 
-    render_text(list, x, y, layout_box);
-    render_image(list, x, y, layout_box);
+    render_text(list, x, y, layout_box, content_type);
+    render_image(list, x, y, layout_box, content_type);
 }
 
-fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+fn render_text(
+    list: &mut DisplayList,
+    x: Au,
+    y: Au,
+    layout_box: &LayoutBox,
+    content_type: ContentType,
+) {
     if let &BoxType::TextNode(ref text_info) = &layout_box.box_type {
         let text = if let NodeType::Text(ref text) = layout_box.style.unwrap().node.data {
             &text.as_str()[text_info.range.clone()]
@@ -75,11 +126,18 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
                 text_info.font,
             ),
             layout_box.z_index,
+            content_type,
         ));
     }
 }
 
-fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+fn render_image(
+    list: &mut DisplayList,
+    x: Au,
+    y: Au,
+    layout_box: &LayoutBox,
+    content_type: ContentType,
+) {
     match layout_box.box_type {
         BoxType::InlineNode | BoxType::Float => {
             if let NodeType::Element(ElementData {
@@ -97,6 +155,7 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
                             layout_box.dimensions.content.add_parent_coordinate(x, y),
                         ),
                         layout_box.z_index,
+                        content_type,
                     ))
                 }
             }
@@ -105,7 +164,13 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     }
 }
 
-fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+fn render_background(
+    list: &mut DisplayList,
+    x: Au,
+    y: Au,
+    layout_box: &LayoutBox,
+    content_type: ContentType,
+) {
     lookup_color(layout_box, "background-color", "background").map(|color| {
         list.push(DisplayCommandInfo::new(
             DisplayCommand::SolidColor(
@@ -116,11 +181,18 @@ fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
                     .add_parent_coordinate(x, y),
             ),
             layout_box.z_index,
+            content_type,
         ))
     });
 }
 
-fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+fn render_borders(
+    list: &mut DisplayList,
+    x: Au,
+    y: Au,
+    layout_box: &LayoutBox,
+    content_type: ContentType,
+) {
     let d = &layout_box.dimensions;
     let border_box = d.border_box().add_parent_coordinate(x, y);
 
@@ -137,6 +209,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
                 },
             ),
             layout_box.z_index,
+            content_type,
         ));
     }
 
@@ -153,6 +226,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
                 },
             ),
             layout_box.z_index,
+            content_type,
         ));
     }
 
@@ -169,6 +243,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
                 },
             ),
             layout_box.z_index,
+            content_type,
         ));
     }
 
@@ -185,6 +260,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
                 },
             ),
             layout_box.z_index,
+            content_type,
         ));
     }
 }
