@@ -50,7 +50,7 @@ pub enum LayoutInfo {
     Image(gdk_pixbuf::Pixbuf),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BoxType {
     BlockNode,
     InlineNode,
@@ -173,7 +173,7 @@ impl Floats {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Text {
     pub font: Font,
     pub range: Range<usize>,

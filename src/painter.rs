@@ -1,5 +1,4 @@
 use layout::{BoxType, LayoutBox, LayoutInfo, Rect};
-use style::FloatType;
 use font::Font;
 use dom::{ElementData, LayoutType, NodeType};
 use css::{Color, BLACK};
@@ -77,10 +76,7 @@ fn render_layout_box(
     layout_box: &LayoutBox,
     content_type: ContentType,
 ) {
-    let content_type = if content_type == ContentType::None && match layout_box.style {
-        Some(style) => style.float(),
-        None => FloatType::None,
-    } != FloatType::None
+    let content_type = if content_type == ContentType::None && layout_box.box_type == BoxType::Float
     {
         ContentType::Float
     } else {

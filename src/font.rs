@@ -21,20 +21,20 @@ thread_local!(
     }
 );
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Font {
     pub size: Au,
     pub weight: FontWeight,
     pub slant: FontSlant,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FontWeight {
     Normal,
     Bold,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FontSlant {
     Normal,
     Italic,
