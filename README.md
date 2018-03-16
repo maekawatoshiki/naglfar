@@ -6,9 +6,10 @@
 
 Naglfar is a toy web browser in Rust.
 
+*The logo of Naglfar Wanted!*
+
 ![Naglfar](https://raw.githubusercontent.com/maekawatoshiki/naglfar/master/screenshot.gif)
 
-*The logo of Naglfar wanted!*
 
 # Run
 
