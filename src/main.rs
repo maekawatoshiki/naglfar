@@ -19,6 +19,14 @@ use gtk::WidgetExt;
 extern crate app_units;
 use app_units::Au;
 
+use std::cell::RefCell;
+
+thread_local!(
+    pub static LAYOUT_SAVER: RefCell<(Au, Au, painter::DisplayList)> = {
+        RefCell::new((Au(0), Au(0), vec![]))
+    };
+);
+
 const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() {
@@ -63,13 +71,26 @@ fn main() {
         let mut viewport: layout::Dimensions = ::std::default::Default::default();
         viewport.content.width = Au::from_f64_px(widget.get_allocated_width() as f64);
         viewport.content.height = Au::from_f64_px(widget.get_allocated_height() as f64);
+        LAYOUT_SAVER.with(|x| {
+            let (ref mut last_width, ref mut last_height, ref mut last_displays) = *x.borrow_mut();
+            if *last_width == viewport.content.width && *last_height == viewport.content.height {
+                last_displays.clone()
+            } else {
+                *last_width = viewport.content.width;
+                *last_height = viewport.content.height;
 
-        let style_tree = style::style_tree(&html_tree, &stylesheet, &style::PropertyMap::new());
-        let layout_tree = layout::layout_tree(&style_tree, viewport);
-        print!("LAYOUT:\n{}", layout_tree);
+                let style_tree =
+                    style::style_tree(&html_tree, &stylesheet, &style::PropertyMap::new());
+                let layout_tree = layout::layout_tree(&style_tree, viewport);
+                print!("LAYOUT:\n{}", layout_tree);
 
-        let display_command = painter::build_display_list(&layout_tree);
-        println!("DISPLAY:\n{:?}", display_command);
-        display_command
+                let display_command = painter::build_display_list(&layout_tree);
+                println!("DISPLAY:\n{:?}", display_command);
+
+                *last_displays = display_command.clone();
+
+                display_command
+            }
+        })
     });
 }

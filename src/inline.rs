@@ -1,9 +1,11 @@
 use css::{Unit, Value};
 use dom::NodeType;
-use std::ops::Range;
 use font::Font;
+use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, DEFAULT_FONT_SIZE};
+use float::Floats;
+
+use std::ops::Range;
 use std::collections::VecDeque;
-use layout::{BoxType, Dimensions, Floats, LayoutBox, LayoutInfo, DEFAULT_FONT_SIZE};
 
 use app_units::Au;
 
@@ -226,7 +228,13 @@ impl<'a> LineMaker<'a> {
     fn run_on_inline_block_node(&mut self, mut layoutbox: LayoutBox<'a>, max_width: Au) {
         let mut containing_block: Dimensions = ::std::default::Default::default();
         containing_block.content.width = max_width - self.cur_width;
-        layoutbox.layout(Au(0), containing_block, containing_block, containing_block);
+        layoutbox.layout(
+            &mut self.floats,
+            Au(0),
+            containing_block,
+            containing_block,
+            containing_block,
+        );
 
         let box_width = layoutbox.dimensions.margin_box().width;
 

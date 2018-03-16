@@ -1,6 +1,8 @@
 use style::{Display, StyledNode};
 use css::{Unit, Value};
 use dom::{LayoutType, NodeType};
+use float::{Float, Floats};
+
 use std::default::Default;
 use std::fmt;
 use std::ops::Range;
@@ -72,107 +74,6 @@ pub struct LayoutBox<'a> {
     pub children: Vec<LayoutBox<'a>>,
 }
 
-#[derive(Clone, Debug)]
-pub struct Floats {
-    pub float_list: FloatList,
-    pub ceiling: Au,
-    pub offset: EdgeSizes,
-}
-pub type FloatList = Vec<Float>;
-#[derive(Clone, Debug)]
-pub struct Float {
-    pub dimensions: Dimensions,
-    pub float_type: style::FloatType,
-}
-impl Float {
-    pub fn new(dimensions: Dimensions, float_type: style::FloatType) -> Float {
-        Float {
-            dimensions: dimensions,
-            float_type: float_type,
-        }
-    }
-}
-impl Floats {
-    pub fn new() -> Floats {
-        Floats {
-            float_list: vec![],
-            ceiling: Au(0),
-            offset: EdgeSizes {
-                top: Au(0),
-                bottom: Au(0),
-                left: Au(0),
-                right: Au(0),
-            },
-        }
-    }
-    pub fn is_present(&self) -> bool {
-        !self.float_list.is_empty()
-    }
-    pub fn translate(&mut self, delta: EdgeSizes) {
-        self.offset.left += delta.left;
-        self.offset.right += delta.right;
-        // Need?
-        // self.offset.top += delta.top;
-        // self.offset.bottom += delta.bottom;
-    }
-    pub fn add_float(&mut self, float: Float) {
-        self.float_list.push(float)
-    }
-    pub fn available_area(&mut self, max_width: Au, y: Au) -> Rect {
-        let y = y + self.ceiling;
-        let mut left = Au(0);
-        let mut right = Au(0);
-        for float in self.float_list.iter().rev() {
-            let margin_box = float.dimensions.margin_box();
-            match float.float_type {
-                style::FloatType::Left => {
-                    if left > Au(0) || (margin_box.y <= y && y <= margin_box.y + margin_box.height)
-                    {
-                        left += margin_box.width;
-                    }
-                }
-                style::FloatType::Right => {
-                    if right > Au(0) || (margin_box.y <= y && y <= margin_box.y + margin_box.height)
-                    {
-                        right += margin_box.width;
-                    }
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        if left != Au(0) {
-            left = Au::from_f64_px((left.to_f64_px() - self.offset.left.to_f64_px()).abs());
-        }
-        if right != Au(0) {
-            right = Au::from_f64_px((right.to_f64_px() - self.offset.right.to_f64_px()).abs());
-        }
-
-        Rect {
-            x: left,
-            y: Au(0),
-            width: max_width - left - right,
-            height: Au(0),
-        }
-    }
-    pub fn left_width(&mut self) -> Au {
-        self.float_list.iter().fold(Au(0), |acc, float| {
-            acc + match float.float_type {
-                style::FloatType::Left => float.dimensions.margin_box().width,
-                _ => Au(0),
-            }
-        }) - self.offset.left
-    }
-    pub fn right_width(&mut self) -> Au {
-        self.float_list.iter().fold(Au(0), |acc, float| {
-            acc + match float.float_type {
-                style::FloatType::Right => float.dimensions.margin_box().width,
-                _ => Au(0),
-            }
-        }) - self.offset.right
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Text {
     pub font: Font,
@@ -228,7 +129,13 @@ pub fn layout_tree<'a>(
     containing_block.content.height = Au::from_f64_px(0.0);
 
     let mut root_box = build_layout_tree(node);
-    root_box.layout(Au(0), containing_block, saved_block, viewport);
+    root_box.layout(
+        &mut Floats::new(),
+        Au(0),
+        containing_block,
+        saved_block,
+        viewport,
+    );
     root_box
 }
 
@@ -334,16 +241,22 @@ impl<'a> LayoutBox<'a> {
     /// width/height and so on.
     pub fn layout(
         &mut self,
+        floats: &mut Floats,
         last_margin_bottom: Au,
         containing_block: Dimensions,
         saved_block: Dimensions,
         viewport: Dimensions,
     ) {
         match self.box_type {
-            BoxType::BlockNode => {
-                self.layout_block(last_margin_bottom, containing_block, saved_block, viewport)
-            }
+            BoxType::BlockNode => self.layout_block(
+                floats,
+                last_margin_bottom,
+                containing_block,
+                saved_block,
+                viewport,
+            ),
             BoxType::InlineBlockNode => self.layout_inline_block(
+                floats,
                 last_margin_bottom,
                 containing_block,
                 saved_block,
@@ -353,7 +266,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
 
-                let mut linemaker = LineMaker::new(self.children.clone(), self.floats.clone());
+                let mut linemaker = LineMaker::new(self.children.clone(), floats.clone());
                 linemaker.run(containing_block.content.width);
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width);
@@ -377,15 +290,21 @@ impl<'a> LayoutBox<'a> {
                         self.calculate_block_height();
                     }
                 };
+
                 self.dimensions.content.x = match self.style.unwrap().float() {
-                    style::FloatType::Left => self.floats.left_width(),
+                    style::FloatType::Left => floats.left_width(),
                     style::FloatType::Right => {
-                        containing_block.content.width - self.floats.right_width()
+                        containing_block.content.width - floats.right_width()
                             - self.dimensions.content.width
                     }
                     _ => unreachable!(),
                 };
                 self.dimensions.content.y = containing_block.content.height;
+
+                floats.add_float(Float::new(
+                    self.dimensions.margin_box(),
+                    self.style.unwrap().float(),
+                ));
             }
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
         }
@@ -394,11 +313,14 @@ impl<'a> LayoutBox<'a> {
     /// Lay out a block-level element and its descendants.
     fn layout_block(
         &mut self,
+        floats: &mut Floats,
         last_margin_bottom: Au,
         containing_block: Dimensions,
         _saved_block: Dimensions,
         viewport: Dimensions,
     ) {
+        self.floats = floats.clone();
+
         // Child width can depend on parent width, so we need to calculate this box's width before
         // laying out its children.
         self.calculate_block_width(containing_block);
@@ -604,29 +526,20 @@ impl<'a> LayoutBox<'a> {
     fn layout_block_children(&mut self, viewport: Dimensions) {
         let d = &mut self.dimensions;
         let mut last_margin_bottom = Au(0);
+        let mut floats = &mut self.floats;
+
         for child in &mut self.children {
-            child.floats = {
-                let mut floats = self.floats.clone();
-                if !floats.float_list.is_empty() {
-                    floats.ceiling = vec![floats.ceiling, d.content.height]
-                        .into_iter()
-                        .fold(Au(0), |x, y| x.max(y));
-                }
-                floats
-            };
+            if floats.is_present() {
+                floats.ceiling = vec![floats.ceiling, d.content.height]
+                    .into_iter()
+                    .fold(Au(0), |x, y| x.max(y));
+            }
+            child.layout(&mut floats, last_margin_bottom, *d, *d, viewport);
 
-            child.layout(last_margin_bottom, *d, *d, viewport);
-
-            match child.box_type {
-                BoxType::Float => {
-                    self.floats
-                        .add_float(Float::new(child.dimensions, child.style.unwrap().float()));
-                }
-                _ => {
-                    last_margin_bottom = child.dimensions.margin.bottom;
-                    // Increment the height so each child is laid out below the previous one.
-                    d.content.height += child.dimensions.margin_box().height;
-                }
+            if child.box_type != BoxType::Float {
+                last_margin_bottom = child.dimensions.margin.bottom;
+                // Increment the height so each child is laid out below the previous one.
+                d.content.height += child.dimensions.margin_box().height;
             }
         }
     }
@@ -643,6 +556,7 @@ impl<'a> LayoutBox<'a> {
     /// Lay out a inline-block-level element and its descendants.
     fn layout_inline_block(
         &mut self,
+        _floats: &mut Floats,
         _last_margin_bottom: Au,
         containing_block: Dimensions,
         _saved_block: Dimensions,
