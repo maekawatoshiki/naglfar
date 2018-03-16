@@ -13,10 +13,17 @@ pub enum DisplayCommand {
     Text(String, Rect, Color, Font),
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, PartialOrd)]
 pub enum ContentType {
-    Float,
     None,
+    Float,
+}
+
+fn box_type_to_content_type(box_ty: &BoxType) -> ContentType {
+    match box_ty {
+        &BoxType::Float => ContentType::Float,
+        _ => ContentType::None,
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -74,14 +81,11 @@ fn render_layout_box(
     x: Au,
     y: Au,
     layout_box: &LayoutBox,
-    content_type: ContentType,
+    mut content_type: ContentType,
 ) {
-    let content_type = if content_type == ContentType::None && layout_box.box_type == BoxType::Float
-    {
-        ContentType::Float
-    } else {
-        content_type
-    };
+    if content_type < box_type_to_content_type(&layout_box.box_type) {
+        content_type = box_type_to_content_type(&layout_box.box_type)
+    }
 
     render_background(list, x, y, layout_box, content_type);
     render_borders(list, x, y, layout_box, content_type);

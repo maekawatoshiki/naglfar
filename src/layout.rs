@@ -286,16 +286,20 @@ impl<'a> LayoutBox<'a> {
                     }
                     LayoutInfo::Generic => {
                         self.calculate_float_width();
+                        self.assign_padding();
+                        self.assign_border_width();
+                        self.assign_margin();
                         self.layout_block_children(viewport);
                         self.calculate_block_height();
                     }
                 };
 
                 self.dimensions.content.x = match self.style.unwrap().float() {
-                    style::FloatType::Left => floats.left_width(),
+                    style::FloatType::Left => self.dimensions.left_offset() + floats.left_width(),
                     style::FloatType::Right => {
                         containing_block.content.width - floats.right_width()
                             - self.dimensions.content.width
+                            - self.dimensions.right_offset()
                     }
                     _ => unreachable!(),
                 };
@@ -644,10 +648,6 @@ impl<'a> LayoutBox<'a> {
         }
         if let Some(margin_right) = margin_right.to_px() {
             d.margin.right = Au::from_f64_px(margin_right)
-        }
-
-        if self.floats.is_present() {
-            self.floats.translate(d.left_right_offset());
         }
     }
 
