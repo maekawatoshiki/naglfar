@@ -149,7 +149,7 @@ div.card_content {
 div.card_footer1 {
   width: 468px;
   height: 20px;
-  display: inline-block;
+  float: left;
   border-width: 2px;
   border-color: #efefef;
   border-style: solid;
@@ -159,7 +159,7 @@ div.card_footer2 {
   width: 50px;
   height: 20px;
   margin-left: 10px;
-  display: inline-block;
+  float: left;
   border-width: 2px;
   border-color: #efefef;
   border-style: solid;
