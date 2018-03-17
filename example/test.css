@@ -138,23 +138,27 @@ div.card_content {
   padding-right: 5px;
 }
 
-div.card_footer1 {
-  width: 468px;
+div.card_footer {
   height: 20px;
-  float: left;
+  text-align: center;
   border-width: 2px;
-  border-color: #efefef;
   border-style: solid;
+  font-size: 18px;
+}
+
+div.card_footer1 {
+  float: left;
+  width: 100px;
+  border-color: #efefef;
 }
 
 div.card_footer2 {
-  width: 50px;
-  height: 20px;
+  float: right;
+  width: 80px;
+  color: white;
   margin-left: 10px;
-  float: left;
-  border-width: 2px;
-  border-color: #efefef;
-  border-style: solid;
+  background: #4a69ff;
+  border-color: #2a40ed;
 }
 
 #header {
