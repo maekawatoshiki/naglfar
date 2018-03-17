@@ -14,7 +14,7 @@ use pango::LayoutExt;
 
 use painter::{DisplayCommand, DisplayList};
 use font::FONT_DESC;
-use css::px_to_pt;
+use css::px2pt;
 
 struct RenderingWindow {
     window: gtk::Window,
@@ -96,7 +96,7 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
             FONT_DESC.with(|font_desc| {
                 font_desc
                     .borrow_mut()
-                    .set_size(pango::units_from_double(px_to_pt(font.size.to_f64_px()))); // px to pt. TODO: Fix this!
+                    .set_size(pango::units_from_double(px2pt(font.size.to_f64_px())));
                 font_desc
                     .borrow_mut()
                     .set_style(font.slant.to_pango_font_slant());

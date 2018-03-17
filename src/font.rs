@@ -2,7 +2,7 @@ use cairo;
 use pango;
 use pangocairo;
 
-use css::px_to_pt;
+use css::px2pt;
 
 use std::cell::RefCell;
 use pango::LayoutExt;
@@ -60,7 +60,7 @@ impl Font {
     pub fn text_width(&self, text: &str) -> f64 {
         FONT_DESC.with(|font_desc| {
             let mut font_desc = font_desc.borrow_mut();
-            font_desc.set_size(pango::units_from_double(px_to_pt(self.size.to_f64_px())));
+            font_desc.set_size(pango::units_from_double(px2pt(self.size.to_f64_px())));
             font_desc.set_style(self.slant.to_pango_font_slant());
             font_desc.set_weight(self.weight.to_pango_font_weight());
             PANGO_LAYOUT.with(|layout| {

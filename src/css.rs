@@ -93,14 +93,14 @@ impl Value {
     pub fn to_px(&self) -> Option<f64> {
         match *self {
             Value::Length(f, Unit::Px) | Value::Num(f) => Some(f),
-            Value::Length(f, Unit::Pt) => Some(pt_to_px(f)),
+            Value::Length(f, Unit::Pt) => Some(pt2px(f)),
             _ => None,
         }
     }
     pub fn to_pt(&self) -> Option<f64> {
         match *self {
             Value::Length(f, Unit::Pt) | Value::Num(f) => Some(f),
-            Value::Length(f, Unit::Px) => Some(px_to_pt(f)),
+            Value::Length(f, Unit::Px) => Some(px2pt(f)),
             _ => None,
         }
     }
@@ -126,14 +126,16 @@ impl Value {
     }
 }
 
+const DPI: f64 = 96.0;
+
 // TODO: any other better way?
-pub fn px_to_pt(f: f64) -> f64 {
-    f * 0.752
+pub fn px2pt(f: f64) -> f64 {
+    f / ((1.0 / 72.0) * DPI)
 }
 
 // TODO: any other better way?
-pub fn pt_to_px(f: f64) -> f64 {
-    f / 0.752
+pub fn pt2px(f: f64) -> f64 {
+    f * ((1.0 / 72.0) * DPI)
 }
 
 pub type Specificity = (usize, usize, usize);
