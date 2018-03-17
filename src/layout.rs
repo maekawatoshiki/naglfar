@@ -1,7 +1,7 @@
 use style::{Display, StyledNode};
 use css::{Unit, Value};
 use dom::{LayoutType, NodeType};
-use float::{Float, Floats};
+use float::Floats;
 
 use std::default::Default;
 use std::fmt;
@@ -275,41 +275,13 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.width = containing_block.content.width;
                 self.dimensions.content.height = linemaker.cur_height;
             }
-            BoxType::Float => {
-                // TODO: Implement correctly ASAP!
-                // Replaced Inline Element (<img>)
-                match self.info {
-                    LayoutInfo::Image(ref pixbuf) => {
-                        self.dimensions.content.width = Au::from_f64_px(pixbuf.get_width() as f64);
-                        self.dimensions.content.height =
-                            Au::from_f64_px(pixbuf.get_height() as f64);
-                    }
-                    LayoutInfo::Generic => {
-                        self.calculate_float_width();
-                        self.assign_padding();
-                        self.assign_border_width();
-                        self.assign_margin();
-                        self.layout_block_children(viewport);
-                        self.calculate_block_height();
-                    }
-                };
-
-                self.dimensions.content.x = match self.style.unwrap().float() {
-                    style::FloatType::Left => self.dimensions.left_offset() + floats.left_width(),
-                    style::FloatType::Right => {
-                        containing_block.content.width - floats.right_width()
-                            - self.dimensions.content.width
-                            - self.dimensions.right_offset()
-                    }
-                    _ => unreachable!(),
-                };
-                self.dimensions.content.y = containing_block.content.height;
-
-                floats.add_float(Float::new(
-                    self.dimensions.margin_box(),
-                    self.style.unwrap().float(),
-                ));
-            }
+            BoxType::Float => self.layout_float(
+                floats,
+                last_margin_bottom,
+                containing_block,
+                saved_block,
+                viewport,
+            ),
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
         }
     }
@@ -527,7 +499,7 @@ impl<'a> LayoutBox<'a> {
 
     /// Lay out the block's children within its content area.
     /// Sets `self.dimensions.height` to the total content height.
-    fn layout_block_children(&mut self, viewport: Dimensions) {
+    pub fn layout_block_children(&mut self, viewport: Dimensions) {
         let d = &mut self.dimensions;
         let mut last_margin_bottom = Au(0);
         let mut floats = &mut self.floats;
@@ -549,7 +521,7 @@ impl<'a> LayoutBox<'a> {
     }
 
     /// Height of a block-level non-replaced element in normal flow with overflow visible.
-    fn calculate_block_height(&mut self) {
+    pub fn calculate_block_height(&mut self) {
         // If the height is set to an explicit length, use that exact length.
         // Otherwise, just keep the value set by `layout_block_children`.
         if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().value("height") {

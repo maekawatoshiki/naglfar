@@ -1,4 +1,4 @@
-use layout::{EdgeSizes, LayoutBox, Rect};
+use layout::{Dimensions, EdgeSizes, LayoutBox, LayoutInfo, Rect};
 use style;
 use css::{Unit, Value};
 
@@ -116,6 +116,46 @@ impl Floats {
 }
 
 impl<'a> LayoutBox<'a> {
+    pub fn layout_float(
+        &mut self,
+        floats: &mut Floats,
+        _last_margin_bottom: Au,
+        containing_block: Dimensions,
+        _saved_block: Dimensions,
+        viewport: Dimensions,
+    ) {
+        // TODO: Implement correctly ASAP!
+        // Replaced Inline Element (<img>)
+        match self.info {
+            LayoutInfo::Image(ref pixbuf) => {
+                self.dimensions.content.width = Au::from_f64_px(pixbuf.get_width() as f64);
+                self.dimensions.content.height = Au::from_f64_px(pixbuf.get_height() as f64);
+            }
+            LayoutInfo::Generic => {
+                self.calculate_float_width();
+                self.assign_padding();
+                self.assign_border_width();
+                self.assign_margin();
+                self.layout_block_children(viewport);
+                self.calculate_block_height();
+            }
+        };
+
+        self.dimensions.content.x = match self.style.unwrap().float() {
+            style::FloatType::Left => self.dimensions.left_offset() + floats.left_width(),
+            style::FloatType::Right => {
+                containing_block.content.width - floats.right_width()
+                    - self.dimensions.content.width - self.dimensions.right_offset()
+            }
+            _ => unreachable!(),
+        };
+        self.dimensions.content.y = containing_block.content.height;
+
+        floats.add_float(Float::new(
+            self.dimensions.margin_box(),
+            self.style.unwrap().float(),
+        ));
+    }
     /// Calculate the width of a float (non-replaced) element.
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
     /// ref. https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html#float-width
