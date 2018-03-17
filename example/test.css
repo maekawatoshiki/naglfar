@@ -86,14 +86,6 @@ b {
   display: inline;
 }
 
-p {
-  background: #fa603c; 
-  color: black;
-  text-align: center;
-  padding: 100px;
-  padding: 100px;
-}
-
 footer {
   text-align: center;
   background: #343434;
@@ -192,40 +184,3 @@ div.card_footer2 {
   margin-left: 55px;
 }
 
-#x1 {
-  background: #dddddd;
-}
-
-#x2 {
-  background: #aaaaaa;
-}
-
-#margin_collapse_test {
-}
-
-#fox1 {
-  display: inline-block;
-  background: #ff8119;
-  width: 400px;
-  margin: 10px;
-  padding: 10px;
-}
-
-#fox2 {
-  display: inline-block;
-  background: #1e90ff;
-  width: 400px;
-  margin: 10px;
-  padding: 10px;
-}
-
-#fox3 {
-  background: #1e90ff;
-  height: 70px;
-  margin: 10px;
-  text-align: right;
-}
-
-#box1 {
-  background: #90ee90;
-}
