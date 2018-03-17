@@ -80,17 +80,21 @@ impl Font {
         }
 
         let mut buf = "".to_string();
-        let mut last_splittable_pos = s.len();
+        let mut last_splittable_pos = None;
         for (i, c) in s.chars().enumerate() {
             buf.push(c);
 
-            if c.is_whitespace() {
-                last_splittable_pos = i;
+            if c.is_whitespace() || c.is_ascii_punctuation() {
+                last_splittable_pos = Some(i);
             }
 
             let text_width = self.text_width(buf.as_str());
             if text_width > max_width {
-                return last_splittable_pos + 1; // '1' means whitespace
+                if let Some(pos) = last_splittable_pos {
+                    return pos + 1; // '1' means whitespace or punctuation.
+                } else {
+                    return s.len();
+                }
             }
         }
         s.len()

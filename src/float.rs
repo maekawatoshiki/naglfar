@@ -49,9 +49,8 @@ impl Floats {
     pub fn translate(&mut self, delta: EdgeSizes) {
         self.offset.left += delta.left;
         self.offset.right += delta.right;
-        // Need?
-        // self.offset.top += delta.top;
-        // self.offset.bottom += delta.bottom;
+        self.offset.top += delta.top;
+        self.offset.bottom += delta.bottom;
     }
 
     pub fn add_float(&mut self, float: Float) {
@@ -59,7 +58,7 @@ impl Floats {
     }
 
     pub fn available_area(&mut self, max_width: Au, ceiling: Au) -> Rect {
-        let ceiling = ceiling + self.ceiling;
+        let ceiling = ceiling + self.ceiling + self.offset.top;
         let mut left = Au(0);
         let mut right = Au(0);
 

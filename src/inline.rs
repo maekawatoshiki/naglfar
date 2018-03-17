@@ -78,19 +78,21 @@ impl<'a> LineMaker<'a> {
                 self.pending.range = text_info.range.clone()
             }
 
-            let mut max_width_with_float =
+            let mut max_width_considered_float =
                 self.floats.available_area(max_width, self.cur_height).width;
 
             match layoutbox.box_type {
                 BoxType::TextNode(_) => while self.pending.range.len() != 0 {
-                    self.run_on_text_node(layoutbox.clone(), max_width_with_float);
-                    max_width_with_float =
+                    self.run_on_text_node(layoutbox.clone(), max_width_considered_float);
+                    max_width_considered_float =
                         self.floats.available_area(max_width, self.cur_height).width;
                 },
                 BoxType::InlineBlockNode => {
-                    self.run_on_inline_block_node(layoutbox, max_width_with_float)
+                    self.run_on_inline_block_node(layoutbox, max_width_considered_float)
                 }
-                BoxType::InlineNode => self.run_on_inline_node(layoutbox, max_width_with_float),
+                BoxType::InlineNode => {
+                    self.run_on_inline_node(layoutbox, max_width_considered_float)
+                }
                 _ => unimplemented!(),
             }
         }
@@ -117,20 +119,24 @@ impl<'a> LineMaker<'a> {
 
         for line in &self.lines {
             self.cur_width = Au(0);
+
             for new_box in &mut self.new_boxes[line.range.clone()] {
+                let (left_floats_width, max_width_considered_float) = {
+                    let available_area = self.floats.available_area(max_width, self.cur_height);
+                    (available_area.x, available_area.width)
+                };
                 // TODO: Refine
                 let text_align = new_box
                     .get_style_node()
                     .value_with_default("text-align", &Value::Keyword("left".to_string()));
                 let init_width = match text_align {
                     Value::Keyword(ref k) => match k.to_lowercase().as_str() {
-                        "center" => (max_width - line.width) / 2,
-                        "right" => max_width - line.width,
+                        "center" => (max_width_considered_float - line.width) / 2,
+                        "right" => max_width_considered_float - line.width,
                         "left" | _ => Au(0),
                     },
                     _ => Au(0),
-                }
-                    + self.floats.available_area(max_width, self.cur_height).x;
+                } + left_floats_width;
 
                 new_box.dimensions.content.x = init_width + self.cur_width
                     + new_box.dimensions.padding.left

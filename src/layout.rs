@@ -331,6 +331,10 @@ impl<'a> LayoutBox<'a> {
 
         self.calculate_block_position(last_margin_bottom, containing_block);
 
+        if self.floats.is_present() {
+            self.floats.translate(self.dimensions.offset());
+        }
+
         self.layout_block_children(viewport);
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
@@ -456,10 +460,6 @@ impl<'a> LayoutBox<'a> {
         }
         if let Some(margin_right) = margin_right.to_px() {
             d.margin.right = Au::from_f64_px(margin_right)
-        }
-
-        if self.floats.is_present() {
-            self.floats.translate(d.left_right_offset());
         }
     }
 
@@ -808,10 +808,24 @@ impl Dimensions {
     pub fn right_offset(self) -> Au {
         self.margin.right + self.border.right + self.padding.right
     }
+    pub fn top_offset(self) -> Au {
+        self.margin.top + self.border.top + self.padding.top
+    }
+    pub fn bottom_offset(self) -> Au {
+        self.margin.bottom + self.border.bottom + self.padding.bottom
+    }
     pub fn left_right_offset(self) -> EdgeSizes {
         EdgeSizes {
             top: Au(0),
             bottom: Au(0),
+            left: self.left_offset(),
+            right: self.right_offset(),
+        }
+    }
+    pub fn offset(self) -> EdgeSizes {
+        EdgeSizes {
+            top: self.top_offset(),
+            bottom: self.bottom_offset(),
             left: self.left_offset(),
             right: self.right_offset(),
         }
