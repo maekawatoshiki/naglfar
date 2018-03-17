@@ -144,6 +144,7 @@ div.card_footer {
   border-width: 2px;
   border-style: solid;
   font-size: 18px;
+  padding: 2px;
 }
 
 div.card_footer1 {
