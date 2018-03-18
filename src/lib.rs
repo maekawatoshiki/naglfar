@@ -4,6 +4,7 @@ pub mod html;
 pub mod dom;
 pub mod font;
 pub mod inline;
+pub mod block;
 pub mod float;
 pub mod layout;
 pub mod painter;
