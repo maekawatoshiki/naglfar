@@ -363,3 +363,49 @@ impl<'a> LineMaker<'a> {
         }
     }
 }
+
+impl<'a> LayoutBox<'a> {
+    /// Lay out a inline-block-level element and its descendants.
+    pub fn layout_inline_block(
+        &mut self,
+        _floats: &mut Floats,
+        _last_margin_bottom: Au,
+        containing_block: Dimensions,
+        _saved_block: Dimensions,
+        viewport: Dimensions,
+    ) {
+        // Child width can depend on parent width, so we need to calculate this box's width before
+        // laying out its children.
+        self.calculate_inline_block_width(containing_block);
+
+        self.assign_padding();
+        self.assign_border_width();
+        self.assign_margin();
+        // self.calculate_block_position(last_margin_bottom, containing_block);
+
+        self.layout_block_children(viewport);
+
+        // Parent height can depend on child height, so `calculate_height` must be called after the
+        // children are laid out.
+        self.calculate_block_height();
+    }
+
+    /// Calculate the width of a block-level non-replaced element in normal flow.
+    /// Sets the horizontal margin/padding/border dimensions, and the `width`.
+    /// ref. https://www.w3.org/TR/CSS2/visudet.html#inlineblock-width
+    pub fn calculate_inline_block_width(&mut self, _containing_block: Dimensions) {
+        let style = self.get_style_node();
+
+        // `width` has initial value `auto`.
+        // TODO: Implement calculating shrink-to-fit width
+        let auto = Value::Keyword("auto".to_string());
+        let width = style.value("width").unwrap_or(auto.clone());
+
+        if width == auto {
+            // TODO
+            panic!("calculating shrink-to-fit width is unsupported.");
+        }
+
+        self.dimensions.content.width = Au::from_f64_px(width.to_px().unwrap());
+    }
+}
