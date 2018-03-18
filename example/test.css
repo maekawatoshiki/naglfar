@@ -99,7 +99,7 @@ footer {
 
 div.card {
   background: #ffffff;
-  width: 600px;
+  width: 85%;
   margin: 10px;
   margin-left: auto;
   margin-right: auto;
@@ -174,8 +174,7 @@ div.card_footer2 {
   width: 600px;
   padding-top: 20px;
   padding-bottom: 20px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-left: 7%;
 }
 
 #title {
