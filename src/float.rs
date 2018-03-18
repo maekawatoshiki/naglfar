@@ -2,6 +2,8 @@ use layout::{Dimensions, EdgeSizes, LayoutBox, LayoutInfo, Rect};
 use style;
 use css::{Unit, Value};
 
+use gdk_pixbuf::PixbufExt;
+
 use app_units::Au;
 
 #[derive(Clone, Debug)]

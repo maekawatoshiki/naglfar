@@ -7,6 +7,8 @@ use float::Floats;
 use std::ops::Range;
 use std::collections::VecDeque;
 
+use gdk_pixbuf::PixbufExt;
+
 use app_units::Au;
 
 #[derive(Clone, Debug)]
