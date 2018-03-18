@@ -1,13 +1,15 @@
 use css::{Unit, Value};
+use style::StyledNode;
 use dom::NodeType;
 use font::Font;
 use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, DEFAULT_FONT_SIZE};
 use float::Floats;
 
 use std::ops::Range;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use gdk_pixbuf::PixbufExt;
+use gdk_pixbuf;
 
 use app_units::Au;
 
@@ -74,7 +76,7 @@ impl<'a> LineMaker<'a> {
         }
     }
 
-    pub fn run(&mut self, max_width: Au) {
+    pub fn run(&mut self, max_width: Au, containing_block: Dimensions) {
         while let Some(layoutbox) = self.work_list.pop_front() {
             if let BoxType::TextNode(ref text_info) = layoutbox.box_type {
                 self.pending.range = text_info.range.clone()
@@ -93,7 +95,7 @@ impl<'a> LineMaker<'a> {
                     self.run_on_inline_block_node(layoutbox, max_width_considered_float)
                 }
                 BoxType::InlineNode => {
-                    self.run_on_inline_node(layoutbox, max_width_considered_float)
+                    self.run_on_inline_node(layoutbox, max_width_considered_float, containing_block)
                 }
                 _ => unimplemented!(),
             }
@@ -155,7 +157,12 @@ impl<'a> LineMaker<'a> {
         }
     }
 
-    fn run_on_inline_node(&mut self, mut layoutbox: LayoutBox<'a>, max_width: Au) {
+    fn run_on_inline_node(
+        &mut self,
+        mut layoutbox: LayoutBox<'a>,
+        max_width: Au,
+        containing_block: Dimensions,
+    ) {
         // Non-replaced inline elements(like <span>)
         if layoutbox.style.unwrap().node.contains_text() {
             let mut linemaker = self.clone();
@@ -169,6 +176,7 @@ impl<'a> LineMaker<'a> {
             linemaker.run(
                 max_width
                     - (layoutbox.dimensions.padding.right + layoutbox.dimensions.border.right),
+                containing_block,
             );
             linemaker.cur_width +=
                 layoutbox.dimensions.padding.right + layoutbox.dimensions.border.right;
@@ -205,14 +213,22 @@ impl<'a> LineMaker<'a> {
             self.cur_metrics = linemaker.cur_metrics;
         } else {
             // Replaced Inline Element (<img>)
-            let (width, height) = match &layoutbox.info {
-                &LayoutInfo::Image(ref pixbuf) => (
-                    Au::from_f64_px(pixbuf.get_width() as f64),
-                    Au::from_f64_px(pixbuf.get_height() as f64),
-                ),
+            let (width, height) = match &mut layoutbox.info {
+                &mut LayoutInfo::Image(ref mut pixbuf) => {
+                    let pixbuf = match pixbuf {
+                        &mut Some(ref pixbuf) => pixbuf.clone(),
+                        _ => {
+                            *pixbuf = Some(layoutbox.style.unwrap().get_pixbuf(containing_block));
+                            pixbuf.clone().unwrap()
+                        }
+                    };
+                    (
+                        Au::from_f64_px(pixbuf.get_width() as f64),
+                        Au::from_f64_px(pixbuf.get_height() as f64),
+                    )
+                }
                 _ => unimplemented!(),
             };
-
             if self.cur_width + width > max_width {
                 self.flush_cur_line();
                 self.end += 1;
@@ -407,5 +423,45 @@ impl<'a> LayoutBox<'a> {
         }
 
         self.dimensions.content.width = Au::from_f64_px(width.to_px().unwrap());
+    }
+}
+
+use std::cell::RefCell;
+
+thread_local!(
+    pub static IMG_CACHE: RefCell<HashMap<(String, i32, i32), gdk_pixbuf::Pixbuf>> = {
+        RefCell::new(HashMap::new())
+    };
+);
+
+impl<'a> StyledNode<'a> {
+    pub fn get_pixbuf(&self, containing_block: Dimensions) -> gdk_pixbuf::Pixbuf {
+        let cb_width = containing_block.content.width.to_f64_px();
+        let cb_height = containing_block.content.height.to_f64_px();
+        IMG_CACHE.with(|c| {
+            let image_url = self.node.image_url().unwrap();
+            // If 'width' is specified, use its value. Otherwise, -1.
+            let specified_width_px = self.node
+                .attr("width")
+                .and_then(|w| Some(w.maybe_percent_to_px(cb_width).unwrap_or(-1.0) as i32))
+                .unwrap_or(-1);
+            // The same as above
+            let specified_height_px = self.node
+                .attr("height")
+                .and_then(|h| Some(h.maybe_percent_to_px(cb_height).unwrap_or(-1.0) as i32))
+                .unwrap_or(-1);
+            c.borrow_mut()
+                .entry((image_url.clone(), specified_width_px, specified_height_px))
+                .or_insert_with(|| {
+                    gdk_pixbuf::Pixbuf::new_from_file_at_scale(
+                        image_url.as_str(),
+                        specified_width_px,
+                        specified_height_px,
+                        // Preserve scale if at least one of width and height is -1.
+                        specified_width_px == -1 || specified_height_px == -1,
+                    ).unwrap()
+                })
+                .clone()
+        })
     }
 }

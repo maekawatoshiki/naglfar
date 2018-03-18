@@ -9,7 +9,6 @@ use style;
 use std::default::Default;
 use std::fmt;
 use std::ops::Range;
-use std::collections::HashMap;
 
 use cairo;
 use pango;
@@ -49,7 +48,7 @@ pub struct EdgeSizes {
 #[derive(Clone, Debug, PartialEq)]
 pub enum LayoutInfo {
     Generic,
-    Image(gdk_pixbuf::Pixbuf),
+    Image(Option<gdk_pixbuf::Pixbuf>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -139,14 +138,6 @@ pub fn layout_tree<'a>(
     root_box
 }
 
-use std::cell::RefCell;
-
-thread_local!(
-    pub static IMG_CACHE: RefCell<HashMap<(String, i32, i32), gdk_pixbuf::Pixbuf>> = {
-        RefCell::new(HashMap::new())
-    };
-);
-
 /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
 fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
     // Create the root box.
@@ -169,33 +160,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
         Some(style_node),
         match style_node.node.layout_type() {
             LayoutType::Generic => LayoutInfo::Generic,
-            LayoutType::Image => LayoutInfo::Image(IMG_CACHE.with(|c| {
-                let mut c = c.borrow_mut();
-                let image_url = style_node.node.image_url().unwrap();
-                // If 'width' is specified, use its value. Otherwise, -1.
-                let specified_width_px = style_node
-                    .node
-                    .attr("width")
-                    .and_then(|w| Some(w.to_px().unwrap_or(-1.0) as i32))
-                    .unwrap_or(-1);
-                // The same as above
-                let specified_height_px = style_node
-                    .node
-                    .attr("height")
-                    .and_then(|h| Some(h.to_px().unwrap_or(-1.0) as i32))
-                    .unwrap_or(-1);
-                c.entry((image_url.clone(), specified_width_px, specified_height_px))
-                    .or_insert_with(|| {
-                        gdk_pixbuf::Pixbuf::new_from_file_at_scale(
-                            image_url.as_str(),
-                            specified_width_px,
-                            specified_height_px,
-                            // Preserve scale if at least one of width and height is -1.
-                            specified_width_px == -1 || specified_height_px == -1,
-                        ).unwrap()
-                    })
-                    .clone()
-            })),
+            LayoutType::Image => LayoutInfo::Image(None),
         },
     );
 
@@ -267,7 +232,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.y = containing_block.content.height;
 
                 let mut linemaker = LineMaker::new(self.children.clone(), floats.clone());
-                linemaker.run(containing_block.content.width);
+                linemaker.run(containing_block.content.width, containing_block);
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width);
 

@@ -148,7 +148,7 @@ fn render_image(
                     list.push(DisplayCommandInfo::new(
                         DisplayCommand::Image(
                             if let &LayoutInfo::Image(ref pixbuf) = &layout_box.info {
-                                pixbuf.clone()
+                                pixbuf.clone().unwrap()
                             } else {
                                 panic!()
                             },

@@ -129,7 +129,14 @@ impl<'a> LayoutBox<'a> {
         // TODO: Implement correctly ASAP!
         // Replaced Inline Element (<img>)
         match self.info {
-            LayoutInfo::Image(ref pixbuf) => {
+            LayoutInfo::Image(ref mut pixbuf) => {
+                let pixbuf = match pixbuf {
+                    &mut Some(ref pixbuf) => pixbuf.clone(),
+                    _ => {
+                        *pixbuf = Some(self.style.unwrap().get_pixbuf(containing_block));
+                        pixbuf.clone().unwrap()
+                    }
+                };
                 self.dimensions.content.width = Au::from_f64_px(pixbuf.get_width() as f64);
                 self.dimensions.content.height = Au::from_f64_px(pixbuf.get_height() as f64);
             }
