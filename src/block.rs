@@ -38,6 +38,7 @@ impl<'a> LayoutBox<'a> {
     /// ref. http://www.w3.org/TR/CSS2/visudet.html#blockwidth
     pub fn calculate_block_width(&mut self, containing_block: Dimensions) {
         let style = self.get_style_node();
+        let cb_width = containing_block.content.width.to_f64_px();
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
@@ -64,7 +65,7 @@ impl<'a> LayoutBox<'a> {
             &padding_right,
             &width,
         ].iter()
-            .map(|v| v.to_px().unwrap_or(0.0)));
+            .map(|v| v.maybe_percent_to_px(cb_width).unwrap_or(0.0)));
 
         // If width is not auto and the total is wider than the container, treat auto margins as 0.
         if width != auto && total > containing_block.content.width.to_f64_px() {
@@ -85,7 +86,7 @@ impl<'a> LayoutBox<'a> {
             // If the values are overconstrained, calculate margin_right.
             (false, false, false) => {
                 margin_right = Value::Length(
-                    margin_right.to_px().unwrap() + underflow.to_f64_px(),
+                    margin_right.maybe_percent_to_px(cb_width).unwrap() + underflow.to_f64_px(),
                     Unit::Px,
                 );
             }
@@ -114,7 +115,7 @@ impl<'a> LayoutBox<'a> {
                     // Width can't be negative. Adjust the right margin instead.
                     width = Value::Length(0.0, Unit::Px);
                     margin_right = Value::Length(
-                        margin_right.to_px().unwrap() + underflow.to_f64_px(),
+                        margin_right.maybe_percent_to_px(cb_width).unwrap() + underflow.to_f64_px(),
                         Unit::Px,
                     );
                 }
@@ -128,28 +129,28 @@ impl<'a> LayoutBox<'a> {
         }
 
         let d = &mut self.dimensions;
-        if let Some(width) = width.to_px() {
+        if let Some(width) = width.maybe_percent_to_px(cb_width) {
             d.content.width = Au::from_f64_px(width)
         }
 
-        if let Some(padding_left) = padding_left.to_px() {
+        if let Some(padding_left) = padding_left.maybe_percent_to_px(cb_width) {
             d.padding.left = Au::from_f64_px(padding_left)
         }
-        if let Some(padding_right) = padding_right.to_px() {
+        if let Some(padding_right) = padding_right.maybe_percent_to_px(cb_width) {
             d.padding.right = Au::from_f64_px(padding_right)
         }
 
-        if let Some(border_left) = border_left.to_px() {
+        if let Some(border_left) = border_left.maybe_percent_to_px(cb_width) {
             d.border.left = Au::from_f64_px(border_left)
         }
-        if let Some(border_right) = border_right.to_px() {
+        if let Some(border_right) = border_right.maybe_percent_to_px(cb_width) {
             d.border.right = Au::from_f64_px(border_right)
         }
 
-        if let Some(margin_left) = margin_left.to_px() {
+        if let Some(margin_left) = margin_left.maybe_percent_to_px(cb_width) {
             d.margin.left = Au::from_f64_px(margin_left)
         }
-        if let Some(margin_right) = margin_right.to_px() {
+        if let Some(margin_right) = margin_right.maybe_percent_to_px(cb_width) {
             d.margin.right = Au::from_f64_px(margin_right)
         }
     }
@@ -163,18 +164,23 @@ impl<'a> LayoutBox<'a> {
         containing_block: Dimensions,
     ) {
         let style = self.get_style_node();
+        let cb_width = containing_block.content.width.to_f64_px();
         let d = &mut self.dimensions;
 
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
         // If margin-top or margin-bottom is `auto`, the used value is zero.
-        d.margin.top =
-            Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px().unwrap());
+        d.margin.top = Au::from_f64_px(
+            style
+                .lookup("margin-top", "margin", &zero)
+                .maybe_percent_to_px(cb_width)
+                .unwrap(),
+        );
         d.margin.bottom = Au::from_f64_px(
             style
                 .lookup("margin-bottom", "margin", &zero)
-                .to_px()
+                .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
 
@@ -189,26 +195,26 @@ impl<'a> LayoutBox<'a> {
         d.border.top = Au::from_f64_px(
             style
                 .lookup("border-top-width", "border-width", &zero)
-                .to_px()
+                .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
         d.border.bottom = Au::from_f64_px(
             style
                 .lookup("border-bottom-width", "border-width", &zero)
-                .to_px()
+                .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
 
         d.padding.top = Au::from_f64_px(
             style
                 .lookup("padding-top", "padding", &zero)
-                .to_px()
+                .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
         d.padding.bottom = Au::from_f64_px(
             style
                 .lookup("padding-bottom", "padding", &zero)
-                .to_px()
+                .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
 

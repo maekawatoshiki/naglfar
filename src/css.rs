@@ -41,6 +41,7 @@ pub enum Value {
 pub enum Unit {
     Px,
     Pt,
+    Percent,
     // Em,
 }
 
@@ -94,6 +95,14 @@ impl Value {
         match *self {
             Value::Length(f, Unit::Px) | Value::Num(f) => Some(f),
             Value::Length(f, Unit::Pt) => Some(pt2px(f)),
+            _ => None,
+        }
+    }
+    pub fn maybe_percent_to_px(&self, len: f64) -> Option<f64> {
+        match *self {
+            Value::Length(f, Unit::Px) | Value::Num(f) => Some(f),
+            Value::Length(f, Unit::Pt) => Some(pt2px(f)),
+            Value::Length(f, Unit::Percent) => Some(len * (f / 100.0)),
             _ => None,
         }
     }
@@ -188,6 +197,16 @@ pub fn parse_value(source: String) -> Value {
 fn valid_ident_char(c: char) -> bool {
     // TODO: other char codes?
     c.is_alphanumeric() || c == '-' || c == '_'
+}
+
+fn valid_ident_percent_char(c: char) -> bool {
+    // TODO: other char codes?
+    c.is_alphanumeric() || c == '%'
+}
+
+fn valid_alpha_percent_char(c: char) -> bool {
+    // TODO: other char codes?
+    c.is_alphanumeric() || c == '%'
 }
 
 #[derive(Clone, Debug)]
@@ -305,7 +324,7 @@ impl Parser {
 
     fn parse_length(&mut self) -> Value {
         let num = self.parse_float();
-        if !self.eof() && self.next_char().is_alphabetic() {
+        if !self.eof() && valid_alpha_percent_char(self.next_char()) {
             Value::Length(num, self.parse_unit())
         } else {
             Value::Num(num)
@@ -321,9 +340,10 @@ impl Parser {
     }
 
     fn parse_unit(&mut self) -> Unit {
-        match &*self.parse_identifier().to_ascii_lowercase() {
+        match &*self.parse_identifier_percent().to_ascii_lowercase() {
             "px" => Unit::Px,
             "pt" => Unit::Pt,
+            "%" => Unit::Percent,
             _ => panic!("unrecognized unit"),
         }
     }
@@ -346,6 +366,10 @@ impl Parser {
 
     fn parse_identifier(&mut self) -> String {
         self.consume_while(valid_ident_char)
+    }
+
+    fn parse_identifier_percent(&mut self) -> String {
+        self.consume_while(valid_ident_percent_char)
     }
 
     fn consume_whitespace(&mut self) {
@@ -410,6 +434,7 @@ impl fmt::Display for Stylesheet {
                         Value::Keyword(ref kw) => kw.clone(),
                         Value::Length(ref f, Unit::Px) => format!("{}px", f),
                         Value::Length(ref f, Unit::Pt) => format!("{}pt", f),
+                        Value::Length(ref f, Unit::Percent) => format!("{}%", f),
                         Value::Num(ref f) => format!("{}", f),
                         Value::Color(ref color) => {
                             format!("rgba({}, {}, {}, {})", color.r, color.g, color.b, color.a)

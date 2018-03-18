@@ -134,7 +134,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.height = Au::from_f64_px(pixbuf.get_height() as f64);
             }
             LayoutInfo::Generic => {
-                self.calculate_float_width();
+                self.calculate_float_width(containing_block);
                 self.assign_padding();
                 self.assign_border_width();
                 self.assign_margin();
@@ -162,8 +162,9 @@ impl<'a> LayoutBox<'a> {
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
     /// ref. https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html#float-width
     // TODO: Implement correctly!
-    pub fn calculate_float_width(&mut self) {
+    pub fn calculate_float_width(&mut self, containing_block: Dimensions) {
         let style = self.get_style_node();
+        let cb_width = containing_block.content.width.to_f64_px();
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
@@ -182,28 +183,28 @@ impl<'a> LayoutBox<'a> {
         let padding_right = style.lookup("padding-right", "padding", &zero);
 
         let d = &mut self.dimensions;
-        if let Some(width) = width.to_px() {
+        if let Some(width) = width.maybe_percent_to_px(cb_width) {
             d.content.width = Au::from_f64_px(width)
         }
 
-        if let Some(padding_left) = padding_left.to_px() {
+        if let Some(padding_left) = padding_left.maybe_percent_to_px(cb_width) {
             d.padding.left = Au::from_f64_px(padding_left)
         }
-        if let Some(padding_right) = padding_right.to_px() {
+        if let Some(padding_right) = padding_right.maybe_percent_to_px(cb_width) {
             d.padding.right = Au::from_f64_px(padding_right)
         }
 
-        if let Some(border_left) = border_left.to_px() {
+        if let Some(border_left) = border_left.maybe_percent_to_px(cb_width) {
             d.border.left = Au::from_f64_px(border_left)
         }
-        if let Some(border_right) = border_right.to_px() {
+        if let Some(border_right) = border_right.maybe_percent_to_px(cb_width) {
             d.border.right = Au::from_f64_px(border_right)
         }
 
-        if let Some(margin_left) = margin_left.to_px() {
+        if let Some(margin_left) = margin_left.maybe_percent_to_px(cb_width) {
             d.margin.left = Au::from_f64_px(margin_left)
         }
-        if let Some(margin_right) = margin_right.to_px() {
+        if let Some(margin_right) = margin_right.maybe_percent_to_px(cb_width) {
             d.margin.right = Au::from_f64_px(margin_right)
         }
     }
