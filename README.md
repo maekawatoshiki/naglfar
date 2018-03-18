@@ -13,7 +13,7 @@ Naglfar is a toy web browser in Rust.
 
 # Run
 
-## Requirements
+## Requisites
 - Latest Rust (recommend [rustup](https://www.rustup.rs/))
 - GTK (for gtk-rs)
 
