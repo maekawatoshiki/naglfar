@@ -97,6 +97,40 @@ footer {
   border-style: solid;
 }
 
+div.sidebar {
+  background: #efefef;
+  margin: 10px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10px;
+  padding-left: 5px;
+  border-width: 1px;
+  border-color: #cdcdcd;
+  border-style: solid;
+}
+
+div.sidebar_title {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  border-width: 0px;
+  border-bottom-color: black;
+  border-bottom-width: 1px;
+  border-style: solid;
+}
+
+div.sidebar_content {
+  padding-left: 10px;
+}
+
+div.sidebar_element {
+  font-style: italic;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  color: #3a6bd6;
+  font-size: 13px;
+}
+
+
 div.card {
   background: #ffffff;
   width: 85%;
