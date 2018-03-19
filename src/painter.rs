@@ -13,36 +13,17 @@ pub enum DisplayCommand {
     Text(String, Rect, Color, Font),
 }
 
-#[derive(Debug, PartialEq, Copy, Clone, PartialOrd)]
-pub enum ContentType {
-    None,
-    Float,
-}
-
-fn box_type_to_content_type(box_ty: &BoxType) -> ContentType {
-    match box_ty {
-        &BoxType::Float => ContentType::Float,
-        _ => ContentType::None,
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct DisplayCommandInfo {
     pub command: DisplayCommand,
-    pub content_type: ContentType,
     pub z_index: i32,
 }
 
 impl DisplayCommandInfo {
-    pub fn new(
-        command: DisplayCommand,
-        z_index: i32,
-        content_type: ContentType,
-    ) -> DisplayCommandInfo {
+    pub fn new(command: DisplayCommand, z_index: i32) -> DisplayCommandInfo {
         DisplayCommandInfo {
             command: command,
             z_index: z_index,
-            content_type: content_type,
         }
     }
 }
@@ -56,62 +37,47 @@ pub fn build_display_list(layout_root: &LayoutBox) -> DisplayList {
         Au::from_f64_px(0.0),
         Au::from_f64_px(0.0),
         layout_root,
-        ContentType::None,
     );
 
     list.sort_by(
         |&DisplayCommandInfo { z_index: a, .. }, &DisplayCommandInfo { z_index: b, .. }| a.cmp(&b),
     );
-    let mut ordered_list = Vec::new();
-    for item in list.iter()
-        .filter(|item| item.content_type == ContentType::None)
-    {
-        ordered_list.push(item.clone());
-    }
-    for item in list.iter()
-        .filter(|item| item.content_type == ContentType::Float)
-    {
-        ordered_list.push(item.clone());
-    }
-    ordered_list
+    list
 }
 
-fn render_layout_box(
-    list: &mut DisplayList,
-    x: Au,
-    y: Au,
-    layout_box: &LayoutBox,
-    mut content_type: ContentType,
-) {
-    if content_type < box_type_to_content_type(&layout_box.box_type) {
-        content_type = box_type_to_content_type(&layout_box.box_type)
-    }
-
-    render_background(list, x, y, layout_box, content_type);
-    render_borders(list, x, y, layout_box, content_type);
+fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+    render_background(list, x, y, layout_box);
+    render_borders(list, x, y, layout_box);
 
     let children = layout_box.children.clone();
-    for child in children {
+    for child in children
+        .iter()
+        .filter(|child| child.box_type != BoxType::Float)
+    {
         render_layout_box(
             list,
             x + layout_box.dimensions.content.x,
             y + layout_box.dimensions.content.y,
             &child,
-            content_type,
+        );
+    }
+    for child in children
+        .iter()
+        .filter(|child| child.box_type == BoxType::Float)
+    {
+        render_layout_box(
+            list,
+            x + layout_box.dimensions.content.x,
+            y + layout_box.dimensions.content.y,
+            &child,
         );
     }
 
-    render_text(list, x, y, layout_box, content_type);
-    render_image(list, x, y, layout_box, content_type);
+    render_text(list, x, y, layout_box);
+    render_image(list, x, y, layout_box);
 }
 
-fn render_text(
-    list: &mut DisplayList,
-    x: Au,
-    y: Au,
-    layout_box: &LayoutBox,
-    content_type: ContentType,
-) {
+fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     if let &BoxType::TextNode(ref text_info) = &layout_box.box_type {
         let text = if let NodeType::Text(ref text) = layout_box.style.unwrap().node.data {
             &text.as_str()[text_info.range.clone()]
@@ -126,18 +92,11 @@ fn render_text(
                 text_info.font,
             ),
             layout_box.z_index,
-            content_type,
         ));
     }
 }
 
-fn render_image(
-    list: &mut DisplayList,
-    x: Au,
-    y: Au,
-    layout_box: &LayoutBox,
-    content_type: ContentType,
-) {
+fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     match layout_box.box_type {
         BoxType::InlineNode | BoxType::Float => {
             if let NodeType::Element(ElementData {
@@ -155,7 +114,6 @@ fn render_image(
                             layout_box.dimensions.content.add_parent_coordinate(x, y),
                         ),
                         layout_box.z_index,
-                        content_type,
                     ))
                 }
             }
@@ -164,13 +122,7 @@ fn render_image(
     }
 }
 
-fn render_background(
-    list: &mut DisplayList,
-    x: Au,
-    y: Au,
-    layout_box: &LayoutBox,
-    content_type: ContentType,
-) {
+fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     lookup_color(layout_box, "background-color", "background").map(|color| {
         list.push(DisplayCommandInfo::new(
             DisplayCommand::SolidColor(
@@ -181,18 +133,11 @@ fn render_background(
                     .add_parent_coordinate(x, y),
             ),
             layout_box.z_index,
-            content_type,
         ))
     });
 }
 
-fn render_borders(
-    list: &mut DisplayList,
-    x: Au,
-    y: Au,
-    layout_box: &LayoutBox,
-    content_type: ContentType,
-) {
+fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     let d = &layout_box.dimensions;
     let border_box = d.border_box().add_parent_coordinate(x, y);
 
@@ -209,7 +154,6 @@ fn render_borders(
                 },
             ),
             layout_box.z_index,
-            content_type,
         ));
     }
 
@@ -226,7 +170,6 @@ fn render_borders(
                 },
             ),
             layout_box.z_index,
-            content_type,
         ));
     }
 
@@ -243,7 +186,6 @@ fn render_borders(
                 },
             ),
             layout_box.z_index,
-            content_type,
         ));
     }
 
@@ -260,7 +202,6 @@ fn render_borders(
                 },
             ),
             layout_box.z_index,
-            content_type,
         ));
     }
 }
