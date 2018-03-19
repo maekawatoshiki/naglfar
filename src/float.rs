@@ -67,14 +67,16 @@ impl Floats {
         for float in self.float_list.iter().rev() {
             match float.float_type {
                 style::FloatType::Left => {
-                    if left > Au(0)
+                    if (left > Au(0) && float.rect.y <= ceiling
+                        && ceiling <= float.rect.y + float.rect.height)
                         || (float.rect.y <= ceiling && ceiling <= float.rect.y + float.rect.height)
                     {
                         left += float.rect.width;
                     }
                 }
                 style::FloatType::Right => {
-                    if right > Au(0)
+                    if (right > Au(0) && float.rect.y <= ceiling
+                        && ceiling <= float.rect.y + float.rect.height)
                         || (float.rect.y <= ceiling && ceiling <= float.rect.y + float.rect.height)
                     {
                         right += float.rect.width;
@@ -97,6 +99,22 @@ impl Floats {
             width: max_width - left - right,
             height: Au(0),
         }
+    }
+
+    pub fn clearance(&mut self, clear_type: style::ClearType) -> Au {
+        let mut clearance = Au(0);
+        for float in &self.float_list {
+            match (clear_type, float.float_type) {
+                (style::ClearType::Left, style::FloatType::Left)
+                | (style::ClearType::Right, style::FloatType::Right)
+                | (style::ClearType::Both, _) => {
+                    let b = self.offset.top + float.rect.y + float.rect.height;
+                    clearance = ::std::cmp::max(clearance, b);
+                }
+                _ => {}
+            }
+        }
+        clearance
     }
 
     pub fn left_width(&mut self) -> Au {
@@ -150,11 +168,12 @@ impl<'a> LayoutBox<'a> {
             }
         };
 
+        let available_area = floats.available_area(containing_block.content.width, Au(0));
         self.dimensions.content.x = match self.style.unwrap().float() {
-            style::FloatType::Left => self.dimensions.left_offset() + floats.left_width(),
+            style::FloatType::Left => self.dimensions.left_offset() + available_area.x,
             style::FloatType::Right => {
-                containing_block.content.width - floats.right_width()
-                    - self.dimensions.content.width - self.dimensions.right_offset()
+                available_area.width + available_area.x - self.dimensions.content.width
+                    - self.dimensions.right_offset()
             }
             _ => unreachable!(),
         };

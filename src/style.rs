@@ -20,11 +20,18 @@ pub enum Display {
     None,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Copy)]
 pub enum FloatType {
     Left,
     Right,
     None,
+}
+
+#[derive(Clone, PartialEq, Debug, Copy)]
+pub enum ClearType {
+    Left,
+    Right,
+    Both,
 }
 
 impl<'a> StyledNode<'a> {
@@ -66,6 +73,18 @@ impl<'a> StyledNode<'a> {
                 _ => FloatType::None,
             },
             _ => FloatType::None,
+        }
+    }
+
+    pub fn clear(&self) -> Option<ClearType> {
+        match self.value("clear") {
+            Some(Value::Keyword(s)) => match &*s {
+                "left" => Some(ClearType::Left),
+                "right" => Some(ClearType::Right),
+                "both" => Some(ClearType::Both),
+                _ => None,
+            },
+            _ => None,
         }
     }
 

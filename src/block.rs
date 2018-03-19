@@ -233,12 +233,19 @@ impl<'a> LayoutBox<'a> {
         let mut last_margin_bottom = Au(0);
         let mut floats = &mut self.floats;
 
+        // TODO: Consider a better way to position children.
         for child in &mut self.children {
-            if floats.is_present() {
-                floats.ceiling = vec![floats.ceiling, d.content.height]
-                    .into_iter()
-                    .fold(Au(0), |x, y| x.max(y));
+            if let Some(style) = child.style {
+                if let Some(clear) = style.clear() {
+                    let clearance = floats.clearance(clear);
+                    d.content.height += clearance;
+                }
             }
+
+            if floats.is_present() {
+                floats.ceiling = ::std::cmp::max(floats.ceiling, d.content.height);
+            }
+
             child.layout(&mut floats, last_margin_bottom, *d, *d, viewport);
 
             if child.box_type != BoxType::Float {
