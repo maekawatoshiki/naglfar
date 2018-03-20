@@ -127,7 +127,7 @@ where
 {
     gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
-    let window = RenderingWindow::new(640, 480, f);
+    let window = RenderingWindow::new(740, 480, f);
     window.exit_on_close();
 
     gtk::main();
