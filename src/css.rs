@@ -477,7 +477,17 @@ impl fmt::Display for Stylesheet {
 
 #[test]
 fn test1() {
-    let src = "div, h1, #id, .class { width: 100px; height: 50px; font-weight: bold; z-index: 2; font-size: 10pt; color: #ffffff; background-color: #003300; }";
+    let src = "
+        /* Comments... */
+        div, h1, #id, .class { 
+            width: 100px; 
+            height: 50px; 
+            font-weight: bold; 
+            z-index: 2; 
+            font-size: 10pt; 
+            color: #ffffff; 
+            background-color: #003300; 
+        }";
     let stylesheet = parse(src.to_string());
     assert_eq!(
         stylesheet,
