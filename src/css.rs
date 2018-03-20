@@ -160,22 +160,46 @@ impl Selector {
     }
 }
 
+// Makes no sense.
+pub fn remove_comments(s: &[u8]) -> String {
+    let mut level = 0;
+    let mut pos = 0;
+    let mut ret = "".to_string();
+    let len = s.len();
+    while pos < len {
+        if pos < len - 1 && s[pos..(pos + 2)] == [b'/', b'*'] {
+            pos += 2;
+            level += 1;
+            continue;
+        }
+        if pos < len - 1 && s[pos..(pos + 2)] == [b'*', b'/'] {
+            pos += 2;
+            if level <= 0 {
+                panic!("not found corresponding \"/*\"")
+            }
+            level -= 1;
+            continue;
+        }
+        if level == 0 {
+            ret.push(s[pos] as char);
+        }
+        pos += 1;
+    }
+    if level != 0 {
+        panic!("comments are not balanced")
+    }
+    ret
+}
+
 pub fn parse(source: String) -> Stylesheet {
-    let mut parser = Parser {
-        pos: 0,
-        input: source,
-    };
     Stylesheet {
-        rules: parser.parse_rules(),
+        rules: Parser::new(source).parse_rules(),
     }
 }
 
 pub fn parse_attr_style(source: String) -> Vec<Declaration> {
     let mut decls = Vec::new();
-    let mut parser = Parser {
-        pos: 0,
-        input: source,
-    };
+    let mut parser = Parser::new(remove_comments(source.as_str().as_bytes()));
     loop {
         parser.consume_whitespace();
         if parser.eof() {
@@ -187,11 +211,7 @@ pub fn parse_attr_style(source: String) -> Vec<Declaration> {
 }
 
 pub fn parse_value(source: String) -> Value {
-    let mut parser = Parser {
-        pos: 0,
-        input: source,
-    };
-    parser.parse_value()
+    Parser::new(source).parse_value()
 }
 
 fn valid_ident_char(c: char) -> bool {
@@ -216,6 +236,13 @@ struct Parser {
 }
 
 impl Parser {
+    fn new(input: String) -> Parser {
+        Parser {
+            pos: 0,
+            input: remove_comments(input.as_bytes()),
+        }
+    }
+
     fn parse_rules(&mut self) -> Vec<Rule> {
         let mut rules = Vec::new();
         loop {
@@ -395,7 +422,7 @@ impl Parser {
         cur_char
     }
 
-    fn next_char(&self) -> char {
+    fn next_char(&mut self) -> char {
         self.input[self.pos..].chars().next().unwrap()
     }
 
