@@ -488,9 +488,9 @@ impl Dimensions {
 impl<'a> fmt::Display for LayoutBox<'a> {
     // TODO: Implement all features
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(writeln!(f, "{:?}", self.dimensions));
+        writeln!(f, "{:?}", self.dimensions)?;
         for child in &self.children {
-            try!(write!(f, "{}", child));
+            write!(f, "{}", child)?;
         }
         Ok(())
     }
