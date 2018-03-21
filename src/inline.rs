@@ -213,22 +213,12 @@ impl<'a> LineMaker<'a> {
             self.cur_metrics = linemaker.cur_metrics;
         } else {
             // Replaced Inline Element (<img>)
-            let (width, height) = match &mut layoutbox.info {
-                &mut LayoutInfo::Image(ref mut pixbuf) => {
-                    let pixbuf = match pixbuf {
-                        &mut Some(ref pixbuf) => pixbuf.clone(),
-                        _ => {
-                            *pixbuf = Some(layoutbox.style.unwrap().get_pixbuf(containing_block));
-                            pixbuf.clone().unwrap()
-                        }
-                    };
-                    (
-                        Au::from_f64_px(pixbuf.get_width() as f64),
-                        Au::from_f64_px(pixbuf.get_height() as f64),
-                    )
-                }
-                _ => unimplemented!(),
-            };
+            let width;
+            let height;
+            layoutbox.layout_inline(&mut self.floats, containing_block);
+            width = layoutbox.dimensions.content.width;
+            height = layoutbox.dimensions.content.height;
+
             if self.cur_width + width > max_width {
                 self.flush_cur_line();
                 self.end += 1;
@@ -242,8 +232,6 @@ impl<'a> LineMaker<'a> {
                     .into_iter()
                     .fold(Au(0), |x, y| x.max(y));
             }
-            layoutbox.dimensions.content.width = width;
-            layoutbox.dimensions.content.height = height;
 
             self.new_boxes.push(layoutbox);
         }
@@ -377,6 +365,46 @@ impl<'a> LineMaker<'a> {
 
             self.cur_width += text_width;
         }
+    }
+}
+
+impl<'a> LayoutBox<'a> {
+    /// Lay out a inline-level element and its descendants.
+    pub fn layout_inline(&mut self, _floats: &mut Floats, containing_block: Dimensions) {
+        match self.info {
+            LayoutInfo::Image(_) => {
+                self.calculate_replaced_inline_width_height(containing_block);
+
+                self.assign_padding();
+                self.assign_border_width();
+                self.assign_margin();
+            }
+            _ => unimplemented!(),
+        }
+    }
+
+    /// Calculate the width of a inline-level replaced(<img>) element in normal flow.
+    pub fn calculate_replaced_inline_width_height(&mut self, containing_block: Dimensions) {
+        // Replaced Inline Element (<img>)
+        let (width, height) = match &mut self.info {
+            &mut LayoutInfo::Image(ref mut pixbuf) => {
+                let pixbuf = match pixbuf {
+                    &mut Some(ref pixbuf) => pixbuf.clone(),
+                    _ => {
+                        *pixbuf = Some(self.style.unwrap().get_pixbuf(containing_block));
+                        pixbuf.clone().unwrap()
+                    }
+                };
+                (
+                    Au::from_f64_px(pixbuf.get_width() as f64),
+                    Au::from_f64_px(pixbuf.get_height() as f64),
+                )
+            }
+            _ => unimplemented!(),
+        };
+
+        self.dimensions.content.width = width;
+        self.dimensions.content.height = height;
     }
 }
 

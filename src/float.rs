@@ -166,6 +166,7 @@ impl<'a> LayoutBox<'a> {
                 self.layout_block_children(viewport);
                 self.calculate_block_height();
             }
+            _ => unimplemented!(),
         };
 
         let available_area = floats.available_area(containing_block.content.width, Au(0));

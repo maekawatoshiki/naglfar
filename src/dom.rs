@@ -21,8 +21,9 @@ pub enum NodeType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LayoutType {
-    Image,
     Generic,
+    Text,
+    Image,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -73,7 +74,7 @@ impl Node {
             NodeType::Element(ElementData {
                 ref layout_type, ..
             }) => layout_type.clone(),
-            NodeType::Text(_) => LayoutType::Generic,
+            NodeType::Text(_) => LayoutType::Text,
         }
     }
 

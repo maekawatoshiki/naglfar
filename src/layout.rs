@@ -48,6 +48,7 @@ pub struct EdgeSizes {
 #[derive(Clone, Debug, PartialEq)]
 pub enum LayoutInfo {
     Generic,
+    Text,
     Image(Option<gdk_pixbuf::Pixbuf>),
 }
 
@@ -160,6 +161,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
         Some(style_node),
         match style_node.node.layout_type() {
             LayoutType::Generic => LayoutInfo::Generic,
+            LayoutType::Text => LayoutInfo::Text,
             LayoutType::Image => LayoutInfo::Image(None),
         },
     );
