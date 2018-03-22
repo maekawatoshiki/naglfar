@@ -170,6 +170,7 @@ impl<'a> LayoutBox<'a> {
         };
 
         let available_area = floats.available_area(containing_block.content.width, Au(0));
+
         self.dimensions.content.x = match self.style.unwrap().float() {
             style::FloatType::Left => self.dimensions.left_offset() + available_area.x,
             style::FloatType::Right => {
@@ -179,6 +180,12 @@ impl<'a> LayoutBox<'a> {
             _ => unreachable!(),
         };
         self.dimensions.content.y = containing_block.content.height;
+
+        // println!(
+        //     "containing: {}, self: {}",
+        //     available_area.width.to_f64_px(),
+        //     self.dimensions.margin_box().width.to_f64_px()
+        // );
 
         floats.add_float(Float::new(
             self.dimensions.margin_box(),

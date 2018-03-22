@@ -16,15 +16,11 @@ pub enum DisplayCommand {
 #[derive(Debug, Clone)]
 pub struct DisplayCommandInfo {
     pub command: DisplayCommand,
-    pub z_index: i32,
 }
 
 impl DisplayCommandInfo {
-    pub fn new(command: DisplayCommand, z_index: i32) -> DisplayCommandInfo {
-        DisplayCommandInfo {
-            command: command,
-            z_index: z_index,
-        }
+    pub fn new(command: DisplayCommand) -> DisplayCommandInfo {
+        DisplayCommandInfo { command: command }
     }
 }
 
@@ -38,10 +34,6 @@ pub fn build_display_list(layout_root: &LayoutBox) -> DisplayList {
         Au::from_f64_px(0.0),
         layout_root,
     );
-
-    list.sort_by(
-        |&DisplayCommandInfo { z_index: a, .. }, &DisplayCommandInfo { z_index: b, .. }| a.cmp(&b),
-    );
     list
 }
 
@@ -49,7 +41,9 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
     render_background(list, x, y, layout_box);
     render_borders(list, x, y, layout_box);
 
-    let children = layout_box.children.clone();
+    let mut children = layout_box.children.clone();
+    children.sort_by(|&LayoutBox { z_index: a, .. }, &LayoutBox { z_index: b, .. }| a.cmp(&b));
+
     for child in children
         .iter()
         .filter(|child| child.box_type != BoxType::Float)
@@ -84,15 +78,12 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
         } else {
             unreachable!()
         };
-        list.push(DisplayCommandInfo::new(
-            DisplayCommand::Text(
-                text.to_string(),
-                layout_box.dimensions.content.add_parent_coordinate(x, y),
-                get_color(layout_box, "color").unwrap_or(BLACK),
-                text_info.font,
-            ),
-            layout_box.z_index,
-        ));
+        list.push(DisplayCommandInfo::new(DisplayCommand::Text(
+            text.to_string(),
+            layout_box.dimensions.content.add_parent_coordinate(x, y),
+            get_color(layout_box, "color").unwrap_or(BLACK),
+            text_info.font,
+        )));
     }
 }
 
@@ -104,17 +95,14 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
             }) = layout_box.style.unwrap().node.data
             {
                 if layout_type == &LayoutType::Image {
-                    list.push(DisplayCommandInfo::new(
-                        DisplayCommand::Image(
-                            if let &LayoutInfo::Image(ref pixbuf) = &layout_box.info {
-                                pixbuf.clone().unwrap()
-                            } else {
-                                panic!()
-                            },
-                            layout_box.dimensions.content.add_parent_coordinate(x, y),
-                        ),
-                        layout_box.z_index,
-                    ))
+                    list.push(DisplayCommandInfo::new(DisplayCommand::Image(
+                        if let &LayoutInfo::Image(ref pixbuf) = &layout_box.info {
+                            pixbuf.clone().unwrap()
+                        } else {
+                            panic!()
+                        },
+                        layout_box.dimensions.content.add_parent_coordinate(x, y),
+                    )))
                 }
             }
         }
@@ -124,16 +112,13 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
 
 fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     lookup_color(layout_box, "background-color", "background").map(|color| {
-        list.push(DisplayCommandInfo::new(
-            DisplayCommand::SolidColor(
-                color,
-                layout_box
-                    .dimensions
-                    .border_box()
-                    .add_parent_coordinate(x, y),
-            ),
-            layout_box.z_index,
-        ))
+        list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
+            color,
+            layout_box
+                .dimensions
+                .border_box()
+                .add_parent_coordinate(x, y),
+        )))
     });
 }
 
@@ -143,66 +128,54 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
 
     // Left border
     if let Some(left_color) = lookup_color(layout_box, "border-left-color", "border-color") {
-        list.push(DisplayCommandInfo::new(
-            DisplayCommand::SolidColor(
-                left_color,
-                Rect {
-                    x: border_box.x,
-                    y: border_box.y,
-                    width: d.border.left,
-                    height: border_box.height,
-                },
-            ),
-            layout_box.z_index,
-        ));
+        list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
+            left_color,
+            Rect {
+                x: border_box.x,
+                y: border_box.y,
+                width: d.border.left,
+                height: border_box.height,
+            },
+        )));
     }
 
     // Right border
     if let Some(right_color) = lookup_color(layout_box, "border-right-color", "border-color") {
-        list.push(DisplayCommandInfo::new(
-            DisplayCommand::SolidColor(
-                right_color,
-                Rect {
-                    x: border_box.x + border_box.width - d.border.right,
-                    y: border_box.y,
-                    width: d.border.right,
-                    height: border_box.height,
-                },
-            ),
-            layout_box.z_index,
-        ));
+        list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
+            right_color,
+            Rect {
+                x: border_box.x + border_box.width - d.border.right,
+                y: border_box.y,
+                width: d.border.right,
+                height: border_box.height,
+            },
+        )));
     }
 
     // Top border
     if let Some(top_color) = lookup_color(layout_box, "border-top-color", "border-color") {
-        list.push(DisplayCommandInfo::new(
-            DisplayCommand::SolidColor(
-                top_color,
-                Rect {
-                    x: border_box.x,
-                    y: border_box.y,
-                    width: border_box.width,
-                    height: d.border.top,
-                },
-            ),
-            layout_box.z_index,
-        ));
+        list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
+            top_color,
+            Rect {
+                x: border_box.x,
+                y: border_box.y,
+                width: border_box.width,
+                height: d.border.top,
+            },
+        )));
     }
 
     // Bottom border
     if let Some(bottom_color) = lookup_color(layout_box, "border-bottom-color", "border-color") {
-        list.push(DisplayCommandInfo::new(
-            DisplayCommand::SolidColor(
-                bottom_color,
-                Rect {
-                    x: border_box.x,
-                    y: border_box.y + border_box.height - d.border.bottom,
-                    width: border_box.width,
-                    height: d.border.bottom,
-                },
-            ),
-            layout_box.z_index,
-        ));
+        list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
+            bottom_color,
+            Rect {
+                x: border_box.x,
+                y: border_box.y + border_box.height - d.border.bottom,
+                width: border_box.width,
+                height: d.border.bottom,
+            },
+        )));
     }
 }
 
