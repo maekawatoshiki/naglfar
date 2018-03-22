@@ -59,30 +59,32 @@ impl Floats {
         self.float_list.push(float)
     }
 
-    pub fn available_area(&mut self, max_width: Au, ceiling: Au) -> Rect {
+    pub fn available_area(&mut self, max_width: Au, ceiling: Au, height: Au) -> Rect {
         let ceiling = ceiling + self.ceiling + self.offset.top;
         let mut left = Au(0);
         let mut right = Au(0);
+        let mut l_height = Au(0);
+        let mut r_height = Au(0);
 
-        for float in self.float_list.iter().rev() {
+        for float in self.float_list.iter() {
             match float.float_type {
-                style::FloatType::Left => {
-                    if (left > Au(0) && float.rect.y <= ceiling
-                        && ceiling <= float.rect.y + float.rect.height)
-                        || (float.rect.y <= ceiling && ceiling <= float.rect.y + float.rect.height)
-                    {
-                        left += float.rect.width;
-                    }
+                style::FloatType::Left
+                    if float.rect.x + float.rect.width > left
+                        && float.rect.y + float.rect.height > ceiling
+                        && float.rect.y < ceiling + height =>
+                {
+                    left = float.rect.x + float.rect.width;
+                    l_height = float.rect.height;
                 }
-                style::FloatType::Right => {
-                    if (right > Au(0) && float.rect.y <= ceiling
-                        && ceiling <= float.rect.y + float.rect.height)
-                        || (float.rect.y <= ceiling && ceiling <= float.rect.y + float.rect.height)
-                    {
-                        right += float.rect.width;
-                    }
+                style::FloatType::Right
+                    if (max_width - float.rect.y) > right
+                        && float.rect.y + float.rect.height > ceiling
+                        && float.rect.y < ceiling + height =>
+                {
+                    right += float.rect.width;
+                    r_height = float.rect.height;
                 }
-                _ => unreachable!(),
+                _ => {}
             }
         }
 
@@ -97,7 +99,8 @@ impl Floats {
             x: left,
             y: Au(0),
             width: max_width - left - right,
-            height: Au(0),
+            // TODO: Fix bug.
+            height: ::std::cmp::max(l_height, r_height),
         }
     }
 
@@ -169,23 +172,29 @@ impl<'a> LayoutBox<'a> {
             _ => unimplemented!(),
         };
 
-        let available_area = floats.available_area(containing_block.content.width, Au(0));
-
-        self.dimensions.content.x = match self.style.unwrap().float() {
-            style::FloatType::Left => self.dimensions.left_offset() + available_area.x,
-            style::FloatType::Right => {
-                available_area.width + available_area.x - self.dimensions.content.width
-                    - self.dimensions.right_offset()
+        let mut float_height = Au(0);
+        loop {
+            let margin_box = self.dimensions.margin_box();
+            let available_area = floats.available_area(
+                containing_block.content.width,
+                float_height,
+                margin_box.height,
+            );
+            if margin_box.width <= available_area.width {
+                self.dimensions.content.x = match self.style.unwrap().float() {
+                    style::FloatType::Left => self.dimensions.left_offset() + available_area.x,
+                    style::FloatType::Right => {
+                        available_area.width + available_area.x - self.dimensions.content.width
+                            - self.dimensions.right_offset()
+                    }
+                    _ => unreachable!(),
+                };
+                self.dimensions.content.y = containing_block.content.height + float_height;
+                break;
+            } else {
+                float_height += available_area.height;
             }
-            _ => unreachable!(),
-        };
-        self.dimensions.content.y = containing_block.content.height;
-
-        // println!(
-        //     "containing: {}, self: {}",
-        //     available_area.width.to_f64_px(),
-        //     self.dimensions.margin_box().width.to_f64_px()
-        // );
+        }
 
         floats.add_float(Float::new(
             self.dimensions.margin_box(),

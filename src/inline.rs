@@ -82,14 +82,16 @@ impl<'a> LineMaker<'a> {
                 self.pending.range = text_info.range.clone()
             }
 
-            let mut max_width_considered_float =
-                self.floats.available_area(max_width, self.cur_height).width;
+            let mut max_width_considered_float = self.floats
+                .available_area(max_width, self.cur_height, Au(1))
+                .width;
 
             match layoutbox.box_type {
                 BoxType::TextNode(_) => while self.pending.range.len() != 0 {
                     self.run_on_text_node(layoutbox.clone(), max_width_considered_float);
-                    max_width_considered_float =
-                        self.floats.available_area(max_width, self.cur_height).width;
+                    max_width_considered_float = self.floats
+                        .available_area(max_width, self.cur_height, Au(1))
+                        .width;
                 },
                 BoxType::InlineBlockNode => {
                     self.run_on_inline_block_node(layoutbox, max_width_considered_float)
@@ -126,7 +128,9 @@ impl<'a> LineMaker<'a> {
 
             for new_box in &mut self.new_boxes[line.range.clone()] {
                 let (left_floats_width, max_width_considered_float) = {
-                    let available_area = self.floats.available_area(max_width, self.cur_height);
+                    let available_area =
+                        self.floats
+                            .available_area(max_width, self.cur_height, Au(1));
                     (available_area.x, available_area.width)
                 };
                 // TODO: Refine
