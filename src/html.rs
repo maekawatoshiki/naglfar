@@ -12,10 +12,7 @@ thread_local!(
 
 pub fn parse(source: String, file_path: PathBuf) -> dom::Node {
     CUR_DIR.with(|cur_dir| *cur_dir.borrow_mut() = file_path.parent().unwrap().to_path_buf());
-    let mut nodes = Parser {
-        pos: 0,
-        input: source,
-    }.parse_nodes();
+    let mut nodes = Parser::new(source).parse_nodes();
 
     // If the document contains a root element, just return it. Otherwise, create one.
     if nodes.len() == 1 {
@@ -37,12 +34,58 @@ fn is_not_to_close_tag(tag_name: &str) -> bool {
     }
 }
 
+pub fn remove_comments(s: &[u8], opening: &str, closing: &str) -> String {
+    let mut level = 0;
+    let mut pos = 0;
+    let mut ret = "".to_string();
+    let len = s.len();
+    let opening_len = opening.len();
+    let closing_len = closing.len();
+
+    if len as isize - ::std::cmp::max(opening_len, closing_len) as isize - 1 < 0 {
+        return ::std::str::from_utf8(s).unwrap().to_string();
+    }
+
+    while pos < len {
+        if pos < len - opening_len - 1 && s[pos..(pos + opening_len)] == *opening.as_bytes() {
+            pos += opening_len;
+            level += 1;
+            continue;
+        }
+        if pos < len - closing_len - 1 && s[pos..(pos + closing_len)] == *closing.as_bytes() {
+            pos += closing_len;
+            if level <= 0 {
+                panic!("not found corresponding \"/*\"")
+            }
+            level -= 1;
+            continue;
+        }
+        if level == 0 {
+            ret.push(s[pos] as char);
+        }
+        pos += 1;
+    }
+
+    if level != 0 {
+        panic!("comments are not balanced")
+    }
+
+    ret
+}
+
 struct Parser {
     pos: usize,
     input: String,
 }
 
 impl Parser {
+    fn new(input: String) -> Parser {
+        Parser {
+            pos: 0,
+            input: remove_comments(input.as_bytes(), "<!--", "-->"),
+        }
+    }
+
     fn parse_nodes(&mut self) -> Vec<dom::Node> {
         let mut nodes: Vec<dom::Node> = vec![];
         loop {

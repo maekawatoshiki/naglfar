@@ -1,5 +1,7 @@
 use std::fmt;
 
+use html::remove_comments;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Stylesheet {
     pub rules: Vec<Rule>,
@@ -160,37 +162,6 @@ impl Selector {
     }
 }
 
-// Makes no sense.
-pub fn remove_comments(s: &[u8]) -> String {
-    let mut level = 0;
-    let mut pos = 0;
-    let mut ret = "".to_string();
-    let len = s.len();
-    while pos < len {
-        if pos < len - 1 && s[pos..(pos + 2)] == [b'/', b'*'] {
-            pos += 2;
-            level += 1;
-            continue;
-        }
-        if pos < len - 1 && s[pos..(pos + 2)] == [b'*', b'/'] {
-            pos += 2;
-            if level <= 0 {
-                panic!("not found corresponding \"/*\"")
-            }
-            level -= 1;
-            continue;
-        }
-        if level == 0 {
-            ret.push(s[pos] as char);
-        }
-        pos += 1;
-    }
-    if level != 0 {
-        panic!("comments are not balanced")
-    }
-    ret
-}
-
 pub fn parse(source: String) -> Stylesheet {
     Stylesheet {
         rules: Parser::new(source).parse_rules(),
@@ -199,7 +170,7 @@ pub fn parse(source: String) -> Stylesheet {
 
 pub fn parse_attr_style(source: String) -> Vec<Declaration> {
     let mut decls = Vec::new();
-    let mut parser = Parser::new(remove_comments(source.as_str().as_bytes()));
+    let mut parser = Parser::new(source);
     loop {
         parser.consume_whitespace();
         if parser.eof() {
@@ -239,7 +210,7 @@ impl Parser {
     fn new(input: String) -> Parser {
         Parser {
             pos: 0,
-            input: remove_comments(input.as_bytes()),
+            input: remove_comments(input.as_bytes(), "/*", "*/"),
         }
     }
 
