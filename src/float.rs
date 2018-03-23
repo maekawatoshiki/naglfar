@@ -2,6 +2,8 @@ use layout::{Dimensions, EdgeSizes, LayoutBox, LayoutInfo, Rect};
 use style;
 use css::{Unit, Value};
 
+use std::cmp::{max, min};
+
 use gdk_pixbuf::PixbufExt;
 
 use app_units::Au;
@@ -63,8 +65,10 @@ impl Floats {
         let ceiling = ceiling + self.ceiling + self.offset.top;
         let mut left = Au(0);
         let mut right = Au(0);
-        let mut l_height = Au(0);
-        let mut r_height = Au(0);
+        let mut l_ceiling = None;
+        let mut r_ceiling = None;
+        let mut l_height = None;
+        let mut r_height = None;
 
         for float in self.float_list.iter() {
             match float.float_type {
@@ -74,7 +78,8 @@ impl Floats {
                         && float.rect.y < ceiling + height =>
                 {
                     left = float.rect.x + float.rect.width;
-                    l_height = float.rect.height;
+                    l_ceiling = Some(float.rect.y);
+                    l_height = Some(float.rect.height);
                 }
                 style::FloatType::Right
                     if (max_width - float.rect.y) > right
@@ -82,7 +87,8 @@ impl Floats {
                         && float.rect.y < ceiling + height =>
                 {
                     right += float.rect.width;
-                    r_height = float.rect.height;
+                    r_ceiling = Some(float.rect.y);
+                    r_height = Some(float.rect.height);
                 }
                 _ => {}
             }
@@ -95,12 +101,29 @@ impl Floats {
             right = Au::from_f64_px((right.to_f64_px() - self.offset.right.to_f64_px()).abs());
         }
 
+        let (ceiling, height) = match (l_ceiling, l_height, r_ceiling, r_height) {
+            (Some(l_ceiling), Some(l_height), Some(r_ceiling), Some(r_height)) => (
+                max(max(l_ceiling, ceiling), max(r_ceiling, ceiling)),
+                min(max(l_height, height), max(r_height, height)),
+            ),
+            (None, None, Some(r_ceiling), Some(r_height)) => (max(ceiling, r_ceiling), r_height),
+            (Some(l_ceiling), Some(l_height), None, None) => (max(ceiling, l_ceiling), l_height),
+            (None, None, None, None) => {
+                return Rect {
+                    x: Au(0),
+                    y: Au(0),
+                    width: max_width,
+                    height: Au(0),
+                }
+            }
+            _ => unreachable!(),
+        };
+
         Rect {
             x: left,
-            y: Au(0),
+            y: ceiling,
             width: max_width - left - right,
-            // TODO: Fix bug.
-            height: ::std::cmp::max(l_height, r_height),
+            height: height,
         }
     }
 
