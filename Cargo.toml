@@ -12,3 +12,14 @@ cairo-rs = "*"
 clap = "*"
 pango = "*"
 pangocairo = "*"
+
+[profile.dev]
+codegen-units = 8
+
+[profile.release]
+codegen-units = 16
+opt-level = 3
+debug = false
+lto = true
+debug-assertions = false
+panic = "unwind"
