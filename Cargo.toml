@@ -14,7 +14,7 @@ pango = "*"
 pangocairo = "*"
 
 [profile.dev]
-codegen-units = 8
+codegen-units = 16
 
 [profile.release]
 codegen-units = 16
