@@ -172,6 +172,15 @@ impl<'a> LayoutBox<'a> {
             _ => unimplemented!(),
         };
 
+        self.calculate_float_position(floats, containing_block);
+
+        floats.add_float(Float::new(
+            self.dimensions.margin_box(),
+            self.style.unwrap().float(),
+        ));
+    }
+
+    pub fn calculate_float_position(&mut self, floats: &mut Floats, containing_block: Dimensions) {
         let mut float_height = Au(0);
         loop {
             let margin_box = self.dimensions.margin_box();
@@ -195,12 +204,8 @@ impl<'a> LayoutBox<'a> {
                 float_height += available_area.height;
             }
         }
-
-        floats.add_float(Float::new(
-            self.dimensions.margin_box(),
-            self.style.unwrap().float(),
-        ));
     }
+
     /// Calculate the width of a float (non-replaced) element.
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
     /// ref. https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html#float-width
