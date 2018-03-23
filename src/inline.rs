@@ -360,8 +360,7 @@ impl<'a> LineMaker<'a> {
                     slant: font_slant,
                 },
                 self.pending.range.start
-                    ..self.pending.range.start
-                        + my_font.compute_max_chars(text, text_width.to_f64_px()),
+                    ..text.len() + self.pending.range.start
             );
             self.new_boxes.push(new_layoutbox.clone());
 
