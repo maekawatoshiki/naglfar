@@ -51,7 +51,7 @@ impl RenderingWindow {
 
                 let items = f(widget);
                 if let DisplayCommand::SolidColor(_, rect) = items[0].command {
-                    widget.set_size_request(width, rect.height.ceil_to_px())
+                    widget.set_size_request(-1, rect.height.ceil_to_px())
                 }
 
                 for item in &items {
