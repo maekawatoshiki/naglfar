@@ -58,7 +58,7 @@ impl RenderingWindow {
                     }
                 }
 
-                let mut count = 0;
+                // let mut count = 0;
                 for item in &items {
                     if match &item.command {
                         &DisplayCommand::SolidColor(_, rect)
@@ -71,14 +71,14 @@ impl RenderingWindow {
                             ey - sy > 0
                         }
                     } {
-                        count += 1;
+                        // count += 1;
                         render_item(cairo_context, &mut pango_layout, &item.command);
                     }
                 }
-                println!(
-                    "reduction: {}",
-                    ((items.len() as f64 - count as f64) / items.len() as f64) * 100.0
-                );
+                // println!(
+                //     "reduction: {}%",
+                //     (((items.len() as f64 - count as f64) / items.len() as f64) * 100.0) as i32
+                // );
                 Inhibit(true)
             });
 

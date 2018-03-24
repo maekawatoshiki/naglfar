@@ -142,23 +142,6 @@ impl Floats {
         }
         clearance
     }
-
-    pub fn left_width(&mut self) -> Au {
-        self.float_list.iter().fold(Au(0), |acc, float| {
-            acc + match float.float_type {
-                style::FloatType::Left => float.rect.width,
-                _ => Au(0),
-            }
-        }) - self.offset.left
-    }
-    pub fn right_width(&mut self) -> Au {
-        self.float_list.iter().fold(Au(0), |acc, float| {
-            acc + match float.float_type {
-                style::FloatType::Right => float.rect.width,
-                _ => Au(0),
-            }
-        }) - self.offset.right
-    }
 }
 
 impl<'a> LayoutBox<'a> {
@@ -224,6 +207,10 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.y = containing_block.content.height + float_height;
                 break;
             } else {
+                if available_area.height == Au(0) {
+                    // There is no available area.
+                    break;
+                }
                 float_height += available_area.height;
             }
         }

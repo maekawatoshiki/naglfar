@@ -359,8 +359,7 @@ impl<'a> LineMaker<'a> {
                     weight: font_weight,
                     slant: font_slant,
                 },
-                self.pending.range.start
-                    ..text.len() + self.pending.range.start
+                self.pending.range.start..text.len() + self.pending.range.start,
             );
             self.new_boxes.push(new_layoutbox.clone());
 
@@ -411,6 +410,7 @@ impl<'a> LayoutBox<'a> {
     }
 }
 
+// TODO: Implement correctly
 impl<'a> LayoutBox<'a> {
     /// Lay out a inline-block-level element and its descendants.
     pub fn layout_inline_block(
@@ -459,8 +459,10 @@ impl<'a> LayoutBox<'a> {
 
 use std::cell::RefCell;
 
+type ImageKey = (String, i32, i32); // URL, width, height
+
 thread_local!(
-    pub static IMG_CACHE: RefCell<HashMap<(String, i32, i32), gdk_pixbuf::Pixbuf>> = {
+    pub static IMG_CACHE: RefCell<HashMap<ImageKey, gdk_pixbuf::Pixbuf>> = {
         RefCell::new(HashMap::new())
     };
 );
