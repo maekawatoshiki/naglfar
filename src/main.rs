@@ -37,26 +37,32 @@ fn main() {
         .arg(Arg::with_name("FILE").help("Input file").index(1));
     let _app_matches = app.get_matches();
 
-    let src_path = Path::new("example");
+    run_with_url("./example/test.html".to_string());
+}
+
+fn run_with_url(html_src: String) {
+    let html_src_path = Path::new(html_src.as_str());
+    let src_path = html_src_path.parent().unwrap();
 
     println!("HTML:");
     let mut html_source = "".to_string();
     OpenOptions::new()
         .read(true)
-        .open(src_path.join("test.html").to_str().unwrap())
+        .open(html_src_path.to_str().unwrap())
         .unwrap()
         .read_to_string(&mut html_source)
         .ok()
         .expect("cannot read file");
-    let html_tree = html::parse(html_source, src_path.join("test.html"));
+    let html_tree = html::parse(html_source, html_src_path.to_path_buf());
     print!("{}", html_tree);
 
     println!("CSS:");
     let mut css_source = "".to_string();
     if let Some(stylesheet_path) = html_tree.find_stylesheet_path() {
+        let css_src_path = src_path.join(stylesheet_path);
         OpenOptions::new()
             .read(true)
-            .open(src_path.join(stylesheet_path).to_str().unwrap())
+            .open(css_src_path.to_str().unwrap())
             .unwrap()
             .read_to_string(&mut css_source)
             .ok()
