@@ -46,8 +46,7 @@ impl RenderingWindow {
         instance
             .drawing_area
             .connect_draw(move |widget, cairo_context| {
-                let (redraw_start_x, redraw_start_y, redraw_end_x, redraw_end_y) =
-                    cairo_context.clip_extents();
+                let (_, redraw_start_y, _, redraw_end_y) = cairo_context.clip_extents();
                 let pango_ctx = widget.create_pango_context().unwrap();
                 let mut pango_layout = pango::Layout::new(&pango_ctx);
 
