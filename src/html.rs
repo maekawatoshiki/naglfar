@@ -1,8 +1,10 @@
 use dom;
-use std::collections::HashMap;
 
+use std::collections::HashMap;
 use std::cell::RefCell;
 use std::path::PathBuf;
+use std::cmp::max;
+use std::str::from_utf8;
 
 thread_local!(
     pub static CUR_DIR: RefCell<PathBuf> = {
@@ -42,8 +44,8 @@ pub fn remove_comments(s: &[u8], opening: &str, closing: &str) -> String {
     let opening_len = opening.len();
     let closing_len = closing.len();
 
-    if len as isize - ::std::cmp::max(opening_len, closing_len) as isize - 1 < 0 {
-        return ::std::str::from_utf8(s).unwrap().to_string();
+    if len as isize - max(opening_len, closing_len) as isize - 1 < 0 {
+        return from_utf8(s).unwrap().to_string();
     }
 
     while pos < len {

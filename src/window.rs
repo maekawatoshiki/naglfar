@@ -12,6 +12,8 @@ use gdk::ContextExt;
 use cairo::Context;
 use pango::LayoutExt;
 
+use std::cmp::{max, min};
+
 use painter::{DisplayCommand, DisplayList};
 use font::FONT_DESC;
 use css::px2pt;
@@ -58,7 +60,6 @@ impl RenderingWindow {
                     }
                 }
 
-                // let mut count = 0;
                 for item in &items {
                     if match &item.command {
                         &DisplayCommand::SolidColor(_, rect)
@@ -66,19 +67,15 @@ impl RenderingWindow {
                         | &DisplayCommand::Text(_, rect, _, _) => {
                             let rect_y = rect.y.to_px();
                             let rect_height = rect.height.to_px();
-                            let sy = ::std::cmp::max(rect_y, redraw_start_y as i32);
-                            let ey = ::std::cmp::min(rect_y + rect_height, redraw_end_y as i32);
+                            let sy = max(rect_y, redraw_start_y as i32);
+                            let ey = min(rect_y + rect_height, redraw_end_y as i32);
                             ey - sy > 0
                         }
                     } {
-                        // count += 1;
                         render_item(cairo_context, &mut pango_layout, &item.command);
                     }
                 }
-                // println!(
-                //     "reduction: {}%",
-                //     (((items.len() as f64 - count as f64) / items.len() as f64) * 100.0) as i32
-                // );
+
                 Inhibit(true)
             });
 

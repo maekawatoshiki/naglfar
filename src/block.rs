@@ -2,6 +2,8 @@ use css::{Unit, Value};
 use float::Floats;
 use layout::{BoxType, Dimensions, LayoutBox};
 
+use std::cmp::max;
+
 use app_units::Au;
 
 impl<'a> LayoutBox<'a> {
@@ -243,7 +245,7 @@ impl<'a> LayoutBox<'a> {
             }
 
             if floats.is_present() {
-                floats.ceiling = ::std::cmp::max(floats.ceiling, d.content.height);
+                floats.ceiling = max(floats.ceiling, d.content.height);
             }
 
             child.layout(&mut floats, last_margin_bottom, *d, *d, viewport);

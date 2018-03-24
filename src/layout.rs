@@ -168,7 +168,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
 
     match style_node.float() {
         style::FloatType::None => {}
-        _ => root.box_type = BoxType::Float,
+        style::FloatType::Left | style::FloatType::Right => root.box_type = BoxType::Float,
     }
 
     // Create the descendant boxes.
