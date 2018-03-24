@@ -46,6 +46,12 @@ impl RenderingWindow {
         instance
             .drawing_area
             .connect_draw(move |widget, cairo_context| {
+                let (redraw_start_x, redraw_start_y, redraw_end_x, redraw_end_y) =
+                    cairo_context.clip_extents();
+                println!(
+                    "{} {} {} {}",
+                    redraw_start_x, redraw_start_y, redraw_end_x, redraw_end_y
+                );
                 let pango_ctx = widget.create_pango_context().unwrap();
                 let mut pango_layout = pango::Layout::new(&pango_ctx);
 
@@ -54,11 +60,35 @@ impl RenderingWindow {
                     widget.set_size_request(-1, rect.height.ceil_to_px())
                 }
 
+                let mut count = 0;
                 for item in &items {
-                    render_item(cairo_context, &mut pango_layout, &item.command);
+                    if match &item.command {
+                        &DisplayCommand::SolidColor(_, rect)
+                        | &DisplayCommand::Image(_, rect)
+                        | &DisplayCommand::Text(_, rect, _, _) => {
+                            (redraw_start_y as i32 <= rect.y.to_px()
+                                && rect.y.to_px() + rect.height.to_px() <= redraw_end_y as i32)
+                                || (rect.y.to_px() <= redraw_start_y as i32
+                                    && redraw_start_y as i32 <= rect.y.to_px() + rect.height.to_px()
+                                    && rect.y.to_px() + rect.height.to_px() <= redraw_end_y as i32)
+                                || (redraw_start_y as i32 <= rect.y.to_px()
+                                    && rect.y.to_px() <= redraw_end_y as i32
+                                    && redraw_end_y as i32 <= rect.y.to_px() + rect.height.to_px())
+                                || (rect.y.to_px() <= redraw_start_y as i32
+                                    && redraw_end_y as i32 <= rect.y.to_px() + rect.height.to_px())
+                        }
+                    } {
+                        count += 1;
+                        render_item(cairo_context, &mut pango_layout, &item.command);
+                    }
                 }
+                println!(
+                    "reduction: {}",
+                    ((items.len() as f64 - count as f64) / items.len() as f64) * 100.0
+                );
                 Inhibit(true)
             });
+
         instance.window.show_all();
         instance
     }
