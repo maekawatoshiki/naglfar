@@ -48,16 +48,15 @@ impl RenderingWindow {
             .connect_draw(move |widget, cairo_context| {
                 let (redraw_start_x, redraw_start_y, redraw_end_x, redraw_end_y) =
                     cairo_context.clip_extents();
-                println!(
-                    "{} {} {} {}",
-                    redraw_start_x, redraw_start_y, redraw_end_x, redraw_end_y
-                );
                 let pango_ctx = widget.create_pango_context().unwrap();
                 let mut pango_layout = pango::Layout::new(&pango_ctx);
 
                 let items = f(widget);
+
                 if let DisplayCommand::SolidColor(_, rect) = items[0].command {
-                    widget.set_size_request(-1, rect.height.ceil_to_px())
+                    if widget.get_size_request().1 != rect.height.ceil_to_px() {
+                        widget.set_size_request(-1, rect.height.ceil_to_px())
+                    }
                 }
 
                 let mut count = 0;
@@ -66,16 +65,11 @@ impl RenderingWindow {
                         &DisplayCommand::SolidColor(_, rect)
                         | &DisplayCommand::Image(_, rect)
                         | &DisplayCommand::Text(_, rect, _, _) => {
-                            (redraw_start_y as i32 <= rect.y.to_px()
-                                && rect.y.to_px() + rect.height.to_px() <= redraw_end_y as i32)
-                                || (rect.y.to_px() <= redraw_start_y as i32
-                                    && redraw_start_y as i32 <= rect.y.to_px() + rect.height.to_px()
-                                    && rect.y.to_px() + rect.height.to_px() <= redraw_end_y as i32)
-                                || (redraw_start_y as i32 <= rect.y.to_px()
-                                    && rect.y.to_px() <= redraw_end_y as i32
-                                    && redraw_end_y as i32 <= rect.y.to_px() + rect.height.to_px())
-                                || (rect.y.to_px() <= redraw_start_y as i32
-                                    && redraw_end_y as i32 <= rect.y.to_px() + rect.height.to_px())
+                            let rect_y = rect.y.to_px();
+                            let rect_height = rect.height.to_px();
+                            let sy = ::std::cmp::max(rect_y, redraw_start_y as i32);
+                            let ey = ::std::cmp::min(rect_y + rect_height, redraw_end_y as i32);
+                            ey - sy > 0
                         }
                     } {
                         count += 1;
