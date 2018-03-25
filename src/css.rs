@@ -450,9 +450,9 @@ impl fmt::Display for Stylesheet {
 fn test1() {
     let src = "
         /* Comments... */
-        div, h1, #id, .class { 
-            width: 100px; 
-            height: 50px; 
+        div, h1, #id, .class, * { 
+            width: 70%; 
+            height: 50px;
             font-weight: bold; 
             z-index: 2; 
             font-size: 10pt; 
@@ -486,11 +486,16 @@ fn test1() {
                             id: None,
                             class: vec![],
                         }),
+                        Selector::Simple(SimpleSelector {
+                            tag_name: None,
+                            id: None,
+                            class: vec![],
+                        }),
                     ],
                     declarations: vec![
                         Declaration {
                             name: "width".to_string(),
-                            value: Value::Length(100.0, Unit::Px),
+                            value: Value::Length(70.0, Unit::Percent),
                         },
                         Declaration {
                             name: "height".to_string(),
