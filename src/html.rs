@@ -230,8 +230,8 @@ fn url_conv(attr: (String, String)) -> (String, String) {
 #[test]
 fn test1() {
     use std::path::Path;
-    let src = "<html><head></head><body><div id=\"x\">test</div><p>paragrapgh</p><span>aa</span>\n  space</body></html>";
-    let dom_node = parse(src.to_string(), Path::new("a.html").to_path_buf());
+    let src = "<html><head></head><body><div id=\"x\">test</div><p>paragrapgh</p><span>aa</span>\n  space<img src='a.png'></body></html>";
+    let dom_node = parse(src.to_string(), Path::new("./a/a.html").to_path_buf());
     assert_eq!(
         dom_node,
         dom::Node::elem(
@@ -263,9 +263,29 @@ fn test1() {
                             vec![dom::Node::text("aa".to_string())],
                         ),
                         dom::Node::text(" space".to_string()),
+                        dom::Node::elem(
+                            "img".to_string(),
+                            {
+                                let mut h = HashMap::new();
+                                h.insert("src".to_string(), "./a/a.png".to_string());
+                                h
+                            },
+                            vec![],
+                        ),
                     ],
                 ),
             ]
         )
+    );
+}
+
+#[test]
+fn test_empty_source() {
+    use std::path::Path;
+    let src = "";
+    let dom_node = parse(src.to_string(), Path::new("a.html").to_path_buf());
+    assert_eq!(
+        dom_node,
+        dom::Node::elem("html".to_string(), HashMap::new(), vec![])
     );
 }
