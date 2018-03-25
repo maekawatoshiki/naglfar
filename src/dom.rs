@@ -189,3 +189,23 @@ fn escape_default(s: &str) -> String {
         .flat_map(|c| c.escape_default())
         .collect::<String>()
 }
+
+#[test]
+fn test_contains_text() {
+    assert_eq!(
+        Node::elem("body".to_string(), HashMap::new(), vec![]).contains_text(),
+        false
+    )
+}
+
+#[test]
+fn test_id() {
+    assert_eq!(
+        ElementData {
+            tag_name: "".to_string(),
+            layout_type: LayoutType::Text,
+            attrs: HashMap::new(),
+        }.id(),
+        None
+    )
+}

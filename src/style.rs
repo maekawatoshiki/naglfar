@@ -228,7 +228,16 @@ fn test1() {
     use css;
     use std::path::Path;
 
-    let src = "<html><head></head><body><div id=\"x\">test</div><p>paragrapgh</p><span>aa</span>\n  space</body></html>";
+    let src = "<html>
+                 <head>
+                 </head>
+                 <body style='font-size:10px;'>
+                   <div id=\"x\">test</div>
+                   <p>paragrapgh</p>
+                   <span style='color:red;'>aa</span>
+                   space
+                 </body>
+               </html>";
     let dom_node = html::parse(src.to_string(), Path::new("a.html").to_path_buf());
 
     let src = "div { width: 100px; height: 50px; color: #ffffff; background-color: #003300; }";
