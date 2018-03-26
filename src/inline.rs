@@ -295,7 +295,13 @@ impl<'a> LineMaker<'a> {
                 .unwrap(),
         );
 
-        let line_height = Au::from_f64_px(font_size.to_f64_px() * 1.2); // TODO: magic number '1.2'
+        let default_line_height = Value::Length(font_size.to_f64_px() * 1.2, Unit::Px); // TODO: magic number '1.2'
+        let line_height = Au::from_f64_px(
+            style
+                .value_with_default("line-height", &default_line_height)
+                .to_px()
+                .unwrap(),
+        );
 
         let default_font_weight = Value::Keyword("normal".to_string());
         let font_weight = style
