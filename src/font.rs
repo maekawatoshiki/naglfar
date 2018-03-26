@@ -2,7 +2,7 @@ use cairo;
 use pango;
 use pangocairo;
 
-use css::{pt2px, px2pt};
+use css::px2pt;
 
 use std::cell::RefCell;
 use pango::LayoutExt;
