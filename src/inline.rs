@@ -151,7 +151,8 @@ impl<'a> LineMaker<'a> {
                     + new_box.dimensions.border.left
                     + new_box.dimensions.margin.left;
                 // TODO: Refine
-                new_box.dimensions.content.y = self.cur_height + line.metrics.under_baseline
+                new_box.dimensions.content.y = self.cur_height
+                    + (line.metrics.above_baseline - new_box.dimensions.content.height)
                     - (new_box.dimensions.padding.top + new_box.dimensions.margin.top
                         + new_box.dimensions.border.top);
                 self.cur_width += new_box.dimensions.margin_box().width;
@@ -308,7 +309,6 @@ impl<'a> LineMaker<'a> {
 
         let my_font = Font::new(font_size, font_weight, font_slant);
         let text_width = Au::from_f64_px(my_font.text_width(text));
-        let font_size = Au::from_f64_px(my_font.real_font_size());
 
         let mut new_layoutbox = layoutbox.clone();
 
