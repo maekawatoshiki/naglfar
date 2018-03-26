@@ -103,6 +103,7 @@ div.sidebar {
   background: #efefef;
   margin-top: 10px;
   margin-bottom: 10px;
+  margin-left: 5%;
   padding: 10px;
   padding-left: 5px;
   border-width: 1px;
@@ -209,13 +210,14 @@ div.card_footer2 {
   width: 600px;
   padding-top: 20px;
   padding-bottom: 20px;
-  margin-left: 20px;
+  margin-left: 2%;
 }
 
 #title {
   font-size: 30px;
   font-weight: bold;
   margin-left: 55px;
+  line-height: 30px;
 }
 
 .description {
