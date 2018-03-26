@@ -308,7 +308,7 @@ impl<'a> LineMaker<'a> {
 
         let my_font = Font::new(font_size, font_weight, font_slant);
         let text_width = Au::from_f64_px(my_font.text_width(text));
-        let font_size = Au::from_f64_px(my_font.font_size());
+        let font_size = Au::from_f64_px(my_font.real_font_size());
 
         let mut new_layoutbox = layoutbox.clone();
 
