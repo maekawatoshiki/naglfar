@@ -72,16 +72,6 @@ impl Font {
         })
     }
 
-    pub fn real_font_size(&self) -> f64 {
-        FONT_DESC.with(|font_desc| {
-            let mut font_desc = font_desc.borrow_mut();
-            font_desc.set_size(pango::units_from_double(px2pt(self.size.to_f64_px())));
-            font_desc.set_style(self.slant.to_pango_font_slant());
-            font_desc.set_weight(self.weight.to_pango_font_weight());
-            pt2px(pango::units_to_double(font_desc.get_size()))
-        })
-    }
-
     pub fn compute_max_chars(&self, s: &str, max_width: f64) -> usize {
         // TODO: Inefficient!
         // TODO: This code doesn't allow other than alphabets.
