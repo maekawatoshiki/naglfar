@@ -137,7 +137,7 @@ impl Value {
     }
 }
 
-const DPI: f64 = 72.0;
+const DPI: f64 = 96.0;
 
 // TODO: any other better way?
 pub fn px2pt(f: f64) -> f64 {
