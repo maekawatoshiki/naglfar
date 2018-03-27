@@ -153,7 +153,7 @@ impl<'a> LineMaker<'a> {
                     + new_box.dimensions.margin.left;
 
                 // TODO: Refine
-                let ascent = new_box.get_first_text_ascent();
+                let ascent = new_box.get_first_text_ascent_or_height();
                 new_box.dimensions.content.y = self.cur_height
                     + (line.metrics.above_baseline - ascent)
                     - (new_box.dimensions.padding.top + new_box.dimensions.margin.top
@@ -430,7 +430,7 @@ impl<'a> LayoutBox<'a> {
         }
     }
 
-    pub fn get_first_text_ascent(&mut self) -> Au {
+    pub fn get_first_text_ascent_or_height(&mut self) -> Au {
         let height = self.dimensions.content.height;
         match self.get_first_text_node() {
             Some(node) => match node.box_type {
