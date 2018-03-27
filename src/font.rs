@@ -72,7 +72,7 @@ impl Font {
         })
     }
 
-    pub fn font_ascent_descent(&self) -> (f64, f64) {
+    pub fn get_ascent_descent(&self) -> (Au, Au) {
         FONT_DESC.with(|font_desc| {
             let mut font_desc = font_desc.borrow_mut();
             font_desc.set_size(pango::units_from_double(px2pt(self.size.to_f64_px())));
@@ -84,8 +84,8 @@ impl Font {
                     ctx.get_metrics(Some(&*font_desc), Some(&pango::Language::from_string("")))
                         .unwrap();
                 (
-                    (pango::units_to_double(metrics.get_ascent()) as f64),
-                    (pango::units_to_double(metrics.get_descent()) as f64),
+                    Au::from_f64_px(pango::units_to_double(metrics.get_ascent()) as f64),
+                    Au::from_f64_px(pango::units_to_double(metrics.get_descent()) as f64),
                 )
             })
         })

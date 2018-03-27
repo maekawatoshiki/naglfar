@@ -2,7 +2,7 @@ use css::{Unit, Value};
 use style::StyledNode;
 use dom::NodeType;
 use font::Font;
-use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, DEFAULT_FONT_SIZE};
+use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, Text, DEFAULT_FONT_SIZE};
 use float::Floats;
 
 use std::ops::Range;
@@ -151,11 +151,17 @@ impl<'a> LineMaker<'a> {
                     + new_box.dimensions.padding.left
                     + new_box.dimensions.border.left
                     + new_box.dimensions.margin.left;
+
                 // TODO: Refine
+                let ascent = match new_box.box_type {
+                    BoxType::TextNode(Text { font, .. }) => font.get_ascent_descent().0,
+                    _ => new_box.dimensions.content.height,
+                };
                 new_box.dimensions.content.y = self.cur_height
-                    + (line.metrics.above_baseline - new_box.dimensions.content.height)
+                    + (line.metrics.above_baseline - ascent)
                     - (new_box.dimensions.padding.top + new_box.dimensions.margin.top
                         + new_box.dimensions.border.top);
+
                 self.cur_width += new_box.dimensions.margin_box().width;
             }
             self.cur_height += line.metrics.calculate_line_height();
@@ -316,10 +322,7 @@ impl<'a> LineMaker<'a> {
 
         let my_font = Font::new(font_size, font_weight, font_slant);
         let text_width = Au::from_f64_px(my_font.text_width(text));
-        let (ascent, descent) = {
-            let (ascent, descent) = my_font.font_ascent_descent();
-            (Au::from_f64_px(ascent), Au::from_f64_px(descent))
-        };
+        let (ascent, descent) = my_font.get_ascent_descent();
 
         let mut new_layoutbox = layoutbox.clone();
 
@@ -340,7 +343,7 @@ impl<'a> LineMaker<'a> {
 
             new_layoutbox.dimensions.content.width =
                 Au::from_f64_px(my_font.text_width(&text[0..max_chars]));
-            new_layoutbox.dimensions.content.height = ascent;
+            new_layoutbox.dimensions.content.height = font_size;
 
             new_layoutbox.set_text_info(
                 Font {
@@ -360,7 +363,7 @@ impl<'a> LineMaker<'a> {
             self.cur_metrics.reset();
         } else {
             new_layoutbox.dimensions.content.width = text_width;
-            new_layoutbox.dimensions.content.height = ascent;
+            new_layoutbox.dimensions.content.height = font_size;
 
             new_layoutbox.set_text_info(
                 Font {
