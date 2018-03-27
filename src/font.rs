@@ -5,7 +5,7 @@ use pangocairo;
 use css::px2pt;
 
 use std::cell::RefCell;
-use pango::LayoutExt;
+use pango::{ContextExt, LayoutExt};
 
 use app_units::Au;
 
@@ -68,6 +68,25 @@ impl Font {
                 layout.set_text(text);
                 layout.set_font_description(Some(&*font_desc));
                 pango::units_to_double(layout.get_size().0)
+            })
+        })
+    }
+
+    pub fn font_ascent_descent(&self) -> (f64, f64) {
+        FONT_DESC.with(|font_desc| {
+            let mut font_desc = font_desc.borrow_mut();
+            font_desc.set_size(pango::units_from_double(px2pt(self.size.to_f64_px())));
+            font_desc.set_style(self.slant.to_pango_font_slant());
+            font_desc.set_weight(self.weight.to_pango_font_weight());
+            PANGO_LAYOUT.with(|layout| {
+                let ctx = layout.borrow_mut().get_context().unwrap();
+                let metrics =
+                    ctx.get_metrics(Some(&*font_desc), Some(&pango::Language::from_string("")))
+                        .unwrap();
+                (
+                    (pango::units_to_double(metrics.get_ascent()) as f64),
+                    (pango::units_to_double(metrics.get_descent()) as f64),
+                )
             })
         })
     }

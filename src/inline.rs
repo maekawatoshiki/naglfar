@@ -7,6 +7,7 @@ use float::Floats;
 
 use std::ops::Range;
 use std::collections::{HashMap, VecDeque};
+use std::cmp::max;
 
 use gdk_pixbuf::PixbufExt;
 use gdk_pixbuf;
@@ -315,21 +316,23 @@ impl<'a> LineMaker<'a> {
 
         let my_font = Font::new(font_size, font_weight, font_slant);
         let text_width = Au::from_f64_px(my_font.text_width(text));
+        let (ascent, descent) = {
+            let (ascent, descent) = my_font.font_ascent_descent();
+            (Au::from_f64_px(ascent), Au::from_f64_px(descent))
+        };
 
         let mut new_layoutbox = layoutbox.clone();
 
         self.end += 1;
 
-        self.cur_metrics.above_baseline = vec![
+        self.cur_metrics.above_baseline = max(
             self.cur_metrics.above_baseline,
-            line_height - (line_height - font_size) / 2,
-        ].into_iter()
-            .fold(Au(0), |x, y| x.max(y));
-        self.cur_metrics.under_baseline = vec![
+            ascent + (line_height - (ascent + descent)) / 2,
+        );
+        self.cur_metrics.under_baseline = max(
             self.cur_metrics.under_baseline,
-            (line_height - font_size) / 2,
-        ].into_iter()
-            .fold(Au(0), |x, y| x.max(y));
+            (line_height - (ascent + descent)) / 2 + descent,
+        );
 
         if self.cur_width + text_width > max_width {
             let remaining_width = max_width - self.cur_width; // Is this correc?
@@ -337,7 +340,7 @@ impl<'a> LineMaker<'a> {
 
             new_layoutbox.dimensions.content.width =
                 Au::from_f64_px(my_font.text_width(&text[0..max_chars]));
-            new_layoutbox.dimensions.content.height = font_size;
+            new_layoutbox.dimensions.content.height = ascent;
 
             new_layoutbox.set_text_info(
                 Font {
@@ -357,7 +360,7 @@ impl<'a> LineMaker<'a> {
             self.cur_metrics.reset();
         } else {
             new_layoutbox.dimensions.content.width = text_width;
-            new_layoutbox.dimensions.content.height = font_size;
+            new_layoutbox.dimensions.content.height = ascent;
 
             new_layoutbox.set_text_info(
                 Font {
