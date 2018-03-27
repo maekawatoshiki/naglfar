@@ -316,7 +316,14 @@ impl Parser {
         match self.next_char() {
             '0'...'9' => self.parse_length(),
             '#' => self.parse_color(),
-            _ => Value::Keyword(self.parse_identifier()),
+            _ => {
+                let ident = self.parse_identifier();
+                match ident.as_str() {
+                    "rgb" => self.parse_rgb_color(),
+                    "rgba" => self.parse_rgba_color(),
+                    _ => Value::Keyword(ident),
+                }
+            }
         }
     }
 
@@ -346,6 +353,40 @@ impl Parser {
         }
     }
 
+    fn parse_rgb_color(&mut self) -> Value {
+        assert_eq!(self.consume_char_ignore_whitescape(), '(');
+        let r = self.parse_float();
+        assert_eq!(self.consume_char_ignore_whitescape(), ',');
+        let g = self.parse_float();
+        assert_eq!(self.consume_char_ignore_whitescape(), ',');
+        let b = self.parse_float();
+        assert_eq!(self.consume_char_ignore_whitescape(), ')');
+        Value::Color(Color {
+            r: r as u8,
+            g: g as u8,
+            b: b as u8,
+            a: 255,
+        })
+    }
+
+    fn parse_rgba_color(&mut self) -> Value {
+        assert_eq!(self.consume_char_ignore_whitescape(), '(');
+        let r = self.parse_float();
+        assert_eq!(self.consume_char_ignore_whitescape(), ',');
+        let g = self.parse_float();
+        assert_eq!(self.consume_char_ignore_whitescape(), ',');
+        let b = self.parse_float();
+        assert_eq!(self.consume_char_ignore_whitescape(), ',');
+        let a = self.parse_float();
+        assert_eq!(self.consume_char_ignore_whitescape(), ')');
+        Value::Color(Color {
+            r: r as u8,
+            g: g as u8,
+            b: b as u8,
+            a: (255.0 * a) as u8,
+        })
+    }
+
     fn parse_color(&mut self) -> Value {
         assert_eq!(self.consume_char(), '#');
         Value::Color(Color {
@@ -368,6 +409,13 @@ impl Parser {
 
     fn parse_identifier_percent(&mut self) -> String {
         self.consume_while(valid_ident_percent_char)
+    }
+
+    fn consume_char_ignore_whitescape(&mut self) -> char {
+        self.consume_whitespace();
+        let c = self.consume_char();
+        self.consume_whitespace();
+        c
     }
 
     fn consume_whitespace(&mut self) {
@@ -553,6 +601,36 @@ fn test2() {
             Declaration {
                 name: "background".to_string(),
                 value: Value::Keyword("white".to_string()),
+            },
+        ]
+    );
+}
+
+#[test]
+fn test_rgb_rgba() {
+    let src = "color: rgb(1, 2, 3); background: rgba(250, 1, 250, 0.3); ";
+    let decls = parse_attr_style(src.to_string());
+
+    assert_eq!(
+        decls,
+        vec![
+            Declaration {
+                name: "color".to_string(),
+                value: Value::Color(Color {
+                    r: 1,
+                    g: 2,
+                    b: 3,
+                    a: 255,
+                }),
+            },
+            Declaration {
+                name: "background".to_string(),
+                value: Value::Color(Color {
+                    r: 250,
+                    g: 1,
+                    b: 250,
+                    a: (255.0 * 0.3) as u8,
+                }),
             },
         ]
     );
