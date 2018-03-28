@@ -8,6 +8,8 @@ use gtk::traits::*;
 use gtk::Inhibit;
 
 use gdk::ContextExt;
+use gdk_pixbuf::PixbufExt;
+use gdk_pixbuf::InterpType;
 
 use cairo::Context;
 use pango::LayoutExt;
@@ -109,8 +111,20 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
             ctx.fill();
         }
         &DisplayCommand::Image(ref pixbuf, rect) => {
-            ctx.set_source_pixbuf(&pixbuf, rect.x.to_f64_px(), rect.y.to_f64_px());
+            ctx.save();
+            ctx.set_source_pixbuf(
+                &pixbuf
+                    .scale_simple(
+                        rect.width.to_f64_px() as i32,
+                        rect.height.to_f64_px() as i32,
+                        InterpType::Nearest,
+                    )
+                    .unwrap(),
+                rect.x.to_f64_px(),
+                rect.y.to_f64_px(),
+            );
             ctx.paint();
+            ctx.restore();
         }
         &DisplayCommand::Text(ref text, rect, ref color, ref font) => {
             FONT_DESC.with(|font_desc| {

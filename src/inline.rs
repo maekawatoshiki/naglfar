@@ -153,7 +153,7 @@ impl<'a> LineMaker<'a> {
                     + new_box.dimensions.margin.left;
 
                 // TODO: Refine
-                let ascent = new_box.get_first_text_ascent_or_height();
+                let ascent = new_box.content_inline_ascent();
                 new_box.dimensions.content.y = self.cur_height
                     + (line.metrics.above_baseline - ascent)
                     - (new_box.dimensions.padding.top + new_box.dimensions.margin.top
@@ -399,17 +399,7 @@ impl<'a> LayoutBox<'a> {
         // Replaced Inline Element (<img>)
         let (width, height) = match &mut self.info {
             &mut LayoutInfo::Image(ref mut pixbuf) => {
-                let pixbuf = match pixbuf {
-                    &mut Some(ref pixbuf) => pixbuf.clone(),
-                    _ => {
-                        *pixbuf = Some(self.style.unwrap().get_pixbuf(containing_block));
-                        pixbuf.clone().unwrap()
-                    }
-                };
-                (
-                    Au::from_f64_px(pixbuf.get_width() as f64),
-                    Au::from_f64_px(pixbuf.get_height() as f64),
-                )
+                get_image(self.style.unwrap(), pixbuf, containing_block)
             }
             _ => unimplemented!(),
         };
@@ -434,7 +424,7 @@ impl<'a> LayoutBox<'a> {
         }
     }
 
-    pub fn get_first_text_ascent_or_height(&mut self) -> Au {
+    pub fn content_inline_ascent(&mut self) -> Au {
         let height = self.dimensions.content.height;
         match self.get_first_text_node() {
             Some(node) => match node.box_type {
@@ -443,6 +433,49 @@ impl<'a> LayoutBox<'a> {
             },
             None => height,
         }
+    }
+}
+
+pub fn get_image<'a>(
+    style: &'a StyledNode<'a>,
+    pixbuf: &mut Option<gdk_pixbuf::Pixbuf>,
+    containing_block: Dimensions,
+) -> (Au, Au) {
+    let cb_width = containing_block.content.width.to_f64_px();
+    let cb_height = containing_block.content.height.to_f64_px();
+
+    let pixbuf = match pixbuf {
+        &mut Some(ref pixbuf) => pixbuf.clone(),
+        &mut None => {
+            *pixbuf = Some(style.get_pixbuf());
+            pixbuf.clone().unwrap()
+        }
+    };
+
+    let specified_width_px = style
+        .node
+        .attr("width")
+        .and_then(|w| w.maybe_percent_to_px(cb_width));
+    // The same as above
+    let specified_height_px = style
+        .node
+        .attr("height")
+        .and_then(|h| h.maybe_percent_to_px(cb_height));
+
+    match (specified_width_px, specified_height_px) {
+        (Some(width), Some(height)) => (Au::from_f64_px(width), Au::from_f64_px(height)),
+        (Some(width), None) => (
+            Au::from_f64_px(width),
+            Au::from_f64_px(width * (pixbuf.get_height() as f64 / pixbuf.get_width() as f64)),
+        ),
+        (None, Some(height)) => (
+            Au::from_f64_px(height * (pixbuf.get_width() as f64 / pixbuf.get_height() as f64)),
+            Au::from_f64_px(height),
+        ),
+        (None, None) => (
+            Au::from_f64_px(pixbuf.get_width() as f64),
+            Au::from_f64_px(pixbuf.get_height() as f64),
+        ),
     }
 }
 
@@ -495,7 +528,7 @@ impl<'a> LayoutBox<'a> {
 
 use std::cell::RefCell;
 
-type ImageKey = (String, i32, i32); // URL, width, height
+type ImageKey = String; // URL
 
 thread_local!(
     pub static IMG_CACHE: RefCell<HashMap<ImageKey, gdk_pixbuf::Pixbuf>> = {
@@ -504,32 +537,12 @@ thread_local!(
 );
 
 impl<'a> StyledNode<'a> {
-    pub fn get_pixbuf(&self, containing_block: Dimensions) -> gdk_pixbuf::Pixbuf {
-        let cb_width = containing_block.content.width.to_f64_px();
-        let cb_height = containing_block.content.height.to_f64_px();
+    pub fn get_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
         IMG_CACHE.with(|c| {
             let image_url = self.node.image_url().unwrap();
-            // If 'width' is specified, use its value. Otherwise, -1.
-            let specified_width_px = self.node
-                .attr("width")
-                .and_then(|w| Some(w.maybe_percent_to_px(cb_width).unwrap_or(-1.0) as i32))
-                .unwrap_or(-1);
-            // The same as above
-            let specified_height_px = self.node
-                .attr("height")
-                .and_then(|h| Some(h.maybe_percent_to_px(cb_height).unwrap_or(-1.0) as i32))
-                .unwrap_or(-1);
             c.borrow_mut()
-                .entry((image_url.clone(), specified_width_px, specified_height_px))
-                .or_insert_with(|| {
-                    gdk_pixbuf::Pixbuf::new_from_file_at_scale(
-                        image_url.as_str(),
-                        specified_width_px,
-                        specified_height_px,
-                        // Preserve scale if at least one of width and height is -1.
-                        specified_width_px == -1 || specified_height_px == -1,
-                    ).unwrap()
-                })
+                .entry(image_url.clone())
+                .or_insert_with(|| gdk_pixbuf::Pixbuf::new_from_file(image_url.as_str()).unwrap())
                 .clone()
         })
     }

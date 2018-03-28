@@ -1,10 +1,9 @@
 use layout::{Dimensions, EdgeSizes, LayoutBox, LayoutInfo, Rect};
+use inline::get_image;
 use style;
 use css::{Unit, Value};
 
 use std::cmp::{max, min};
-
-use gdk_pixbuf::PixbufExt;
 
 use app_units::Au;
 
@@ -82,7 +81,7 @@ impl Floats {
                     l_height = Some(float.rect.height);
                 }
                 style::FloatType::Right
-                    if (max_width - float.rect.y) > right
+                    if (max_width - float.rect.x) > right
                         && float.rect.y + float.rect.height > ceiling
                         && float.rect.y < ceiling + height =>
                 {
@@ -157,15 +156,9 @@ impl<'a> LayoutBox<'a> {
         // Replaced Inline Element (<img>)
         match self.info {
             LayoutInfo::Image(ref mut pixbuf) => {
-                let pixbuf = match pixbuf {
-                    &mut Some(ref pixbuf) => pixbuf.clone(),
-                    _ => {
-                        *pixbuf = Some(self.style.unwrap().get_pixbuf(containing_block));
-                        pixbuf.clone().unwrap()
-                    }
-                };
-                self.dimensions.content.width = Au::from_f64_px(pixbuf.get_width() as f64);
-                self.dimensions.content.height = Au::from_f64_px(pixbuf.get_height() as f64);
+                let (width, height) = get_image(self.style.unwrap(), pixbuf, containing_block);
+                self.dimensions.content.width = width;
+                self.dimensions.content.height = height;
             }
             LayoutInfo::Generic => {
                 self.calculate_float_width(containing_block);
