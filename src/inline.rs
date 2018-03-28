@@ -420,13 +420,17 @@ impl<'a> LayoutBox<'a> {
 }
 
 impl<'a> LayoutBox<'a> {
-    fn get_first_text_node(&mut self) -> Option<&LayoutBox> {
+    fn get_first_text_node(&self) -> Option<&LayoutBox> {
         match self.box_type {
             BoxType::TextNode(_) => Some(self),
-            _ => self.children.iter().find(|child| match child.box_type {
-                BoxType::TextNode(_) => true,
-                _ => false,
-            }),
+            _ => {
+                for child in &self.children {
+                    if let Some(node) = child.get_first_text_node() {
+                        return Some(node);
+                    }
+                }
+                None
+            }
         }
     }
 
