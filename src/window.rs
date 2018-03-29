@@ -117,7 +117,7 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
                     .scale_simple(
                         rect.width.to_f64_px() as i32,
                         rect.height.to_f64_px() as i32,
-                        InterpType::Nearest,
+                        InterpType::Hyper,
                     )
                     .unwrap(),
                 rect.x.to_f64_px(),
