@@ -16,12 +16,13 @@ use pango::LayoutExt;
 
 use std::{cell::RefCell, cmp::{max, min}, collections::HashMap};
 
+use layout::Rect;
 use painter::{DisplayCommand, DisplayList};
 use font::FONT_DESC;
 use css::px2pt;
 
 thread_local!(
-    pub static ANKERS: RefCell<HashMap<(i32, i32), String>> = {
+    pub static ANKERS: RefCell<HashMap<Rect, String>> = {
         RefCell::new(HashMap::new())
     }
 );
@@ -51,17 +52,25 @@ impl RenderingWindow {
         drawing_area.add_events(256); // '256' is Press Button
         drawing_area
             .connect("button-press-event", false, |x| {
-                println!(
-                    "CLICKED {:?}",
-                    x[1].clone()
-                        .downcast::<Event>()
-                        .unwrap()
-                        .get()
-                        .unwrap()
-                        .downcast::<EventButton>()
-                        .unwrap()
-                        .get_position()
-                );
+                let (x, y) = x[1].clone()
+                    .downcast::<Event>()
+                    .unwrap()
+                    .get()
+                    .unwrap()
+                    .downcast::<EventButton>()
+                    .unwrap()
+                    .get_position();
+                ANKERS.with(|ankers| {
+                    for (rect, url) in &*ankers.borrow() {
+                        if rect.x.to_f64_px() <= x
+                            && x <= rect.x.to_f64_px() + rect.width.to_f64_px()
+                            && rect.y.to_f64_px() <= y
+                            && y <= rect.y.to_f64_px() + rect.height.to_f64_px()
+                        {
+                            println!("Anker Clicked. Jump to {}", url);
+                        }
+                    }
+                });
                 Some(true.to_value())
             })
             .unwrap();
@@ -178,7 +187,13 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
             pangocairo::functions::show_layout(ctx, &pango_layout);
         }
         &DisplayCommand::Anker(ref url, rect) => {
-            println!("anker {:?}", rect);
+            ANKERS.with(|ankers| {
+                ankers
+                    .borrow_mut()
+                    .entry(rect)
+                    .or_insert_with(|| url.to_string())
+                    .clone()
+            });
         }
     }
 }

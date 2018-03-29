@@ -19,7 +19,7 @@ use app_units::Au;
 // CSS box model. All sizes are in px.
 // TODO: Support units other than px
 
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Rect {
     pub x: Au,
     pub y: Au,
