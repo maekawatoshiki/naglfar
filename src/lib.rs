@@ -9,6 +9,7 @@ pub mod float;
 pub mod layout;
 pub mod painter;
 pub mod window;
+pub mod interface;
 
 extern crate app_units;
 extern crate cairo;

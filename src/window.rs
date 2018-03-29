@@ -4,7 +4,7 @@ extern crate gtk;
 extern crate pango;
 extern crate pangocairo;
 
-use gtk::{Inhibit, ObjectExt, traits::*};
+use gtk::{Inhibit, ObjectExt, WidgetExt, traits::*};
 
 use glib::prelude::*; // or `use gtk::prelude::*;`
 
@@ -20,6 +20,7 @@ use layout::Rect;
 use painter::{DisplayCommand, DisplayList};
 use font::FONT_DESC;
 use css::px2pt;
+use interface::update_html_tree_and_stylesheet;
 
 thread_local!(
     pub static ANKERS: RefCell<HashMap<Rect, String>> = {
@@ -49,10 +50,11 @@ impl RenderingWindow {
 
         window.add(&scrolled_window);
 
-        drawing_area.add_events(256); // '256' is Press Button
+        drawing_area.add_events(256); // '256' means button press event
         drawing_area
-            .connect("button-press-event", false, |x| {
-                let (x, y) = x[1].clone()
+            .connect("button-press-event", false, |args| {
+                let (x, y) = args[1]
+                    .clone()
                     .downcast::<Event>()
                     .unwrap()
                     .get()
@@ -67,7 +69,14 @@ impl RenderingWindow {
                             && rect.y.to_f64_px() <= y
                             && y <= rect.y.to_f64_px() + rect.height.to_f64_px()
                         {
-                            println!("Anker Clicked. Jump to {}", url);
+                            update_html_tree_and_stylesheet(url.to_string());
+                            args[0]
+                                .clone()
+                                .downcast::<gtk::DrawingArea>()
+                                .unwrap()
+                                .get()
+                                .unwrap()
+                                .queue_draw();
                         }
                     }
                 });
