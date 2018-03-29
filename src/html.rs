@@ -217,13 +217,12 @@ impl Parser {
 }
 
 fn url_conv(attr: (String, String)) -> (String, String) {
-    if attr.0.to_lowercase().as_str() == "src" {
-        (
+    match attr.0.to_lowercase().as_str() {
+        "src" | "href" => (
             attr.0.clone(),
             CUR_DIR.with(|dir| dir.borrow().join(attr.1).to_str().unwrap().to_string()),
-        )
-    } else {
-        (attr.0, attr.1)
+        ),
+        _ => (attr.0, attr.1),
     }
 }
 

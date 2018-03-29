@@ -12,6 +12,7 @@ cairo-rs = "*"
 clap = "*"
 pango = "*"
 pangocairo = "*"
+glib = "*"
 
 [profile.dev]
 codegen-units = 16

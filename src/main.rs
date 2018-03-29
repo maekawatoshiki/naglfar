@@ -46,7 +46,6 @@ fn main() {
 
 fn run_with_url(html_src: String) {
     let html_src_path = Path::new(html_src.as_str());
-    let src_path = html_src_path.parent().unwrap();
 
     println!("HTML:");
     let mut html_source = "".to_string();
@@ -63,10 +62,9 @@ fn run_with_url(html_src: String) {
     println!("CSS:");
     let mut css_source = "".to_string();
     if let Some(stylesheet_path) = html_tree.find_stylesheet_path() {
-        let css_src_path = src_path.join(stylesheet_path);
         OpenOptions::new()
             .read(true)
-            .open(css_src_path.to_str().unwrap())
+            .open(stylesheet_path.to_str().unwrap())
             .unwrap()
             .read_to_string(&mut css_source)
             .ok()

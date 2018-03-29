@@ -24,6 +24,7 @@ pub enum LayoutType {
     Generic,
     Text,
     Image,
+    Anker,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,6 +48,7 @@ impl Node {
             data: NodeType::Element(ElementData {
                 layout_type: match name.to_lowercase().as_str() {
                     "img" => LayoutType::Image,
+                    "a" => LayoutType::Anker,
                     _ => LayoutType::Generic,
                 },
                 tag_name: name,
@@ -115,6 +117,13 @@ impl Node {
     pub fn image_url(&self) -> Option<&String> {
         match self.data {
             NodeType::Element(ElementData { ref attrs, .. }) => attrs.get("src"),
+            NodeType::Text(_) => None,
+        }
+    }
+
+    pub fn anker_url(&self) -> Option<&String> {
+        match self.data {
+            NodeType::Element(ElementData { ref attrs, .. }) => attrs.get("href"),
             NodeType::Text(_) => None,
         }
     }

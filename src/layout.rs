@@ -50,6 +50,7 @@ pub enum LayoutInfo {
     Generic,
     Text,
     Image(Option<gdk_pixbuf::Pixbuf>),
+    Anker,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -163,6 +164,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
             LayoutType::Generic => LayoutInfo::Generic,
             LayoutType::Text => LayoutInfo::Text,
             LayoutType::Image => LayoutInfo::Image(None),
+            LayoutType::Anker => LayoutInfo::Anker,
         },
     );
 

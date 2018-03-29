@@ -4,21 +4,27 @@ extern crate gtk;
 extern crate pango;
 extern crate pangocairo;
 
-use gtk::traits::*;
-use gtk::Inhibit;
+use gtk::{Inhibit, ObjectExt, traits::*};
 
-use gdk::ContextExt;
-use gdk_pixbuf::PixbufExt;
-use gdk_pixbuf::InterpType;
+use glib::prelude::*; // or `use gtk::prelude::*;`
+
+use gdk::{ContextExt, Event, EventButton};
+use gdk_pixbuf::{InterpType, PixbufExt};
 
 use cairo::Context;
 use pango::LayoutExt;
 
-use std::cmp::{max, min};
+use std::{cell::RefCell, cmp::{max, min}, collections::HashMap};
 
 use painter::{DisplayCommand, DisplayList};
 use font::FONT_DESC;
 use css::px2pt;
+
+thread_local!(
+    pub static ANKERS: RefCell<HashMap<(i32, i32), String>> = {
+        RefCell::new(HashMap::new())
+    }
+);
 
 struct RenderingWindow {
     window: gtk::Window,
@@ -41,6 +47,24 @@ impl RenderingWindow {
         scrolled_window.add_with_viewport(&drawing_area);
 
         window.add(&scrolled_window);
+
+        drawing_area.add_events(256); // '256' is Press Button
+        drawing_area
+            .connect("button-press-event", false, |x| {
+                println!(
+                    "CLICKED {:?}",
+                    x[1].clone()
+                        .downcast::<Event>()
+                        .unwrap()
+                        .get()
+                        .unwrap()
+                        .downcast::<EventButton>()
+                        .unwrap()
+                        .get_position()
+                );
+                Some(true.to_value())
+            })
+            .unwrap();
 
         let instance = RenderingWindow {
             window: window,
@@ -66,7 +90,8 @@ impl RenderingWindow {
                     if match &item.command {
                         &DisplayCommand::SolidColor(_, rect)
                         | &DisplayCommand::Image(_, rect)
-                        | &DisplayCommand::Text(_, rect, _, _) => {
+                        | &DisplayCommand::Text(_, rect, _, _)
+                        | &DisplayCommand::Anker(_, rect) => {
                             let rect_y = rect.y.to_px();
                             let rect_height = rect.height.to_px();
                             let sy = max(rect_y, redraw_start_y as i32);
@@ -151,6 +176,9 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
 
             pango_layout.context_changed();
             pangocairo::functions::show_layout(ctx, &pango_layout);
+        }
+        &DisplayCommand::Anker(ref url, rect) => {
+            println!("anker {:?}", rect);
         }
     }
 }
