@@ -22,7 +22,7 @@ By default, Naglfar shows `example/test.html` applied `example/test.css`.
 ```sh
 $ cargo run
 $ # or...
-$ cargo run --release
+$ cargo run <FILE>
 ```
 
 # Reference
