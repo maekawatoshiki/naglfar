@@ -154,10 +154,10 @@ impl<'a> LineMaker<'a> {
 
                 // TODO: Refine
                 let ascent = new_box.content_inline_ascent();
-                new_box.dimensions.content.y = self.cur_height
-                    + (line.metrics.above_baseline - ascent)
-                    + (new_box.dimensions.padding.top + new_box.dimensions.margin.top
-                        + new_box.dimensions.border.top);
+                new_box.dimensions.content.y =
+                    self.cur_height + (line.metrics.above_baseline - ascent);
+                // + (new_box.dimensions.padding.top + new_box.dimensions.margin.top
+                //     + new_box.dimensions.border.top);
 
                 self.cur_width += new_box.dimensions.margin_box().width;
             }
