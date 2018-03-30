@@ -156,7 +156,7 @@ impl<'a> LineMaker<'a> {
                 let ascent = new_box.content_inline_ascent();
                 new_box.dimensions.content.y = self.cur_height
                     + (line.metrics.above_baseline - ascent)
-                    - (new_box.dimensions.padding.top + new_box.dimensions.margin.top
+                    + (new_box.dimensions.padding.top + new_box.dimensions.margin.top
                         + new_box.dimensions.border.top);
 
                 self.cur_width += new_box.dimensions.margin_box().width;
@@ -224,8 +224,8 @@ impl<'a> LineMaker<'a> {
             let width;
             let height;
             layoutbox.layout_inline(&mut self.floats, containing_block);
-            width = layoutbox.dimensions.content.width;
-            height = layoutbox.dimensions.content.height;
+            width = layoutbox.dimensions.border_box().width;
+            height = layoutbox.dimensions.border_box().height;
 
             if self.cur_width + width > max_width {
                 self.flush_cur_line();

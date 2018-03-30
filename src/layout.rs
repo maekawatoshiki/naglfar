@@ -356,20 +356,20 @@ impl<'a> LayoutBox<'a> {
         );
         d.border.right = Au::from_f64_px(
             style
-                .lookup("border-width-right", "border-width", &zero)
+                .lookup("border-right-width", "border-width", &zero)
                 .to_px()
                 .unwrap(),
         );
 
         d.border.top = Au::from_f64_px(
             style
-                .lookup("border-width-top", "border-width", &zero)
+                .lookup("border-top-width", "border-width", &zero)
                 .to_px()
                 .unwrap(),
         );
         d.border.bottom = Au::from_f64_px(
             style
-                .lookup("border-width-bottom", "border-width", &zero)
+                .lookup("border-bottom-width", "border-width", &zero)
                 .to_px()
                 .unwrap(),
         );
