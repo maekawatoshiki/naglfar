@@ -340,7 +340,7 @@ impl<'a> LineMaker<'a> {
 
             new_layoutbox.dimensions.content.width =
                 Au::from_f64_px(my_font.text_width(&text[0..max_chars]));
-            new_layoutbox.dimensions.content.height = font_size;
+            new_layoutbox.dimensions.content.height = ascent + descent;
 
             new_layoutbox.set_text_info(
                 Font {
@@ -360,7 +360,7 @@ impl<'a> LineMaker<'a> {
             self.cur_metrics.reset();
         } else {
             new_layoutbox.dimensions.content.width = text_width;
-            new_layoutbox.dimensions.content.height = font_size;
+            new_layoutbox.dimensions.content.height = ascent + descent;
 
             new_layoutbox.set_text_info(
                 Font {
