@@ -16,11 +16,17 @@ use gtk::WidgetExt;
 extern crate app_units;
 use app_units::Au;
 
-extern crate hyper;
-extern crate hyper_native_tls;
-// use self::hyper::Client;
-// use self::hyper::net::HttpsConnector;
-// use self::hyper_native_tls::NativeTlsClient;
+extern crate reqwest;
+
+// pub fn aa() {
+//     println!(
+//         "body: {}",
+//         reqwest::get("http://maekawatoshiki.github.io/naglfar/example/test.html")
+//             .unwrap()
+//             .text()
+//             .unwrap()
+//     );
+// }
 
 use std::cell::RefCell;
 
