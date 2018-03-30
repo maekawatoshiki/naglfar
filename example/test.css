@@ -12,7 +12,7 @@ html {
   width: auto;
   padding: 0px;
   margin: 0px;
-  background: #313131;
+  background: white;
 }
 
 body {
@@ -100,34 +100,26 @@ b {
 
 footer {
   text-align: center;
-  background: #343434;
+  background-color: #f5f5f5;
   padding: 25px;
-  color: #dddddd;
-  border-width: 0px;
-  border-top-color: white;
-  border-top-width: 1px;
-  border-style: solid;
+  color: #010101;
 }
 
 div.sidebar {
-  background: #efefef;
   margin-top: 10px;
   margin-bottom: 10px;
   margin-left: 5%;
   padding: 10px;
-  padding-left: 5px;
-  border-width: 1px;
-  border-color: #cdcdcd;
-  border-style: solid;
 }
 
 div.sidebar_title {
   margin-top: 5px;
   margin-bottom: 5px;
   border-width: 0px;
-  border-bottom-color: black;
-  border-bottom-width: 1px;
+  border-left-color: #313131;
+  border-left-width: 2px;
   border-style: solid;
+  padding-left: 3px;
 }
 
 div.sidebar_content {
@@ -142,7 +134,6 @@ div.sidebar_element {
   font-size: 13px;
 }
 
-
 div.card {
   background: #ffffff;
   width: 95%;
@@ -151,20 +142,14 @@ div.card {
   margin-right: auto;
   padding: 10px;
   padding-left: 5px;
-  border-width: 1px;
-  border-color: #cdcdcd;
-  border-style: solid;
 }
 
 div.card_title {
-  font-weight: bold;
-  font-size: 20px;
+  font-size: 30px;
   margin-top: 5px;
   margin-bottom: 5px;
   padding-left: 5px;
   border-width: 0px;
-  border-bottom-color: black;
-  border-bottom-width: 1px;
   border-left-color: #313131;
   border-left-width: 5px;
   border-style: solid;
@@ -172,10 +157,6 @@ div.card_title {
 
 div.card_content {
   color: black;
-  border-width: 0px;
-  border-bottom-color: #efefef;
-  border-bottom-width: 2px;
-  border-style: solid;
   margin-top: 10px;
   margin-bottom: 10px;
   padding-top: 10px;
@@ -210,17 +191,13 @@ div.card_footer2 {
 
 #header {
   background-color: #f5f5f5;
-  border-width: 0px;
-  border-bottom-width: 2px;
-  border-color: #a0a0a0;
-  border-style: solid;
 }
 
 #header-inner {
   width: 600px;
   padding-top: 20px;
   padding-bottom: 20px;
-  margin-left: 2%;
+  margin-left: 10%;
 }
 
 #title {
