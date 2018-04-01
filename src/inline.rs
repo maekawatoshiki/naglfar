@@ -137,8 +137,8 @@ impl<'a> LineMaker<'a> {
                 // TODO: Refine
                 let text_align = new_box
                     .get_style_node()
-                    .value_with_default("text-align", &Value::Keyword("left".to_string()));
-                let init_width = match text_align {
+                    .value_with_default("text-align", &vec![Value::Keyword("left".to_string())]);
+                let init_width = match text_align[0] {
                     Value::Keyword(ref k) => match k.to_lowercase().as_str() {
                         "center" => (max_width_considered_float - line.width) / 2,
                         "right" => max_width_considered_float - line.width,
@@ -293,29 +293,25 @@ impl<'a> LineMaker<'a> {
 
         let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
         let font_size = Au::from_f64_px(
-            style
-                .lookup("font-size", "font-size", &default_font_size)
+            style.lookup("font-size", "font-size", &vec![default_font_size])[0]
                 .to_px()
                 .unwrap(),
         );
 
         let default_line_height = Value::Length(font_size.to_f64_px() * 1.2, Unit::Px); // TODO: magic number '1.2'
         let line_height = Au::from_f64_px(
-            style
-                .value_with_default("line-height", &default_line_height)
+            style.value_with_default("line-height", &vec![default_line_height])[0]
                 .to_px()
                 .unwrap(),
         );
 
         let default_font_weight = Value::Keyword("normal".to_string());
-        let font_weight = style
-            .lookup("font-weight", "font-weight", &default_font_weight)
+        let font_weight = style.lookup("font-weight", "font-weight", &vec![default_font_weight])[0]
             .to_font_weight();
 
         let default_font_slant = Value::Keyword("normal".to_string());
-        let font_slant = style
-            .lookup("font-style", "font-style", &default_font_slant)
-            .to_font_slant();
+        let font_slant =
+            style.lookup("font-style", "font-style", &vec![default_font_slant])[0].to_font_slant();
 
         let my_font = Font::new(font_size, font_weight, font_slant);
         let text_width = Au::from_f64_px(my_font.text_width(text));
@@ -515,9 +511,9 @@ impl<'a> LayoutBox<'a> {
         // `width` has initial value `auto`.
         // TODO: Implement calculating shrink-to-fit width
         let auto = Value::Keyword("auto".to_string());
-        let width = style.value("width").unwrap_or(auto.clone());
+        let width = &style.value("width").unwrap_or(vec![auto.clone()])[0];
 
-        if width == auto {
+        if width == &auto {
             // TODO
             panic!("calculating shrink-to-fit width is unsupported.");
         }

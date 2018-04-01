@@ -44,19 +44,23 @@ impl<'a> LayoutBox<'a> {
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
-        let mut width = style.value("width").unwrap_or(auto.clone());
+        let mut width = style.value("width").unwrap_or(vec![auto.clone()])[0].clone();
 
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        let mut margin_left = style.lookup("margin-left", "margin", &zero);
-        let mut margin_right = style.lookup("margin-right", "margin", &zero);
+        let mut margin_left = style.lookup("margin-left", "margin", &vec![zero.clone()])[0].clone();
+        let mut margin_right =
+            style.lookup("margin-right", "margin", &vec![zero.clone()])[0].clone();
 
-        let border_left = style.lookup("border-left-width", "border-width", &zero);
-        let border_right = style.lookup("border-right-width", "border-width", &zero);
+        let border_left =
+            style.lookup("border-left-width", "border-width", &vec![zero.clone()])[0].clone();
+        let border_right =
+            style.lookup("border-right-width", "border-width", &vec![zero.clone()])[0].clone();
 
-        let padding_left = style.lookup("padding-left", "padding", &zero);
-        let padding_right = style.lookup("padding-right", "padding", &zero);
+        let padding_left = style.lookup("padding-left", "padding", &vec![zero.clone()])[0].clone();
+        let padding_right =
+            style.lookup("padding-right", "padding", &vec![zero.clone()])[0].clone();
 
         let total = sum([
             &margin_left,
@@ -174,14 +178,14 @@ impl<'a> LayoutBox<'a> {
 
         // If margin-top or margin-bottom is `auto`, the used value is zero.
         d.margin.top = Au::from_f64_px(
-            style
-                .lookup("margin-top", "margin", &zero)
+            style.lookup("margin-top", "margin", &vec![zero.clone()])[0]
+                .clone()
                 .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
         d.margin.bottom = Au::from_f64_px(
-            style
-                .lookup("margin-bottom", "margin", &zero)
+            style.lookup("margin-bottom", "margin", &vec![zero.clone()])[0]
+                .clone()
                 .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
@@ -195,32 +199,34 @@ impl<'a> LayoutBox<'a> {
         }
 
         d.border.top = Au::from_f64_px(
-            style
-                .lookup("border-top-width", "border-width", &zero)
+            style.lookup("border-top-width", "border-width", &vec![zero.clone()])[0]
+                .clone()
                 .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
         d.border.bottom = Au::from_f64_px(
-            style
-                .lookup("border-bottom-width", "border-width", &zero)
+            style.lookup("border-bottom-width", "border-width", &vec![zero.clone()])[0]
+                .clone()
                 .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
 
         d.padding.top = Au::from_f64_px(
-            style
-                .lookup("padding-top", "padding", &zero)
+            style.lookup("padding-top", "padding", &vec![zero.clone()])[0]
+                .clone()
                 .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
         d.padding.bottom = Au::from_f64_px(
-            style
-                .lookup("padding-bottom", "padding", &zero)
+            style.lookup("padding-bottom", "padding", &vec![zero.clone()])[0]
+                .clone()
                 .maybe_percent_to_px(cb_width)
                 .unwrap(),
         );
 
-        self.z_index = style.lookup("z-index", "z-index", &zero).to_num() as i32;
+        self.z_index = style.lookup("z-index", "z-index", &vec![zero.clone()])[0]
+            .clone()
+            .to_num() as i32;
 
         d.content.x = d.margin.left + d.border.left + d.padding.left;
 
@@ -262,8 +268,10 @@ impl<'a> LayoutBox<'a> {
     pub fn calculate_block_height(&mut self) {
         // If the height is set to an explicit length, use that exact length.
         // Otherwise, just keep the value set by `layout_block_children`.
-        if let Some(Value::Length(h, Unit::Px)) = self.get_style_node().value("height") {
-            self.dimensions.content.height = Au::from_f64_px(h);
+        if let Some(val) = self.get_style_node().value("height") {
+            if let Value::Length(h, Unit::Px) = val[0] {
+                self.dimensions.content.height = Au::from_f64_px(h);
+            }
         }
     }
 }

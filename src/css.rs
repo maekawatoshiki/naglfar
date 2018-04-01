@@ -28,7 +28,7 @@ pub struct SimpleSelector {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Declaration {
     pub name: String,
-    pub value: Value,
+    pub values: Vec<Value>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -300,19 +300,32 @@ impl Parser {
         self.consume_whitespace();
         assert_eq!(self.consume_char(), ':');
         self.consume_whitespace();
-        let value = self.parse_value();
+        let values = self.parse_values();
         self.consume_whitespace();
-        if !self.eof() && self.next_char() == ';' {
-            assert_eq!(self.consume_char(), ';');
-        }
 
         Declaration {
             name: property_name,
-            value: value,
+            values: values,
         }
     }
 
     // Methods for parsing values:
+
+    fn parse_values(&mut self) -> Vec<Value> {
+        let mut values = vec![];
+        loop {
+            self.consume_whitespace();
+            if self.eof() {
+                break;
+            }
+            if self.next_char() == ';' {
+                assert_eq!(self.consume_char(), ';');
+                break;
+            }
+            values.push(self.parse_value());
+        }
+        values
+    }
 
     fn parse_value(&mut self) -> Value {
         match self.next_char() {
@@ -474,21 +487,24 @@ impl fmt::Display for Stylesheet {
             }
             try!(writeln!(f, " {{"));
             for decl in &rule.declarations {
-                try!(writeln!(
-                    f,
-                    "  {}: {};",
-                    decl.name,
-                    match decl.value {
-                        Value::Keyword(ref kw) => kw.clone(),
-                        Value::Length(ref f, Unit::Px) => format!("{}px", f),
-                        Value::Length(ref f, Unit::Pt) => format!("{}pt", f),
-                        Value::Length(ref f, Unit::Percent) => format!("{}%", f),
-                        Value::Num(ref f) => format!("{}", f),
-                        Value::Color(ref color) => {
-                            format!("rgba({}, {}, {}, {})", color.r, color.g, color.b, color.a)
+                try!(write!(f, "  {}:", decl.name,));
+                for value in &decl.values {
+                    try!(write!(
+                        f,
+                        " {}",
+                        match value {
+                            &Value::Keyword(ref kw) => kw.clone(),
+                            &Value::Length(ref f, Unit::Px) => format!("{}px", f),
+                            &Value::Length(ref f, Unit::Pt) => format!("{}pt", f),
+                            &Value::Length(ref f, Unit::Percent) => format!("{}%", f),
+                            &Value::Num(ref f) => format!("{}", f),
+                            &Value::Color(ref color) => {
+                                format!("rgba({}, {}, {}, {})", color.r, color.g, color.b, color.a)
+                            }
                         }
-                    }
-                ));
+                    ))
+                }
+                try!(writeln!(f));
             }
             try!(writeln!(f, "}}"));
         }
@@ -545,23 +561,23 @@ fn test1() {
                     declarations: vec![
                         Declaration {
                             name: "width".to_string(),
-                            value: Value::Length(70.0, Unit::Percent),
+                            values: vec![Value::Length(70.0, Unit::Percent)],
                         },
                         Declaration {
                             name: "height".to_string(),
-                            value: Value::Length(50.0, Unit::Px),
+                            values: vec![Value::Length(50.0, Unit::Px)],
                         },
                         Declaration {
                             name: "font-weight".to_string(),
-                            value: Value::Keyword("bold".to_string()),
+                            values: vec![Value::Keyword("bold".to_string())],
                         },
                         Declaration {
                             name: "z-index".to_string(),
-                            value: Value::Num(2.0),
+                            values: vec![Value::Num(2.0)],
                         },
                         Declaration {
                             name: "font-size".to_string(),
-                            value: Value::Length(10.0, Unit::Pt),
+                            values: vec![Value::Length(10.0, Unit::Pt)],
                         },
                         Declaration {
                             name: "color".to_string(),
@@ -598,11 +614,11 @@ fn test2() {
         vec![
             Declaration {
                 name: "color".to_string(),
-                value: Value::Keyword("black".to_string()),
+                values: vec![Value::Keyword("black".to_string())],
             },
             Declaration {
                 name: "background".to_string(),
-                value: Value::Keyword("white".to_string()),
+                values: vec![Value::Keyword("white".to_string())],
             },
         ]
     );

@@ -219,19 +219,22 @@ impl<'a> LayoutBox<'a> {
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
-        let width = style.value("width").unwrap_or(auto.clone());
+        let width = style.value("width").unwrap_or(vec![auto.clone()])[0].clone();
 
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        let margin_left = style.lookup("margin-left", "margin", &zero);
-        let margin_right = style.lookup("margin-right", "margin", &zero);
+        let margin_left = style.lookup("margin-left", "margin", &vec![zero.clone()])[0].clone();
+        let margin_right = style.lookup("margin-right", "margin", &vec![zero.clone()])[0].clone();
 
-        let border_left = style.lookup("border-left-width", "border-width", &zero);
-        let border_right = style.lookup("border-right-width", "border-width", &zero);
+        let border_left =
+            style.lookup("border-left-width", "border-width", &vec![zero.clone()])[0].clone();
+        let border_right =
+            style.lookup("border-right-width", "border-width", &vec![zero.clone()])[0].clone();
 
-        let padding_left = style.lookup("padding-left", "padding", &zero);
-        let padding_right = style.lookup("padding-right", "padding", &zero);
+        let padding_left = style.lookup("padding-left", "padding", &vec![zero.clone()])[0].clone();
+        let padding_right =
+            style.lookup("padding-right", "padding", &vec![zero.clone()])[0].clone();
 
         let d = &mut self.dimensions;
         if let Some(width) = width.maybe_percent_to_px(cb_width) {

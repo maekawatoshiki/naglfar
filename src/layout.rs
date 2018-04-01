@@ -285,27 +285,27 @@ impl<'a> LayoutBox<'a> {
         let zero = Value::Length(0.0, Unit::Px);
 
         d.padding.left = Au::from_f64_px(
-            style
-                .lookup("padding-left", "padding", &zero)
+            style.lookup("padding-left", "padding", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
         d.padding.right = Au::from_f64_px(
-            style
-                .lookup("padding-right", "padding", &zero)
+            style.lookup("padding-right", "padding", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
 
         d.padding.top = Au::from_f64_px(
-            style
-                .lookup("padding-top", "padding", &zero)
+            style.lookup("padding-top", "padding", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
         d.padding.bottom = Au::from_f64_px(
-            style
-                .lookup("padding-bottom", "padding", &zero)
+            style.lookup("padding-bottom", "padding", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
@@ -319,23 +319,27 @@ impl<'a> LayoutBox<'a> {
         let zero = Value::Length(0.0, Unit::Px);
 
         d.margin.left = Au::from_f64_px(
-            style
-                .lookup("margin-left", "margin", &zero)
+            style.lookup("margin-left", "margin", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
         d.margin.right = Au::from_f64_px(
-            style
-                .lookup("margin-right", "margin", &zero)
+            style.lookup("margin-right", "margin", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
 
-        d.margin.top =
-            Au::from_f64_px(style.lookup("margin-top", "margin", &zero).to_px().unwrap());
+        d.margin.top = Au::from_f64_px(
+            style.lookup("margin-top", "margin", &vec![zero.clone()])[0]
+                .clone()
+                .to_px()
+                .unwrap(),
+        );
         d.margin.bottom = Au::from_f64_px(
-            style
-                .lookup("margin-bottom", "margin", &zero)
+            style.lookup("margin-bottom", "margin", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
@@ -349,27 +353,27 @@ impl<'a> LayoutBox<'a> {
         let zero = Value::Length(0.0, Unit::Px);
 
         d.border.left = Au::from_f64_px(
-            style
-                .lookup("border-left-width", "border-width", &zero)
+            style.lookup("border-left-width", "border-width", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
         d.border.right = Au::from_f64_px(
-            style
-                .lookup("border-right-width", "border-width", &zero)
+            style.lookup("border-right-width", "border-width", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
 
         d.border.top = Au::from_f64_px(
-            style
-                .lookup("border-top-width", "border-width", &zero)
+            style.lookup("border-top-width", "border-width", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );
         d.border.bottom = Au::from_f64_px(
-            style
-                .lookup("border-bottom-width", "border-width", &zero)
+            style.lookup("border-bottom-width", "border-width", &vec![zero.clone()])[0]
+                .clone()
                 .to_px()
                 .unwrap(),
         );

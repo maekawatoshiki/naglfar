@@ -216,7 +216,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
 fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
     match layout_box.style {
         Some(style) => match style.value(name) {
-            Some(maybe_color) => maybe_color.to_color(),
+            Some(maybe_color) => maybe_color[0].to_color(),
             _ => None,
         },
         None => None,
@@ -227,7 +227,7 @@ fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
 fn lookup_color(layout_box: &LayoutBox, name: &str, fallback_name: &str) -> Option<Color> {
     match layout_box.style {
         Some(style) => match style.lookup_without_default(name, fallback_name) {
-            Some(maybe_color) => maybe_color.to_color(),
+            Some(maybe_color) => maybe_color[0].to_color(),
             _ => None,
         },
         None => None,

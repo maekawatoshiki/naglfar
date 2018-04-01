@@ -3,7 +3,7 @@ use css::{parse_attr_style, Declaration, Rule, Selector, SimpleSelector, Specifi
           Value};
 use std::collections::HashMap;
 
-pub type PropertyMap = HashMap<String, Value>;
+pub type PropertyMap = HashMap<String, Vec<Value>>;
 
 #[derive(Clone, Debug)]
 pub struct StyledNode<'a> {
@@ -35,29 +35,32 @@ pub enum ClearType {
 }
 
 impl<'a> StyledNode<'a> {
-    pub fn value(&self, name: &str) -> Option<Value> {
+    pub fn value(&self, name: &str) -> Option<Vec<Value>> {
         self.specified_values.get(name).cloned()
     }
 
-    pub fn value_with_default(&self, name: &str, default: &Value) -> Value {
+    pub fn value_with_default(&self, name: &str, default: &Vec<Value>) -> Vec<Value> {
         self.value(name).unwrap_or(default.clone())
     }
 
-    pub fn lookup(&self, name: &str, fallback_name: &str, default: &Value) -> Value {
+    pub fn lookup(&self, name: &str, fallback_name: &str, default: &Vec<Value>) -> Vec<Value> {
         self.value(name)
             .unwrap_or_else(|| self.value(fallback_name).unwrap_or_else(|| default.clone()))
     }
 
-    pub fn lookup_without_default(&self, name: &str, fallback_name: &str) -> Option<Value> {
+    pub fn lookup_without_default(&self, name: &str, fallback_name: &str) -> Option<Vec<Value>> {
         self.value(name).or_else(|| self.value(fallback_name))
     }
 
     pub fn display(&self) -> Display {
         match self.value("display") {
-            Some(Value::Keyword(s)) => match &*s {
-                "block" => Display::Block,
-                "inline-block" => Display::InlineBlock,
-                "none" => Display::None,
+            Some(x) => match x[0] {
+                Value::Keyword(ref s) => match &**s {
+                    "block" => Display::Block,
+                    "inline-block" => Display::InlineBlock,
+                    "none" => Display::None,
+                    "inline" | _ => Display::Inline,
+                },
                 _ => Display::Inline,
             },
             _ => Display::Inline,
@@ -66,10 +69,13 @@ impl<'a> StyledNode<'a> {
 
     pub fn float(&self) -> FloatType {
         match self.value("float") {
-            Some(Value::Keyword(s)) => match &*s {
-                "left" => FloatType::Left,
-                "right" => FloatType::Right,
-                "none" => FloatType::None,
+            Some(x) => match x[0] {
+                Value::Keyword(ref s) => match &**s {
+                    "left" => FloatType::Left,
+                    "right" => FloatType::Right,
+                    "none" => FloatType::None,
+                    _ => FloatType::None,
+                },
                 _ => FloatType::None,
             },
             _ => FloatType::None,
@@ -78,10 +84,13 @@ impl<'a> StyledNode<'a> {
 
     pub fn clear(&self) -> Option<ClearType> {
         match self.value("clear") {
-            Some(Value::Keyword(s)) => match &*s {
-                "left" => Some(ClearType::Left),
-                "right" => Some(ClearType::Right),
-                "both" => Some(ClearType::Both),
+            Some(x) => match x[0] {
+                Value::Keyword(ref s) => match &**s {
+                    "left" => Some(ClearType::Left),
+                    "right" => Some(ClearType::Right),
+                    "both" => Some(ClearType::Both),
+                    _ => None,
+                },
                 _ => None,
             },
             _ => None,
@@ -156,14 +165,14 @@ fn specified_values(
     rules.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
     for (_, rule) in rules {
         for declaration in &rule.declarations {
-            values.insert(declaration.name.clone(), declaration.value.clone());
+            values.insert(declaration.name.clone(), declaration.values.clone());
         }
     }
 
     if let Some(attr_style) = elem.attrs.get("style") {
         let decls = parse_attr_style(attr_style.clone());
-        for Declaration { name, value } in decls {
-            values.insert(name, value);
+        for Declaration { name, values: vals } in decls {
+            values.insert(name, vals);
         }
     }
 
