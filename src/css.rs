@@ -302,7 +302,9 @@ impl Parser {
         self.consume_whitespace();
         let value = self.parse_value();
         self.consume_whitespace();
-        assert_eq!(self.consume_char(), ';');
+        if !self.eof() && self.next_char() == ';' {
+            assert_eq!(self.consume_char(), ';');
+        }
 
         Declaration {
             name: property_name,
