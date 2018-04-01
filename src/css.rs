@@ -581,21 +581,25 @@ fn test1() {
                         },
                         Declaration {
                             name: "color".to_string(),
-                            value: Value::Color(Color {
-                                r: 0xff,
-                                g: 0xff,
-                                b: 0xff,
-                                a: 0xff,
-                            }),
+                            values: vec![
+                                Value::Color(Color {
+                                    r: 0xff,
+                                    g: 0xff,
+                                    b: 0xff,
+                                    a: 0xff,
+                                }),
+                            ],
                         },
                         Declaration {
                             name: "background-color".to_string(),
-                            value: Value::Color(Color {
-                                r: 0x00,
-                                g: 0x33,
-                                b: 0x00,
-                                a: 0xff,
-                            }),
+                            values: vec![
+                                Value::Color(Color {
+                                    r: 0x00,
+                                    g: 0x33,
+                                    b: 0x00,
+                                    a: 0xff,
+                                }),
+                            ],
                         },
                     ],
                 },
@@ -634,21 +638,25 @@ fn test_rgb_rgba() {
         vec![
             Declaration {
                 name: "color".to_string(),
-                value: Value::Color(Color {
-                    r: 1,
-                    g: 2,
-                    b: 3,
-                    a: 255,
-                }),
+                values: vec![
+                    Value::Color(Color {
+                        r: 1,
+                        g: 2,
+                        b: 3,
+                        a: 255,
+                    }),
+                ],
             },
             Declaration {
                 name: "background".to_string(),
-                value: Value::Color(Color {
-                    r: 250,
-                    g: 1,
-                    b: 250,
-                    a: (255.0 * 0.3) as u8,
-                }),
+                values: vec![
+                    Value::Color(Color {
+                        r: 250,
+                        g: 1,
+                        b: 250,
+                        a: (255.0 * 0.3) as u8,
+                    }),
+                ],
             },
         ]
     );
