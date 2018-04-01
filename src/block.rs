@@ -49,18 +49,58 @@ impl<'a> LayoutBox<'a> {
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        let mut margin_left = style.lookup("margin-left", "margin", &vec![zero.clone()])[0].clone();
-        let mut margin_right =
-            style.lookup("margin-right", "margin", &vec![zero.clone()])[0].clone();
+        macro_rules! f {
+        ($left:ident, $right:ident, $left_name:expr, $right_name:expr, $fallback_name:expr) => (
+            let ($left, $right) =
+                match (style.value($left_name), style.value($right_name)) {
+                    (Some(left), Some(right)) => {
+                        (left[0].clone(), right[0].clone())
+                    }
+                    otherwise => {
+                        let (left, right) = if let Some(x) = style.value($fallback_name) {
+                            match x.len() {
+                                1 => (x[0].clone(), x[0].clone()),
+                                2 | 3 => (x[1].clone(), x[1].clone()),
+                                4 => (x[1].clone(), x[3].clone()),
+                                0 | _ => panic!(),
+                            }
+                        } else {
+                            (zero.clone(), zero.clone())
+                        };
+                        match otherwise {
+                            (Some(left), None) => (left[0].clone(), right),
+                            (None, Some(right)) => (left, right[0].clone()),
+                            (None, None) => (left, right),
+                            _ => unreachable!(),
+                        }
+                    }
+                };
+        );
+        }
 
-        let border_left =
-            style.lookup("border-left-width", "border-width", &vec![zero.clone()])[0].clone();
-        let border_right =
-            style.lookup("border-right-width", "border-width", &vec![zero.clone()])[0].clone();
+        f!(
+            margin_left,
+            margin_right,
+            "margin-left",
+            "margin-right",
+            "margin"
+        );
 
-        let padding_left = style.lookup("padding-left", "padding", &vec![zero.clone()])[0].clone();
-        let padding_right =
-            style.lookup("padding-right", "padding", &vec![zero.clone()])[0].clone();
+        f!(
+            border_left,
+            border_right,
+            "border-left-width",
+            "border-right-width",
+            "border-width"
+        );
+
+        f!(
+            padding_left,
+            padding_right,
+            "padding-left",
+            "padding-right",
+            "padding"
+        );
 
         let total = sum([
             &margin_left,
@@ -74,6 +114,7 @@ impl<'a> LayoutBox<'a> {
             .map(|v| v.maybe_percent_to_px(cb_width).unwrap_or(0.0)));
 
         // If width is not auto and the total is wider than the container, treat auto margins as 0.
+        let (mut margin_left, mut margin_right) = (margin_left, margin_right);
         if width != auto && total > containing_block.content.width.to_f64_px() {
             if margin_left == auto {
                 margin_left = Value::Length(0.0, Unit::Px);
@@ -176,18 +217,76 @@ impl<'a> LayoutBox<'a> {
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
+        // TODO: This macro seems so big and difficult to understand...
+        macro_rules! f {
+        ($top:expr, $bottom:expr, $top_name:expr, $bottom_name:expr, $fallback_name:expr) => {
+            match (style.value($top_name), style.value($bottom_name)) {
+                (Some(top), Some(bottom)) => {
+                    $top = Au::from_f64_px(top[0].clone().maybe_percent_to_px(cb_width).unwrap());
+                    $bottom = Au::from_f64_px(bottom[0]
+                                .clone()
+                                .maybe_percent_to_px(cb_width)
+                                .unwrap(),
+                              );
+                }
+                otherwise => {
+                    let (top, bottom) = if let Some(x) = style.value($fallback_name) {
+                        match x.len() {
+                            1 | 2 => (
+                                Au::from_f64_px(
+                                    x[0].clone().maybe_percent_to_px(cb_width).unwrap(),
+                                ),
+                                Au::from_f64_px(
+                                    x[0].clone().maybe_percent_to_px(cb_width).unwrap(),
+                                ),
+                            ),
+                            3 | 4 => (
+                                Au::from_f64_px(
+                                    x[0].clone().maybe_percent_to_px(cb_width).unwrap(),
+                                ),
+                                Au::from_f64_px(
+                                    x[2].clone().maybe_percent_to_px(cb_width).unwrap(),
+                                ),
+                            ),
+                            0 | _ => panic!(),
+                        }
+                    } else {
+                        (Au(0), Au(0))
+                    };
+                    match otherwise {
+                        (Some(top), None) => {
+                            $top = Au::from_f64_px(
+                                top[0].clone().maybe_percent_to_px(cb_width).unwrap(),
+                            );
+                            $bottom = bottom;
+                        }
+                        (None, Some(bottom)) => {
+                            $top = top;
+                            $bottom = Au::from_f64_px(
+                                bottom[0]
+                                    .clone()
+                                    .maybe_percent_to_px(cb_width)
+                                    .unwrap(),
+                            );
+                        }
+                        (None, None) => {
+                            $top = top;
+                            $bottom = bottom
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            };
+        };
+        };
+
         // If margin-top or margin-bottom is `auto`, the used value is zero.
-        d.margin.top = Au::from_f64_px(
-            style.lookup("margin-top", "margin", &vec![zero.clone()])[0]
-                .clone()
-                .maybe_percent_to_px(cb_width)
-                .unwrap(),
-        );
-        d.margin.bottom = Au::from_f64_px(
-            style.lookup("margin-bottom", "margin", &vec![zero.clone()])[0]
-                .clone()
-                .maybe_percent_to_px(cb_width)
-                .unwrap(),
+        f!(
+            d.margin.top,
+            d.margin.bottom,
+            "margin-top",
+            "margin-bottom",
+            "margin"
         );
 
         // Margin collapse
@@ -198,30 +297,20 @@ impl<'a> LayoutBox<'a> {
             d.margin.top = d.margin.top - last_margin_bottom;
         }
 
-        d.border.top = Au::from_f64_px(
-            style.lookup("border-top-width", "border-width", &vec![zero.clone()])[0]
-                .clone()
-                .maybe_percent_to_px(cb_width)
-                .unwrap(),
-        );
-        d.border.bottom = Au::from_f64_px(
-            style.lookup("border-bottom-width", "border-width", &vec![zero.clone()])[0]
-                .clone()
-                .maybe_percent_to_px(cb_width)
-                .unwrap(),
+        f!(
+            d.border.top,
+            d.border.bottom,
+            "border-top-width",
+            "border-bottom-width",
+            "border-width"
         );
 
-        d.padding.top = Au::from_f64_px(
-            style.lookup("padding-top", "padding", &vec![zero.clone()])[0]
-                .clone()
-                .maybe_percent_to_px(cb_width)
-                .unwrap(),
-        );
-        d.padding.bottom = Au::from_f64_px(
-            style.lookup("padding-bottom", "padding", &vec![zero.clone()])[0]
-                .clone()
-                .maybe_percent_to_px(cb_width)
-                .unwrap(),
+        f!(
+            d.padding.top,
+            d.padding.bottom,
+            "padding-top",
+            "padding-bottom",
+            "padding"
         );
 
         self.z_index = style.lookup("z-index", "z-index", &vec![zero.clone()])[0]
