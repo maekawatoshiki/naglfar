@@ -117,6 +117,7 @@ impl<'a> LineMaker<'a> {
         self.cur_height += self.cur_metrics.calculate_line_height();
         self.start = self.end;
     }
+
     pub fn end_of_lines(&mut self) {
         self.flush_cur_line()
     }
@@ -131,7 +132,7 @@ impl<'a> LineMaker<'a> {
                 let (left_floats_width, max_width_considered_float) = {
                     let available_area =
                         self.floats
-                            .available_area(max_width, self.cur_height, Au(1));
+                            .available_area(max_width, self.cur_height, Au(1)); // magic number '1': Anything is ok if Au(x) > 0.
                     (available_area.x, available_area.width)
                 };
                 // TODO: Refine
@@ -156,8 +157,6 @@ impl<'a> LineMaker<'a> {
                 let ascent = new_box.content_inline_ascent();
                 new_box.dimensions.content.y =
                     self.cur_height + (line.metrics.above_baseline - ascent);
-                // + (new_box.dimensions.padding.top + new_box.dimensions.margin.top
-                //     + new_box.dimensions.border.top);
 
                 self.cur_width += new_box.dimensions.margin_box().width;
             }
@@ -189,6 +188,7 @@ impl<'a> LineMaker<'a> {
             linemaker.cur_width +=
                 layoutbox.dimensions.padding.right + layoutbox.dimensions.border.right;
             let end = linemaker.end;
+
             let new_boxes_len = linemaker.new_boxes[start..end].len();
             for (i, new_box) in &mut linemaker.new_boxes[start..end].iter_mut().enumerate() {
                 let mut layoutbox = layoutbox.clone();
@@ -212,6 +212,7 @@ impl<'a> LineMaker<'a> {
                 layoutbox.dimensions.content.height = new_box.dimensions.content.height;
                 *new_box = layoutbox;
             }
+
             self.new_boxes = linemaker.new_boxes;
             self.lines = linemaker.lines;
             self.start = linemaker.start;
@@ -236,9 +237,7 @@ impl<'a> LineMaker<'a> {
             } else {
                 self.end += 1;
                 self.cur_width += width;
-                self.cur_metrics.above_baseline = vec![self.cur_metrics.above_baseline, height]
-                    .into_iter()
-                    .fold(Au(0), |x, y| x.max(y));
+                self.cur_metrics.above_baseline = max(self.cur_metrics.above_baseline, height);
             }
 
             self.new_boxes.push(layoutbox);
@@ -263,21 +262,20 @@ impl<'a> LineMaker<'a> {
             self.end += 1;
 
             self.cur_width = box_width;
-            self.cur_metrics.above_baseline = vec![
+            self.cur_metrics.above_baseline = max(
                 self.cur_metrics.above_baseline,
                 layoutbox.dimensions.margin_box().height,
-            ].into_iter()
-                .fold(Au(0), |x, y| x.max(y));
+            );
 
             self.new_boxes.push(layoutbox);
         } else {
             self.end += 1;
             self.cur_width += box_width;
-            self.cur_metrics.above_baseline = vec![
+            self.cur_metrics.above_baseline = max(
                 self.cur_metrics.above_baseline,
                 layoutbox.dimensions.margin_box().height,
-            ].into_iter()
-                .fold(Au(0), |x, y| x.max(y));
+            );
+
             self.new_boxes.push(layoutbox);
         }
     }
