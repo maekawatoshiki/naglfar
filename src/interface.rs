@@ -18,16 +18,6 @@ use app_units::Au;
 
 extern crate reqwest;
 
-// pub fn aa() {
-//     println!(
-//         "body: {}",
-//         reqwest::get("http://maekawatoshiki.github.io/naglfar/example/test.html")
-//             .unwrap()
-//             .text()
-//             .unwrap()
-//     );
-// }
-
 use std::cell::RefCell;
 
 thread_local!(
