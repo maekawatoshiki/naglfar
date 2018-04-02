@@ -188,11 +188,11 @@ impl Parser {
     where
         F: Fn(char) -> bool,
     {
-        let mut result = String::new();
+        let mut v = vec![];
         while !self.eof() && f(self.next_char()) {
-            result.push(self.consume_char());
+            v.push(self.consume_char() as u8);
         }
-        result
+        String::from_utf8_lossy(v.as_slice()).to_owned().to_string()
     }
 
     fn consume_char(&mut self) -> char {
