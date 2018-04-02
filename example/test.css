@@ -31,8 +31,7 @@ h1 {
   border-left-color: #1b76c4;
   border-left-width: 7px;
   border-style: solid;
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 5px 0px;
 }
 
 h2 {
@@ -46,8 +45,7 @@ h2 {
   border-left-color: #ff9f41;
   border-left-width: 7px;
   border-style: solid;
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 5px 0px;
 }
 
 h3 {
@@ -61,8 +59,7 @@ h3 {
   border-left-color: #0fff0f;
   border-left-width: 7px;
   border-style: solid;
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 5px 0px;
 }
 
 a {
@@ -106,20 +103,17 @@ footer {
 }
 
 div.sidebar {
-  margin-top: 10px;
-  margin-bottom: 10px;
-  margin-left: 5%;
+  margin: 10px 0px 10px 5%;
   padding: 10px;
 }
 
 div.sidebar_title {
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 5px 0px;
+  padding-left: 3px;
   border-width: 0px;
   border-left-color: #313131;
   border-left-width: 2px;
   border-style: solid;
-  padding-left: 3px;
 }
 
 div.sidebar_content {
@@ -128,8 +122,7 @@ div.sidebar_content {
 
 div.sidebar_element {
   font-style: italic;
-  margin-top: 4px;
-  margin-bottom: 4px;
+  margin: 4px 0px;
   color: #3a6bd6;
   font-size: 13px;
 }
@@ -137,17 +130,13 @@ div.sidebar_element {
 div.card {
   background: #ffffff;
   width: 95%;
-  margin: 10px;
-  margin-left: auto;
-  margin-right: auto;
-  padding: 10px;
-  padding-left: 5px;
+  margin: 10px auto;
+  padding: 10px 10px 10px 5px;
 }
 
 div.card_title {
   font-size: 30px;
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 5px 0px;
   padding-left: 5px;
   border-width: 0px;
   border-left-color: #313131;
@@ -157,12 +146,8 @@ div.card_title {
 
 div.card_content {
   color: black;
-  margin-top: 10px;
-  margin-bottom: 10px;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  padding-left: 5px;
-  padding-right: 5px;
+  margin: 10px 0px;
+  padding: 10px 5px;
 }
 
 div.card_footer {
@@ -195,8 +180,7 @@ div.card_footer2 {
 
 #header-inner {
   width: 600px;
-  padding-top: 20px;
-  padding-bottom: 20px;
+  padding: 20px 0px;
   margin-left: 10%;
 }
 
