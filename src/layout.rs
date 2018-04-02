@@ -277,9 +277,8 @@ impl<'a> LayoutBox<'a> {
         }
     }
 
-    pub fn assign_padding(&mut self) {
+    pub fn get_padding(&mut self) -> (Value, Value, Value, Value) {
         let style = self.get_style_node();
-        let d = &mut self.dimensions;
 
         // padding has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
@@ -328,15 +327,26 @@ impl<'a> LayoutBox<'a> {
         padding_bottom.get_or_insert_with(|| zero.clone());
         padding_left.get_or_insert_with(|| zero.clone());
 
-        d.padding.left = Au::from_f64_px(padding_left.unwrap().to_px().unwrap());
-        d.padding.top = Au::from_f64_px(padding_top.unwrap().to_px().unwrap());
-        d.padding.bottom = Au::from_f64_px(padding_bottom.unwrap().to_px().unwrap());
-        d.padding.right = Au::from_f64_px(padding_right.unwrap().to_px().unwrap());
+        (
+            padding_top.unwrap(),
+            padding_right.unwrap(),
+            padding_bottom.unwrap(),
+            padding_left.unwrap(),
+        )
     }
 
-    pub fn assign_margin(&mut self) {
-        let style = self.get_style_node();
+    pub fn assign_padding(&mut self) {
+        let (padding_top, padding_right, padding_bottom, padding_left) = self.get_padding();
+
         let d = &mut self.dimensions;
+        d.padding.left = Au::from_f64_px(padding_left.to_px().unwrap());
+        d.padding.top = Au::from_f64_px(padding_top.to_px().unwrap());
+        d.padding.bottom = Au::from_f64_px(padding_bottom.to_px().unwrap());
+        d.padding.right = Au::from_f64_px(padding_right.to_px().unwrap());
+    }
+
+    pub fn get_margin(&mut self) -> (Value, Value, Value, Value) {
+        let style = self.get_style_node();
 
         // margin has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
@@ -383,15 +393,26 @@ impl<'a> LayoutBox<'a> {
         margin_bottom.get_or_insert_with(|| zero.clone());
         margin_left.get_or_insert_with(|| zero.clone());
 
-        d.margin.left = Au::from_f64_px(margin_left.unwrap().to_px().unwrap());
-        d.margin.top = Au::from_f64_px(margin_top.unwrap().to_px().unwrap());
-        d.margin.bottom = Au::from_f64_px(margin_bottom.unwrap().to_px().unwrap());
-        d.margin.right = Au::from_f64_px(margin_right.unwrap().to_px().unwrap());
+        (
+            margin_top.unwrap(),
+            margin_right.unwrap(),
+            margin_bottom.unwrap(),
+            margin_left.unwrap(),
+        )
     }
 
-    pub fn assign_border_width(&mut self) {
-        let style = self.get_style_node();
+    pub fn assign_margin(&mut self) {
+        let (margin_top, margin_right, margin_bottom, margin_left) = self.get_margin();
+
         let d = &mut self.dimensions;
+        d.margin.left = Au::from_f64_px(margin_left.to_px().unwrap());
+        d.margin.top = Au::from_f64_px(margin_top.to_px().unwrap());
+        d.margin.bottom = Au::from_f64_px(margin_bottom.to_px().unwrap());
+        d.margin.right = Au::from_f64_px(margin_right.to_px().unwrap());
+    }
+
+    pub fn get_border_width(&mut self) -> (Value, Value, Value, Value) {
+        let style = self.get_style_node();
 
         // border has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
@@ -444,10 +465,22 @@ impl<'a> LayoutBox<'a> {
         border_bottom.get_or_insert_with(|| zero.clone());
         border_left.get_or_insert_with(|| zero.clone());
 
-        d.border.left = Au::from_f64_px(border_left.unwrap().to_px().unwrap());
-        d.border.top = Au::from_f64_px(border_top.unwrap().to_px().unwrap());
-        d.border.bottom = Au::from_f64_px(border_bottom.unwrap().to_px().unwrap());
-        d.border.right = Au::from_f64_px(border_right.unwrap().to_px().unwrap());
+        (
+            border_top.unwrap(),
+            border_right.unwrap(),
+            border_bottom.unwrap(),
+            border_left.unwrap(),
+        )
+    }
+
+    pub fn assign_border_width(&mut self) {
+        let (border_top, border_right, border_bottom, border_left) = self.get_border_width();
+
+        let d = &mut self.dimensions;
+        d.border.left = Au::from_f64_px(border_left.to_px().unwrap());
+        d.border.top = Au::from_f64_px(border_top.to_px().unwrap());
+        d.border.bottom = Au::from_f64_px(border_bottom.to_px().unwrap());
+        d.border.right = Au::from_f64_px(border_right.to_px().unwrap());
     }
 }
 

@@ -18,11 +18,25 @@ impl<'a> LayoutBox<'a> {
     ) {
         self.floats = floats.clone();
 
+        let margin = self.get_margin();
+        let padding = self.get_padding();
+        let border = self.get_border_width();
         // Child width can depend on parent width, so we need to calculate this box's width before
         // laying out its children.
-        self.calculate_block_width(containing_block);
+        self.calculate_block_width(
+            containing_block,
+            margin.clone(),
+            padding.clone(),
+            border.clone(),
+        );
 
-        self.calculate_block_position(last_margin_bottom, containing_block);
+        self.calculate_block_position(
+            last_margin_bottom,
+            containing_block,
+            margin,
+            padding,
+            border,
+        );
 
         if self.floats.is_present() {
             self.floats.translate(self.dimensions.offset());
@@ -38,7 +52,13 @@ impl<'a> LayoutBox<'a> {
     /// Calculate the width of a block-level non-replaced element in normal flow.
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
     /// ref. http://www.w3.org/TR/CSS2/visudet.html#blockwidth
-    pub fn calculate_block_width(&mut self, containing_block: Dimensions) {
+    pub fn calculate_block_width(
+        &mut self,
+        containing_block: Dimensions,
+        margin: (Value, Value, Value, Value),
+        padding: (Value, Value, Value, Value),
+        border: (Value, Value, Value, Value),
+    ) {
         let style = self.get_style_node();
         let cb_width = containing_block.content.width.to_f64_px();
 
@@ -46,61 +66,14 @@ impl<'a> LayoutBox<'a> {
         let auto = Value::Keyword("auto".to_string());
         let mut width = style.value("width").unwrap_or(vec![auto.clone()])[0].clone();
 
-        // margin, border, and padding have initial value 0.
-        let zero = Value::Length(0.0, Unit::Px);
+        let mut margin_left = margin.3;
+        let mut margin_right = margin.1;
 
-        macro_rules! f {
-        ($left:ident, $right:ident, $left_name:expr, $right_name:expr, $fallback_name:expr) => (
-            let ($left, $right) =
-                match (style.value($left_name), style.value($right_name)) {
-                    (Some(left), Some(right)) => {
-                        (left[0].clone(), right[0].clone())
-                    }
-                    otherwise => {
-                        let (left, right) = if let Some(x) = style.value($fallback_name) {
-                            match x.len() {
-                                1 => (x[0].clone(), x[0].clone()),
-                                2 | 3 => (x[1].clone(), x[1].clone()),
-                                4 => (x[1].clone(), x[3].clone()),
-                                0 | _ => panic!(),
-                            }
-                        } else {
-                            (zero.clone(), zero.clone())
-                        };
-                        match otherwise {
-                            (Some(left), None) => (left[0].clone(), right),
-                            (None, Some(right)) => (left, right[0].clone()),
-                            (None, None) => (left, right),
-                            _ => unreachable!(),
-                        }
-                    }
-                };
-        );
-        }
+        let border_left = border.3;
+        let border_right = border.1;
 
-        f!(
-            margin_left,
-            margin_right,
-            "margin-left",
-            "margin-right",
-            "margin"
-        );
-
-        f!(
-            border_left,
-            border_right,
-            "border-left-width",
-            "border-right-width",
-            "border-width"
-        );
-
-        f!(
-            padding_left,
-            padding_right,
-            "padding-left",
-            "padding-right",
-            "padding"
-        );
+        let padding_left = padding.3;
+        let padding_right = padding.1;
 
         let total = sum([
             &margin_left,
@@ -114,7 +87,6 @@ impl<'a> LayoutBox<'a> {
             .map(|v| v.maybe_percent_to_px(cb_width).unwrap_or(0.0)));
 
         // If width is not auto and the total is wider than the container, treat auto margins as 0.
-        let (mut margin_left, mut margin_right) = (margin_left, margin_right);
         if width != auto && total > containing_block.content.width.to_f64_px() {
             if margin_left == auto {
                 margin_left = Value::Length(0.0, Unit::Px);
@@ -209,6 +181,9 @@ impl<'a> LayoutBox<'a> {
         &mut self,
         last_margin_bottom: Au,
         containing_block: Dimensions,
+        margin: (Value, Value, Value, Value),
+        padding: (Value, Value, Value, Value),
+        border: (Value, Value, Value, Value),
     ) {
         let style = self.get_style_node();
         let cb_width = containing_block.content.width.to_f64_px();
@@ -217,77 +192,8 @@ impl<'a> LayoutBox<'a> {
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        // TODO: This macro seems so big and difficult to understand...
-        macro_rules! f {
-        ($top:expr, $bottom:expr, $top_name:expr, $bottom_name:expr, $fallback_name:expr) => {
-            match (style.value($top_name), style.value($bottom_name)) {
-                (Some(top), Some(bottom)) => {
-                    $top = Au::from_f64_px(top[0].clone().maybe_percent_to_px(cb_width).unwrap());
-                    $bottom = Au::from_f64_px(bottom[0]
-                                .clone()
-                                .maybe_percent_to_px(cb_width)
-                                .unwrap(),
-                              );
-                }
-                otherwise => {
-                    let (top, bottom) = if let Some(x) = style.value($fallback_name) {
-                        match x.len() {
-                            1 | 2 => (
-                                Au::from_f64_px(
-                                    x[0].clone().maybe_percent_to_px(cb_width).unwrap(),
-                                ),
-                                Au::from_f64_px(
-                                    x[0].clone().maybe_percent_to_px(cb_width).unwrap(),
-                                ),
-                            ),
-                            3 | 4 => (
-                                Au::from_f64_px(
-                                    x[0].clone().maybe_percent_to_px(cb_width).unwrap(),
-                                ),
-                                Au::from_f64_px(
-                                    x[2].clone().maybe_percent_to_px(cb_width).unwrap(),
-                                ),
-                            ),
-                            0 | _ => panic!(),
-                        }
-                    } else {
-                        (Au(0), Au(0))
-                    };
-                    match otherwise {
-                        (Some(top), None) => {
-                            $top = Au::from_f64_px(
-                                top[0].clone().maybe_percent_to_px(cb_width).unwrap(),
-                            );
-                            $bottom = bottom;
-                        }
-                        (None, Some(bottom)) => {
-                            $top = top;
-                            $bottom = Au::from_f64_px(
-                                bottom[0]
-                                    .clone()
-                                    .maybe_percent_to_px(cb_width)
-                                    .unwrap(),
-                            );
-                        }
-                        (None, None) => {
-                            $top = top;
-                            $bottom = bottom
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-            };
-        };
-        };
-
-        // If margin-top or margin-bottom is `auto`, the used value is zero.
-        f!(
-            d.margin.top,
-            d.margin.bottom,
-            "margin-top",
-            "margin-bottom",
-            "margin"
-        );
+        d.margin.top = Au::from_f64_px(margin.0.maybe_percent_to_px(cb_width).unwrap());
+        d.margin.bottom = Au::from_f64_px(margin.2.maybe_percent_to_px(cb_width).unwrap());
 
         // Margin collapse
         // TODO: Is this implementation correct?
@@ -297,23 +203,13 @@ impl<'a> LayoutBox<'a> {
             d.margin.top = d.margin.top - last_margin_bottom;
         }
 
-        f!(
-            d.border.top,
-            d.border.bottom,
-            "border-top-width",
-            "border-bottom-width",
-            "border-width"
-        );
+        d.border.top = Au::from_f64_px(border.0.maybe_percent_to_px(cb_width).unwrap());
+        d.border.bottom = Au::from_f64_px(border.2.maybe_percent_to_px(cb_width).unwrap());
 
-        f!(
-            d.padding.top,
-            d.padding.bottom,
-            "padding-top",
-            "padding-bottom",
-            "padding"
-        );
+        d.padding.top = Au::from_f64_px(padding.0.maybe_percent_to_px(cb_width).unwrap());
+        d.padding.bottom = Au::from_f64_px(padding.2.maybe_percent_to_px(cb_width).unwrap());
 
-        self.z_index = style.lookup("z-index", "z-index", &vec![zero.clone()])[0]
+        self.z_index = style.lookup("z-index", "z-index", &vec![zero])[0]
             .clone()
             .to_num() as i32;
 
