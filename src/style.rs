@@ -157,23 +157,28 @@ fn specified_values(
     let mut rules = matching_rules(elem, stylesheet);
 
     // Insert inherited properties
-    for (name, value) in inherited_property {
+    inherited_property.iter().for_each(|(name, value)| {
         values.insert(name.clone(), value.clone());
-    }
+    });
 
     // Go through the rules from lowest to highest specificity.
     rules.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
-    for (_, rule) in rules {
-        for declaration in &rule.declarations {
+    rules.iter().for_each(|&(_, rule)| {
+        rule.declarations.iter().for_each(|declaration| {
             values.insert(declaration.name.clone(), declaration.values.clone());
-        }
-    }
+        })
+    });
 
     if let Some(attr_style) = elem.attrs.get("style") {
         let decls = parse_attr_style(attr_style.clone());
-        for Declaration { name, values: vals } in decls {
-            values.insert(name, vals);
-        }
+        decls.iter().for_each(
+            |&Declaration {
+                 ref name,
+                 values: ref vals,
+             }| {
+                values.insert(name.clone(), vals.clone());
+            },
+        );
     }
 
     values

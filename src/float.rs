@@ -161,10 +161,12 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.height = height;
             }
             LayoutInfo::Generic => {
-                self.calculate_float_width(containing_block);
+                // TODO: Both of assign_XXX and calculate_float_width assign margin, padding and
+                // border-width. It's duplicated!
                 self.assign_padding();
                 self.assign_border_width();
                 self.assign_margin();
+                self.calculate_float_width(containing_block);
                 self.layout_block_children(viewport);
                 self.calculate_block_height();
             }
