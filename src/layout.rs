@@ -281,34 +281,57 @@ impl<'a> LayoutBox<'a> {
         let style = self.get_style_node();
         let d = &mut self.dimensions;
 
-        // margin, border, and padding have initial value 0.
+        // padding has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        d.padding.left = Au::from_f64_px(
-            style.lookup("padding-left", "padding", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
-        d.padding.right = Au::from_f64_px(
-            style.lookup("padding-right", "padding", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
+        let mut padding_top = style.value("padding-top").and_then(|x| Some(x[0].clone()));
+        let mut padding_bottom = style
+            .value("padding-bottom")
+            .and_then(|x| Some(x[0].clone()));
+        let mut padding_left = style.value("padding-left").and_then(|x| Some(x[0].clone()));
+        let mut padding_right = style
+            .value("padding-right")
+            .and_then(|x| Some(x[0].clone()));
 
-        d.padding.top = Au::from_f64_px(
-            style.lookup("padding-top", "padding", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
-        d.padding.bottom = Au::from_f64_px(
-            style.lookup("padding-bottom", "padding", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
+        if let Some(padding) = style.value("padding") {
+            match padding.len() {
+                1 => {
+                    padding_top.get_or_insert_with(|| padding[0].clone());
+                    padding_bottom.get_or_insert_with(|| padding[0].clone());
+                    padding_left.get_or_insert_with(|| padding[0].clone());
+                    padding_right.get_or_insert_with(|| padding[0].clone());
+                }
+                2 => {
+                    padding_top.get_or_insert_with(|| padding[0].clone());
+                    padding_bottom.get_or_insert_with(|| padding[0].clone());
+                    padding_left.get_or_insert_with(|| padding[1].clone());
+                    padding_right.get_or_insert_with(|| padding[1].clone());
+                }
+                3 => {
+                    padding_top.get_or_insert_with(|| padding[0].clone());
+                    padding_left.get_or_insert_with(|| padding[1].clone());
+                    padding_right.get_or_insert_with(|| padding[1].clone());
+                    padding_bottom.get_or_insert_with(|| padding[2].clone());
+                }
+                4 => {
+                    padding_top.get_or_insert_with(|| padding[0].clone());
+                    padding_right.get_or_insert_with(|| padding[1].clone());
+                    padding_bottom.get_or_insert_with(|| padding[2].clone());
+                    padding_left.get_or_insert_with(|| padding[3].clone());
+                }
+                0 | _ => unreachable!(),
+            }
+        }
+
+        padding_top.get_or_insert_with(|| zero.clone());
+        padding_right.get_or_insert_with(|| zero.clone());
+        padding_bottom.get_or_insert_with(|| zero.clone());
+        padding_left.get_or_insert_with(|| zero.clone());
+
+        d.padding.left = Au::from_f64_px(padding_left.unwrap().to_px().unwrap());
+        d.padding.top = Au::from_f64_px(padding_top.unwrap().to_px().unwrap());
+        d.padding.bottom = Au::from_f64_px(padding_bottom.unwrap().to_px().unwrap());
+        d.padding.right = Au::from_f64_px(padding_right.unwrap().to_px().unwrap());
     }
 
     pub fn assign_margin(&mut self) {
@@ -318,65 +341,113 @@ impl<'a> LayoutBox<'a> {
         // margin has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        d.margin.left = Au::from_f64_px(
-            style.lookup("margin-left", "margin", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
-        d.margin.right = Au::from_f64_px(
-            style.lookup("margin-right", "margin", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
+        let mut margin_top = style.value("margin-top").and_then(|x| Some(x[0].clone()));
+        let mut margin_bottom = style
+            .value("margin-bottom")
+            .and_then(|x| Some(x[0].clone()));
+        let mut margin_left = style.value("margin-left").and_then(|x| Some(x[0].clone()));
+        let mut margin_right = style.value("margin-right").and_then(|x| Some(x[0].clone()));
 
-        d.margin.top = Au::from_f64_px(
-            style.lookup("margin-top", "margin", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
-        d.margin.bottom = Au::from_f64_px(
-            style.lookup("margin-bottom", "margin", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
+        if let Some(margin) = style.value("margin") {
+            match margin.len() {
+                1 => {
+                    margin_top.get_or_insert_with(|| margin[0].clone());
+                    margin_bottom.get_or_insert_with(|| margin[0].clone());
+                    margin_left.get_or_insert_with(|| margin[0].clone());
+                    margin_right.get_or_insert_with(|| margin[0].clone());
+                }
+                2 => {
+                    margin_top.get_or_insert_with(|| margin[0].clone());
+                    margin_bottom.get_or_insert_with(|| margin[0].clone());
+                    margin_left.get_or_insert_with(|| margin[1].clone());
+                    margin_right.get_or_insert_with(|| margin[1].clone());
+                }
+                3 => {
+                    margin_top.get_or_insert_with(|| margin[0].clone());
+                    margin_left.get_or_insert_with(|| margin[1].clone());
+                    margin_right.get_or_insert_with(|| margin[1].clone());
+                    margin_bottom.get_or_insert_with(|| margin[2].clone());
+                }
+                4 => {
+                    margin_top.get_or_insert_with(|| margin[0].clone());
+                    margin_right.get_or_insert_with(|| margin[1].clone());
+                    margin_bottom.get_or_insert_with(|| margin[2].clone());
+                    margin_left.get_or_insert_with(|| margin[3].clone());
+                }
+                0 | _ => unreachable!(),
+            }
+        }
+
+        margin_top.get_or_insert_with(|| zero.clone());
+        margin_right.get_or_insert_with(|| zero.clone());
+        margin_bottom.get_or_insert_with(|| zero.clone());
+        margin_left.get_or_insert_with(|| zero.clone());
+
+        d.margin.left = Au::from_f64_px(margin_left.unwrap().to_px().unwrap());
+        d.margin.top = Au::from_f64_px(margin_top.unwrap().to_px().unwrap());
+        d.margin.bottom = Au::from_f64_px(margin_bottom.unwrap().to_px().unwrap());
+        d.margin.right = Au::from_f64_px(margin_right.unwrap().to_px().unwrap());
     }
 
     pub fn assign_border_width(&mut self) {
         let style = self.get_style_node();
         let d = &mut self.dimensions;
 
-        // margin, border, and padding have initial value 0.
+        // border has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        d.border.left = Au::from_f64_px(
-            style.lookup("border-left-width", "border-width", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
-        d.border.right = Au::from_f64_px(
-            style.lookup("border-right-width", "border-width", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
+        let mut border_top = style
+            .value("border-top-width")
+            .and_then(|x| Some(x[0].clone()));
+        let mut border_bottom = style
+            .value("border-bottom-width")
+            .and_then(|x| Some(x[0].clone()));
+        let mut border_left = style
+            .value("border-left-width")
+            .and_then(|x| Some(x[0].clone()));
+        let mut border_right = style
+            .value("border-right-width")
+            .and_then(|x| Some(x[0].clone()));
 
-        d.border.top = Au::from_f64_px(
-            style.lookup("border-top-width", "border-width", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
-        d.border.bottom = Au::from_f64_px(
-            style.lookup("border-bottom-width", "border-width", &vec![zero.clone()])[0]
-                .clone()
-                .to_px()
-                .unwrap(),
-        );
+        if let Some(border) = style.value("border-width") {
+            match border.len() {
+                1 => {
+                    border_top.get_or_insert_with(|| border[0].clone());
+                    border_bottom.get_or_insert_with(|| border[0].clone());
+                    border_left.get_or_insert_with(|| border[0].clone());
+                    border_right.get_or_insert_with(|| border[0].clone());
+                }
+                2 => {
+                    border_top.get_or_insert_with(|| border[0].clone());
+                    border_bottom.get_or_insert_with(|| border[0].clone());
+                    border_left.get_or_insert_with(|| border[1].clone());
+                    border_right.get_or_insert_with(|| border[1].clone());
+                }
+                3 => {
+                    border_top.get_or_insert_with(|| border[0].clone());
+                    border_left.get_or_insert_with(|| border[1].clone());
+                    border_right.get_or_insert_with(|| border[1].clone());
+                    border_bottom.get_or_insert_with(|| border[2].clone());
+                }
+                4 => {
+                    border_top.get_or_insert_with(|| border[0].clone());
+                    border_right.get_or_insert_with(|| border[1].clone());
+                    border_bottom.get_or_insert_with(|| border[2].clone());
+                    border_left.get_or_insert_with(|| border[3].clone());
+                }
+                0 | _ => unreachable!(),
+            }
+        }
+
+        border_top.get_or_insert_with(|| zero.clone());
+        border_right.get_or_insert_with(|| zero.clone());
+        border_bottom.get_or_insert_with(|| zero.clone());
+        border_left.get_or_insert_with(|| zero.clone());
+
+        d.border.left = Au::from_f64_px(border_left.unwrap().to_px().unwrap());
+        d.border.top = Au::from_f64_px(border_top.unwrap().to_px().unwrap());
+        d.border.bottom = Au::from_f64_px(border_bottom.unwrap().to_px().unwrap());
+        d.border.right = Au::from_f64_px(border_right.unwrap().to_px().unwrap());
     }
 }
 
