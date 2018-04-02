@@ -231,6 +231,13 @@ impl<'a> LayoutBox<'a> {
                 saved_block,
                 viewport,
             ),
+            BoxType::Float => self.layout_float(
+                floats,
+                last_margin_bottom,
+                containing_block,
+                saved_block,
+                viewport,
+            ),
             BoxType::AnonymousBlock => {
                 self.dimensions.content.x = Au::from_f64_px(0.0);
                 self.dimensions.content.y = containing_block.content.height;
@@ -244,13 +251,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.width = containing_block.content.width;
                 self.dimensions.content.height = linemaker.cur_height;
             }
-            BoxType::Float => self.layout_float(
-                floats,
-                last_margin_bottom,
-                containing_block,
-                saved_block,
-                viewport,
-            ),
+            // InlineNode and TextNode is contained in AnonymousBlock.
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
         }
     }
