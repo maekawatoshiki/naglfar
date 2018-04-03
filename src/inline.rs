@@ -530,13 +530,18 @@ thread_local!(
     };
 );
 
+use interface::download;
+
 impl<'a> StyledNode<'a> {
     pub fn get_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
         IMG_CACHE.with(|c| {
             let image_url = self.node.image_url().unwrap();
             c.borrow_mut()
                 .entry(image_url.clone())
-                .or_insert_with(|| gdk_pixbuf::Pixbuf::new_from_file(image_url.as_str()).unwrap())
+                .or_insert_with(|| {
+                    let (cache_name, _) = download(image_url.as_str());
+                    gdk_pixbuf::Pixbuf::new_from_file(cache_name.as_str()).unwrap()
+                })
                 .clone()
         })
     }
