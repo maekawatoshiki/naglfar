@@ -17,16 +17,17 @@ Naglfar is a toy web browser in Rust.
 
 ## Build & Run
 
-By default, Naglfar shows `example/test.html` applied `example/test.css`.
+Try with the local html file(e.g. ./example/test.html):
 
 ```sh
-$ cargo run
+$ cargo run file:///../../example/test.html
 ```
 
-Or, specify your own file.
+Try with the html file on the Internet:
+(But most of web sites are too much for Naglfar...)
 
 ```sh
-$ cargo run <FILE>
+$ cargo run http(s)://example.com/index.html
 ```
 
 # Reference
