@@ -177,4 +177,18 @@ pub fn run_with_url(html_src: String) {
             }
         })
     });
+
+    if let Ok(dir) = fs::read_dir("./cache") {
+        for entry in dir {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if let Some(filename) = path.file_name() {
+                    if filename.to_str().unwrap() == "README.md" {
+                        continue;
+                    }
+                }
+                fs::remove_file(path).expect("Failed to remove a file");
+            };
+        }
+    }
 }
