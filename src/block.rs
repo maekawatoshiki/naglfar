@@ -192,8 +192,8 @@ impl<'a> LayoutBox<'a> {
         // margin, border, and padding have initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
-        d.margin.top = Au::from_f64_px(margin.0.maybe_percent_to_px(cb_width).unwrap());
-        d.margin.bottom = Au::from_f64_px(margin.2.maybe_percent_to_px(cb_width).unwrap());
+        d.margin.top = Au::from_f64_px(margin.0.maybe_percent_to_px(cb_width).unwrap_or(0f64));
+        d.margin.bottom = Au::from_f64_px(margin.2.maybe_percent_to_px(cb_width).unwrap_or(0f64));
 
         // Margin collapse
         // TODO: Is this implementation correct?

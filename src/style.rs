@@ -2,6 +2,8 @@ use dom::{ElementData, Node, NodeType};
 use css::{parse_attr_style, Declaration, Rule, Selector, SimpleSelector, Specificity, Stylesheet,
           Value};
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 pub type PropertyMap = HashMap<String, Vec<Value>>;
 
@@ -119,9 +121,25 @@ pub fn style_tree<'a>(
     root: &'a Node,
     stylesheet: &'a Stylesheet,
     inherited_property: &PropertyMap,
+    mut appeared_elements: Vec<SimpleSelector>,
 ) -> StyledNode<'a> {
     let specified_values = match root.data {
-        NodeType::Element(ref elem) => specified_values(elem, stylesheet, inherited_property),
+        NodeType::Element(ref elem) => {
+            appeared_elements.push(SimpleSelector {
+                tag_name: Some(elem.tag_name.clone()),
+                id: elem.id().and_then(|id| Some(id.clone())),
+                class: elem.classes()
+                    .iter()
+                    .map(|class| class.to_string())
+                    .collect::<Vec<String>>(),
+            });
+            specified_values(
+                elem,
+                stylesheet,
+                inherited_property,
+                appeared_elements.clone(),
+            )
+        }
         // TODO: Fix this implementation
         NodeType::Text(_) => inherited_property.clone(),
     };
@@ -142,7 +160,14 @@ pub fn style_tree<'a>(
         node: root,
         children: root.children
             .iter()
-            .map(|child| style_tree(child, stylesheet, &inherited_property))
+            .map(|child| {
+                style_tree(
+                    child,
+                    stylesheet,
+                    &inherited_property,
+                    appeared_elements.clone(),
+                )
+            })
             .collect(),
         specified_values: specified_values,
     }
@@ -152,9 +177,10 @@ fn specified_values(
     elem: &ElementData,
     stylesheet: &Stylesheet,
     inherited_property: &PropertyMap,
+    appeared_elements: Vec<SimpleSelector>,
 ) -> PropertyMap {
     let mut values = HashMap::new();
-    let mut rules = matching_rules(elem, stylesheet);
+    let mut rules = matching_rules(elem, stylesheet, appeared_elements);
 
     // Insert inherited properties
     inherited_property.iter().for_each(|(name, value)| {
@@ -186,28 +212,60 @@ fn specified_values(
 
 type MatchedRule<'a> = (Specificity, &'a Rule);
 
-fn matching_rules<'a>(elem: &ElementData, stylesheet: &'a Stylesheet) -> Vec<MatchedRule<'a>> {
+fn matching_rules<'a>(
+    elem: &ElementData,
+    stylesheet: &'a Stylesheet,
+    appeared_elements: Vec<SimpleSelector>,
+) -> Vec<MatchedRule<'a>> {
     // For now, we just do a linear scan of all the rules.  For large
     // documents, it would be more efficient to store the rules in hash tables
     // based on tag name, id, class, etc.
     stylesheet
         .rules
         .iter()
-        .filter_map(|rule| match_rule(elem, rule))
+        .filter_map(|rule| match_rule(elem, rule, appeared_elements.clone()))
         .collect()
 }
 
-fn match_rule<'a>(elem: &ElementData, rule: &'a Rule) -> Option<MatchedRule<'a>> {
+fn match_rule<'a>(
+    elem: &ElementData,
+    rule: &'a Rule,
+    appeared_elements: Vec<SimpleSelector>,
+) -> Option<MatchedRule<'a>> {
     // Find the first (most specific) matching selector.
     rule.selectors
         .iter()
-        .find(|selector| matches(elem, *selector))
+        .find(|selector| matches(elem, *selector, appeared_elements.clone()))
         .map(|selector| (selector.specificity(), rule))
 }
 
-fn matches(elem: &ElementData, selector: &Selector) -> bool {
+fn matches(
+    elem: &ElementData,
+    selector: &Selector,
+    appeared_elements: Vec<SimpleSelector>,
+) -> bool {
     match *selector {
         Selector::Simple(ref simple_selector) => matches_simple_selector(elem, simple_selector),
+        Selector::Descendant(ref a, ref b) => {
+            matches_descendant_combinator(elem, &**a, &**b, appeared_elements)
+        }
+    }
+}
+
+fn matches_descendant_combinator(
+    elem: &ElementData,
+    selector_a: &Selector,
+    selector_b: &Selector,
+    appeared_elements: Vec<SimpleSelector>,
+) -> bool {
+    if let &Selector::Simple(ref simple) = selector_a {
+        appeared_elements.iter().any(|e| {
+            e.tag_name == simple.tag_name
+                && (HashSet::from_iter(e.class.clone()) as HashSet<String>)
+                    .is_superset(&HashSet::from_iter(simple.class.clone()))
+        }) && matches(elem, selector_b, appeared_elements)
+    } else {
+        unreachable!()
     }
 }
 

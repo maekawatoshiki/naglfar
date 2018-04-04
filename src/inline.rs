@@ -173,11 +173,15 @@ impl<'a> LineMaker<'a> {
         // Non-replaced inline elements(like <span>)
         if layoutbox.style.unwrap().node.contains_text() {
             let mut linemaker = self.clone();
+
             linemaker.work_list = VecDeque::from(layoutbox.children.clone());
             layoutbox.children.clear();
+
             layoutbox.assign_padding();
             layoutbox.assign_border_width();
+
             let start = linemaker.end;
+
             linemaker.cur_width +=
                 layoutbox.dimensions.padding.left + layoutbox.dimensions.border.left;
             linemaker.run(
@@ -187,13 +191,30 @@ impl<'a> LineMaker<'a> {
             );
             linemaker.cur_width +=
                 layoutbox.dimensions.padding.right + layoutbox.dimensions.border.right;
+
             let end = linemaker.end;
 
             let new_boxes_len = linemaker.new_boxes[start..end].len();
+            let line_is_broken = linemaker.lines.len() > 0;
+
             for (i, new_box) in &mut linemaker.new_boxes[start..end].iter_mut().enumerate() {
                 let mut layoutbox = layoutbox.clone();
                 layoutbox.children.push(new_box.clone());
-                if new_boxes_len > 1 {
+
+                macro_rules! f {
+                    ($dst:expr, $src:expr, $name:ident) => {
+                        $dst.dimensions.$name.top    = max($dst.dimensions.$name.top,    $src.dimensions.$name.top);
+                        $dst.dimensions.$name.bottom = max($dst.dimensions.$name.bottom, $src.dimensions.$name.bottom);
+                        $dst.dimensions.$name.left   = max($dst.dimensions.$name.left,   $src.dimensions.$name.left);
+                        $dst.dimensions.$name.right  = max($dst.dimensions.$name.right,  $src.dimensions.$name.right);
+                    };
+                }
+
+                // TODO: Is margin also needed?
+                f!(layoutbox, new_box, padding);
+                f!(layoutbox, new_box, border);
+
+                if new_boxes_len > 1 && line_is_broken {
                     // TODO: Makes no sense!
                     if i == 0 {
                         layoutbox.dimensions.padding.right = Au(0);
@@ -208,6 +229,7 @@ impl<'a> LineMaker<'a> {
                         layoutbox.dimensions.border.right = Au(0);
                     }
                 }
+
                 layoutbox.dimensions.content.width = new_box.dimensions.content.width;
                 layoutbox.dimensions.content.height = new_box.dimensions.content.height;
                 *new_box = layoutbox;

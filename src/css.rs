@@ -16,6 +16,7 @@ pub struct Rule {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Selector {
     Simple(SimpleSelector),
+    Descendant(Box<Selector>, Box<Selector>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -154,11 +155,19 @@ pub type Specificity = (usize, usize, usize);
 impl Selector {
     pub fn specificity(&self) -> Specificity {
         // ref: http://www.w3.org/TR/selectors/#specificity
-        let Selector::Simple(ref simple) = *self;
-        let a = simple.id.iter().count();
-        let b = simple.class.len();
-        let c = simple.tag_name.iter().count();
-        (a, b, c)
+        match *self {
+            Selector::Simple(ref simple) => {
+                let a = simple.id.iter().count();
+                let b = simple.class.len();
+                let c = simple.tag_name.iter().count();
+                (a, b, c)
+            }
+            Selector::Descendant(ref a, ref b) => {
+                let (a1, b1, c1) = (*a).specificity();
+                let (a2, b2, c2) = (*b).specificity();
+                (a1 + a2, b1 + b2, c1 + c2)
+            }
+        }
     }
 }
 
@@ -200,6 +209,15 @@ fn valid_alpha_percent_char(c: char) -> bool {
     c.is_alphanumeric() || c == '%'
 }
 
+fn valid_hex_char(c: char) -> bool {
+    // TODO: other char codes?
+    match c.to_ascii_lowercase() {
+        'a' | 'b' | 'c' | 'd' | 'e' | 'f' => true,
+        c if c.is_numeric() => true,
+        _ => false,
+    }
+}
+
 #[derive(Clone, Debug)]
 struct Parser {
     pos: usize,
@@ -236,7 +254,7 @@ impl Parser {
     fn parse_selectors(&mut self) -> Vec<Selector> {
         let mut selectors = Vec::new();
         loop {
-            selectors.push(Selector::Simple(self.parse_simple_selector()));
+            selectors.push(self.parse_selector());
             self.consume_whitespace();
             match self.next_char() {
                 ',' => {
@@ -250,6 +268,20 @@ impl Parser {
         // Return selectors with highest specificity first, for use in matching.
         selectors.sort_by(|a, b| b.specificity().cmp(&a.specificity()));
         selectors
+    }
+
+    fn parse_selector(&mut self) -> Selector {
+        let s1 = Selector::Simple(self.parse_simple_selector());
+        self.consume_whitespace();
+        match self.next_char() {
+            // Descendant
+            c if c.is_alphanumeric() || c == '#' || c == '.' => {
+                let s2 = self.parse_selector();
+                return Selector::Descendant(Box::new(s1), Box::new(s2));
+            }
+            _ => {}
+        }
+        s1
     }
 
     fn parse_simple_selector(&mut self) -> SimpleSelector {
@@ -404,19 +436,38 @@ impl Parser {
 
     fn parse_color(&mut self) -> Value {
         assert_eq!(self.consume_char(), '#');
+        let hex_str = self.parse_hex_num();
+        let (r, g, b) = match hex_str.len() {
+            3 => {
+                let r = u8::from_str_radix(&hex_str[0..1], 16).unwrap();
+                let g = u8::from_str_radix(&hex_str[1..2], 16).unwrap();
+                let b = u8::from_str_radix(&hex_str[1..2], 16).unwrap();
+                (r * 16 + r, g * 16 + g, b * 16 + b)
+            }
+            6 => (
+                u8::from_str_radix(&hex_str[0..2], 16).unwrap(),
+                u8::from_str_radix(&hex_str[2..4], 16).unwrap(),
+                u8::from_str_radix(&hex_str[4..6], 16).unwrap(),
+            ),
+            _ => panic!(),
+        };
         Value::Color(Color {
-            r: self.parse_hex_pair(),
-            g: self.parse_hex_pair(),
-            b: self.parse_hex_pair(),
+            r: r,
+            g: g,
+            b: b,
             a: 255,
         })
     }
 
-    fn parse_hex_pair(&mut self) -> u8 {
-        let s = &self.input[self.pos..self.pos + 2];
-        self.pos += 2;
-        u8::from_str_radix(s, 16).unwrap()
+    fn parse_hex_num(&mut self) -> String {
+        self.consume_while(valid_hex_char)
     }
+
+    // fn parse_hex_pair(&mut self) -> u8 {
+    //     let s = &self.input[self.pos..self.pos + 2];
+    //     self.pos += 2;
+    //     u8::from_str_radix(s, 16).unwrap()
+    // }
 
     fn parse_identifier(&mut self) -> String {
         self.consume_while(valid_ident_char)
@@ -469,18 +520,35 @@ impl fmt::Display for Stylesheet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for rule in &self.rules {
             for (i, selector) in rule.selectors.iter().enumerate() {
-                let &Selector::Simple(ref selector) = selector;
-                if let Some(ref id) = selector.id {
-                    try!(write!(f, "#{}", id));
-                } else if let Some(ref tag_name) = selector.tag_name {
-                    try!(write!(f, "{}", tag_name));
-                    for class in &selector.class {
-                        try!(write!(f, ".{}", class));
+                fn show(f: &mut fmt::Formatter, selector: &Selector) -> fmt::Result {
+                    match selector {
+                        &Selector::Simple(ref selector) => {
+                            let mut universal = true;
+                            if let Some(ref tag_name) = selector.tag_name {
+                                universal = false;
+                                try!(write!(f, "{}", tag_name));
+                                for class in &selector.class {
+                                    try!(write!(f, ".{}", class))
+                                }
+                            }
+                            if let Some(ref id) = selector.id {
+                                universal = false;
+                                try!(write!(f, "#{}", id));
+                            }
+                            if universal {
+                                try!(write!(f, "*"))
+                            }
+                            Ok(())
+                        }
+                        &Selector::Descendant(ref a, ref b) => {
+                            try!(show(f, &*a));
+                            try!(write!(f, " "));
+                            show(f, &*b)
+                        }
                     }
-                } else {
-                    // universal selector
-                    try!(write!(f, "*"));
                 }
+                try!(show(f, &selector));
+
                 if i != rule.selectors.len() - 1 {
                     try!(write!(f, ", "));
                 }

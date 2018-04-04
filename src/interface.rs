@@ -162,13 +162,17 @@ pub fn run_with_url(html_src: String) {
 
                     let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
                     let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
-                    let style_tree =
-                        style::style_tree(&html_tree, &stylesheet, &style::PropertyMap::new());
+                    let style_tree = style::style_tree(
+                        &html_tree,
+                        &stylesheet,
+                        &style::PropertyMap::new(),
+                        vec![],
+                    );
                     let layout_tree = layout::layout_tree(&style_tree, viewport);
-                    print!("LAYOUT:\n{}", layout_tree);
+                    // print!("LAYOUT:\n{}", layout_tree);
 
                     let display_command = painter::build_display_list(&layout_tree);
-                    println!("DISPLAY:\n{:?}", display_command);
+                    // println!("DISPLAY:\n{:?}", display_command);
 
                     *last_displays = display_command.clone();
 
