@@ -2,8 +2,6 @@ use dom::{ElementData, Node, NodeType};
 use css::{parse_attr_style, Declaration, Rule, Selector, SimpleSelector, Specificity, Stylesheet,
           Value};
 use std::collections::HashMap;
-use std::collections::HashSet;
-use std::iter::FromIterator;
 
 pub type PropertyMap = HashMap<String, Vec<Value>>;
 
@@ -128,10 +126,7 @@ pub fn style_tree<'a>(
             appeared_elements.push(SimpleSelector {
                 tag_name: Some(elem.tag_name.clone()),
                 id: elem.id().and_then(|id| Some(id.clone())),
-                class: elem.classes()
-                    .iter()
-                    .map(|class| class.to_string())
-                    .collect::<Vec<String>>(),
+                class: elem.classes().iter().map(|x| x.to_string()).collect(),
             });
             specified_values(
                 elem,
@@ -259,11 +254,11 @@ fn matches_descendant_combinator(
     appeared_elements: Vec<SimpleSelector>,
 ) -> bool {
     if let &Selector::Simple(ref simple) = selector_a {
-        appeared_elements.iter().any(|e| {
-            e.tag_name == simple.tag_name
-                && (HashSet::from_iter(e.class.clone()) as HashSet<String>)
-                    .is_superset(&HashSet::from_iter(simple.class.clone()))
-        }) && matches(elem, selector_b, appeared_elements)
+        appeared_elements
+            .iter()
+            .rev()
+            .any(|e| e.tag_name == simple.tag_name && e.class.is_superset(&simple.class))
+            && matches(elem, selector_b, appeared_elements)
     } else {
         unreachable!()
     }

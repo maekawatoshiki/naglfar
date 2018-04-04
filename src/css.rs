@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, collections::HashSet};
 
 use html::remove_comments;
 
@@ -23,7 +23,7 @@ pub enum Selector {
 pub struct SimpleSelector {
     pub tag_name: Option<String>,
     pub id: Option<String>,
-    pub class: Vec<String>,
+    pub class: HashSet<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -288,7 +288,7 @@ impl Parser {
         let mut selector = SimpleSelector {
             tag_name: None,
             id: None,
-            class: Vec::new(),
+            class: HashSet::new(),
         };
         while !self.eof() {
             match self.next_char() {
@@ -298,7 +298,7 @@ impl Parser {
                 }
                 '.' => {
                     self.consume_char();
-                    selector.class.push(self.parse_identifier());
+                    selector.class.insert(self.parse_identifier());
                 }
                 '*' => {
                     // universal selector

@@ -169,10 +169,10 @@ pub fn run_with_url(html_src: String) {
                         vec![],
                     );
                     let layout_tree = layout::layout_tree(&style_tree, viewport);
-                    // print!("LAYOUT:\n{}", layout_tree);
+                    print!("LAYOUT:\n{}", layout_tree);
 
                     let display_command = painter::build_display_list(&layout_tree);
-                    // println!("DISPLAY:\n{:?}", display_command);
+                    println!("DISPLAY:\n{:?}", display_command);
 
                     *last_displays = display_command.clone();
 
