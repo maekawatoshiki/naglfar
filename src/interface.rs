@@ -77,6 +77,7 @@ pub fn download(url_str: &str) -> (String, PathBuf) {
 }
 
 use std::cell::RefCell;
+use std::rc::Rc;
 
 thread_local!(
     pub static LAYOUT_SAVER: RefCell<(Au, Au, painter::DisplayList)> = {
@@ -87,11 +88,15 @@ thread_local!(
         RefCell::new(None)
     };
     
-    pub static HTML_TREE: RefCell<Option<dom::Node>> = {
-        RefCell::new(None)
+    pub static HTML_TREE: Rc<RefCell<Option<dom::Node>>> = {
+      Rc::new(  RefCell::new(None))
     };
-    pub static STYLESHEET: RefCell<Option<css::Stylesheet>> = {
-        RefCell::new(None)
+    pub static STYLESHEET: Rc<RefCell<Option<css::Stylesheet>>> = {
+      Rc::new(  RefCell::new(None))
+    };
+
+    pub static STYLETREE: Rc<RefCell<Option<style::StyledNode<'static>>>> = {
+        Rc::new(RefCell::new(None))
     };
 );
 
@@ -166,7 +171,7 @@ pub fn run_with_url(html_src: String) {
                         &html_tree,
                         &stylesheet,
                         &style::PropertyMap::new(),
-                        vec![],
+                        &vec![],
                     );
                     let layout_tree = layout::layout_tree(&style_tree, viewport);
                     print!("LAYOUT:\n{}", layout_tree);

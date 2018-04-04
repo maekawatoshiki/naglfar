@@ -119,8 +119,10 @@ pub fn style_tree<'a>(
     root: &'a Node,
     stylesheet: &'a Stylesheet,
     inherited_property: &PropertyMap,
-    mut appeared_elements: Vec<SimpleSelector>,
+    appeared_elements: &Vec<SimpleSelector>,
 ) -> StyledNode<'a> {
+    let mut appeared_elements = appeared_elements.clone();
+
     let specified_values = match root.data {
         NodeType::Element(ref elem) => {
             appeared_elements.push(SimpleSelector {
@@ -128,12 +130,7 @@ pub fn style_tree<'a>(
                 id: elem.id().and_then(|id| Some(id.clone())),
                 class: elem.classes().iter().map(|x| x.to_string()).collect(),
             });
-            specified_values(
-                elem,
-                stylesheet,
-                inherited_property,
-                appeared_elements.clone(),
-            )
+            specified_values(elem, stylesheet, inherited_property, &appeared_elements)
         }
         // TODO: Fix this implementation
         NodeType::Text(_) => inherited_property.clone(),
@@ -155,14 +152,7 @@ pub fn style_tree<'a>(
         node: root,
         children: root.children
             .iter()
-            .map(|child| {
-                style_tree(
-                    child,
-                    stylesheet,
-                    &inherited_property,
-                    appeared_elements.clone(),
-                )
-            })
+            .map(|child| style_tree(child, stylesheet, &inherited_property, &appeared_elements))
             .collect(),
         specified_values: specified_values,
     }
@@ -172,7 +162,7 @@ fn specified_values(
     elem: &ElementData,
     stylesheet: &Stylesheet,
     inherited_property: &PropertyMap,
-    appeared_elements: Vec<SimpleSelector>,
+    appeared_elements: &Vec<SimpleSelector>,
 ) -> PropertyMap {
     let mut values = HashMap::new();
     let mut rules = matching_rules(elem, stylesheet, appeared_elements);
@@ -192,14 +182,9 @@ fn specified_values(
 
     if let Some(attr_style) = elem.attrs.get("style") {
         let decls = parse_attr_style(attr_style.clone());
-        decls.iter().for_each(
-            |&Declaration {
-                 ref name,
-                 values: ref vals,
-             }| {
-                values.insert(name.clone(), vals.clone());
-            },
-        );
+        for Declaration { name, values: vals } in decls {
+            values.insert(name, vals);
+        }
     }
 
     values
@@ -210,7 +195,7 @@ type MatchedRule<'a> = (Specificity, &'a Rule);
 fn matching_rules<'a>(
     elem: &ElementData,
     stylesheet: &'a Stylesheet,
-    appeared_elements: Vec<SimpleSelector>,
+    appeared_elements: &Vec<SimpleSelector>,
 ) -> Vec<MatchedRule<'a>> {
     // For now, we just do a linear scan of all the rules.  For large
     // documents, it would be more efficient to store the rules in hash tables
@@ -218,26 +203,26 @@ fn matching_rules<'a>(
     stylesheet
         .rules
         .iter()
-        .filter_map(|rule| match_rule(elem, rule, appeared_elements.clone()))
+        .filter_map(|rule| match_rule(elem, rule, appeared_elements))
         .collect()
 }
 
 fn match_rule<'a>(
     elem: &ElementData,
     rule: &'a Rule,
-    appeared_elements: Vec<SimpleSelector>,
+    appeared_elements: &Vec<SimpleSelector>,
 ) -> Option<MatchedRule<'a>> {
     // Find the first (most specific) matching selector.
     rule.selectors
         .iter()
-        .find(|selector| matches(elem, *selector, appeared_elements.clone()))
+        .find(|selector| matches(elem, *selector, appeared_elements))
         .map(|selector| (selector.specificity(), rule))
 }
 
 fn matches(
     elem: &ElementData,
     selector: &Selector,
-    appeared_elements: Vec<SimpleSelector>,
+    appeared_elements: &Vec<SimpleSelector>,
 ) -> bool {
     match *selector {
         Selector::Simple(ref simple_selector) => matches_simple_selector(elem, simple_selector),
@@ -251,7 +236,7 @@ fn matches_descendant_combinator(
     elem: &ElementData,
     selector_a: &Selector,
     selector_b: &Selector,
-    appeared_elements: Vec<SimpleSelector>,
+    appeared_elements: &Vec<SimpleSelector>,
 ) -> bool {
     if let &Selector::Simple(ref simple) = selector_a {
         appeared_elements
