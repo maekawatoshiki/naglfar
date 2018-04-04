@@ -76,6 +76,10 @@ img {
   display: inline;
 }
 
+div.special span {
+  color: red;
+}
+
 span.hl {
   background: #fefe40;
   font-weight: bold;
