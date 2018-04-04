@@ -603,27 +603,31 @@ fn test1() {
                         Selector::Simple(SimpleSelector {
                             tag_name: None,
                             id: Some("id".to_string()),
-                            class: vec![],
+                            class: HashSet::new(),
                         }),
                         Selector::Simple(SimpleSelector {
                             tag_name: None,
                             id: None,
-                            class: vec!["class".to_string()],
+                            class: {
+                                let mut h = HashSet::new();
+                                h.insert("class".to_string());
+                                h
+                            },
                         }),
                         Selector::Simple(SimpleSelector {
                             tag_name: Some("div".to_string()),
                             id: None,
-                            class: vec![],
+                            class: HashSet::new(),
                         }),
                         Selector::Simple(SimpleSelector {
                             tag_name: Some("h1".to_string()),
                             id: None,
-                            class: vec![],
+                            class: HashSet::new(),
                         }),
                         Selector::Simple(SimpleSelector {
                             tag_name: None,
                             id: None,
-                            class: vec![],
+                            class: HashSet::new(),
                         }),
                     ],
                     declarations: vec![
