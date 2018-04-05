@@ -120,6 +120,10 @@ impl Font {
             }
         }
 
-        s.len()
+        if s.is_empty() {
+            0
+        } else {
+            1
+        }
     }
 }

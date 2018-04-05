@@ -405,7 +405,7 @@ fn matches_descendant_combinator(
 ) -> bool {
     appeared_elements.iter().rev().any(|e| {
         e.tag_name == simple.tag_name && e.id == simple.id
-            && !e.class.iter().any(|class| simple.class.contains(class))
+            && !simple.class.iter().any(|class| !e.class.contains(class))
     }) && matches(elem, selector_b, appeared_elements)
 }
 
