@@ -17,6 +17,7 @@ pub struct Rule {
 pub enum Selector {
     Simple(SimpleSelector),
     Descendant(SimpleSelector, Box<Selector>),
+    Child(SimpleSelector, Box<Selector>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -169,6 +170,11 @@ impl Selector {
                 let (a2, b2, c2) = (*b).specificity();
                 (a1 + a2, b1 + b2, c1 + c2)
             }
+            Selector::Child(ref a, ref b) => {
+                let (a1, b1, c1) = specificity_simple(a);
+                let (a2, b2, c2) = (*b).specificity();
+                (a1 + a2, b1 + b2, c1 + c2)
+            }
         }
     }
 }
@@ -280,6 +286,12 @@ impl Parser {
             c if c.is_alphanumeric() || c == '#' || c == '.' => {
                 let s2 = self.parse_selector();
                 return Selector::Descendant(s1, Box::new(s2));
+            }
+            '>' => {
+                assert_eq!(self.consume_char(), '>');
+                self.consume_whitespace();
+                let s2 = self.parse_selector();
+                return Selector::Child(s1, Box::new(s2));
             }
             _ => {}
         }
@@ -550,6 +562,11 @@ impl fmt::Display for Stylesheet {
                         &Selector::Descendant(ref a, ref b) => {
                             try!(show_simple(f, &*a));
                             try!(write!(f, " "));
+                            show(f, &*b)
+                        }
+                        &Selector::Child(ref a, ref b) => {
+                            try!(show_simple(f, &*a));
+                            try!(write!(f, " > "));
                             show(f, &*b)
                         }
                     }

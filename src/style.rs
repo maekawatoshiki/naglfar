@@ -286,12 +286,13 @@ pub fn style_tree<'a>(
 
     let specified_values = match root.data {
         NodeType::Element(ref elem) => {
+            let values = specified_values(elem, stylesheet, inherited_property, &appeared_elements);
             appeared_elements.push(SimpleSelector {
                 tag_name: Some(elem.tag_name.clone()),
                 id: elem.id().and_then(|id| Some(id.clone())),
                 class: elem.classes().iter().map(|x| x.to_string()).collect(),
             });
-            specified_values(elem, stylesheet, inherited_property, &appeared_elements)
+            values
         }
         // TODO: Fix this implementation
         NodeType::Text(_) => inherited_property.clone(),
@@ -390,6 +391,9 @@ fn matches(
         Selector::Descendant(ref a, ref b) => {
             matches_descendant_combinator(elem, &*a, &**b, appeared_elements)
         }
+        Selector::Child(ref a, ref b) => {
+            matches_child_combinator(elem, &*a, &**b, appeared_elements)
+        }
     }
 }
 
@@ -400,8 +404,27 @@ fn matches_descendant_combinator(
     appeared_elements: &Vec<SimpleSelector>,
 ) -> bool {
     appeared_elements.iter().rev().any(|e| {
-        e.tag_name == simple.tag_name && e.id == simple.id && e.class.is_superset(&simple.class)
+        e.tag_name == simple.tag_name && e.id == simple.id
+            && !e.class.iter().any(|class| simple.class.contains(class))
     }) && matches(elem, selector_b, appeared_elements)
+}
+
+fn matches_child_combinator(
+    elem: &ElementData,
+    simple: &SimpleSelector,
+    selector_b: &Selector,
+    appeared_elements: &Vec<SimpleSelector>,
+) -> bool {
+    if let Some(ref last_elem) = appeared_elements.last() {
+        last_elem.tag_name == simple.tag_name && last_elem.id == simple.id
+            && !simple
+                .class
+                .iter()
+                .any(|class| !last_elem.class.contains(class))
+            && matches(elem, selector_b, appeared_elements)
+    } else {
+        false
+    }
 }
 
 fn matches_simple_selector(elem: &ElementData, selector: &SimpleSelector) -> bool {
