@@ -54,7 +54,7 @@ pub fn remove_comments(s: &[u8], opening: &str, closing: &str) -> String {
             level += 1;
             continue;
         }
-        if pos < len - closing_len - 1 && s[pos..(pos + closing_len)] == *closing.as_bytes() {
+        if pos < len - closing_len && s[pos..(pos + closing_len)] == *closing.as_bytes() {
             pos += closing_len;
             if level <= 0 {
                 panic!("not found corresponding \"/*\"")

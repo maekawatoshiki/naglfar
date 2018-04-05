@@ -166,8 +166,16 @@ impl<'a> LayoutBox<'a> {
                 self.assign_padding();
                 self.assign_border_width();
                 self.assign_margin();
-                self.calculate_float_width(containing_block);
+
+                let width_not_specified = self.calculate_float_width(containing_block);
                 self.layout_block_children(viewport);
+                if width_not_specified {
+                    // Basically, self.children has only one AnonymousBlock.
+                    for child in &self.children {
+                        self.dimensions.content.width = child.dimensions.content.width;
+                    }
+                }
+
                 self.calculate_block_height();
             }
             _ => unimplemented!(),
@@ -215,7 +223,7 @@ impl<'a> LayoutBox<'a> {
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
     /// ref. https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html#float-width
     // TODO: Implement correctly!
-    pub fn calculate_float_width(&mut self, containing_block: Dimensions) {
+    pub fn calculate_float_width(&mut self, containing_block: Dimensions) -> bool {
         let style = self.get_style_node();
         let cb_width = containing_block.content.width.to_f64_px();
 
@@ -239,7 +247,12 @@ impl<'a> LayoutBox<'a> {
             style.lookup("padding-right", "padding", &vec![zero.clone()])[0].clone();
 
         let d = &mut self.dimensions;
-        if let Some(width) = width.maybe_percent_to_px(cb_width) {
+
+        let mut width_not_specified = false;
+        if width == auto {
+            width_not_specified = true;
+            d.content.width = containing_block.content.width;
+        } else if let Some(width) = width.maybe_percent_to_px(cb_width) {
             d.content.width = Au::from_f64_px(width)
         }
 
@@ -263,5 +276,7 @@ impl<'a> LayoutBox<'a> {
         if let Some(margin_right) = margin_right.maybe_percent_to_px(cb_width) {
             d.margin.right = Au::from_f64_px(margin_right)
         }
+
+        width_not_specified
     }
 }
