@@ -239,11 +239,9 @@ fn matches_descendant_combinator(
     appeared_elements: &Vec<SimpleSelector>,
 ) -> bool {
     if let &Selector::Simple(ref simple) = selector_a {
-        appeared_elements
-            .iter()
-            .rev()
-            .any(|e| e.tag_name == simple.tag_name && e.class.is_superset(&simple.class))
-            && matches(elem, selector_b, appeared_elements)
+        appeared_elements.iter().rev().any(|e| {
+            e.tag_name == simple.tag_name && e.id == simple.id && e.class.is_superset(&simple.class)
+        }) && matches(elem, selector_b, appeared_elements)
     } else {
         unreachable!()
     }
