@@ -1,8 +1,8 @@
 # Naglfar
 
-[![CircleCI](https://img.shields.io/circleci/project/github/maekawatoshiki/naglfar/master.svg?style=flat-square)](https://circleci.com/gh/maekawatoshiki/naglfar)
-[![codecov](https://img.shields.io/codecov/c/github/maekawatoshiki/naglfar/master.svg?style=flat-square)](https://codecov.io/gh/maekawatoshiki/naglfar)
-[![](http://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
+[![CircleCI](https://img.shields.io/circleci/project/github/maekawatoshiki/naglfar/master.svg)](https://circleci.com/gh/maekawatoshiki/naglfar)
+[![codecov](https://img.shields.io/codecov/c/github/maekawatoshiki/naglfar/master.svg)](https://codecov.io/gh/maekawatoshiki/naglfar)
+[![](http://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 Naglfar is a toy web browser in Rust.
 
@@ -27,7 +27,7 @@ Try with the html file on the Internet:
 (But most of web sites are too much for Naglfar...)
 
 ```sh
-$ cargo run http(s)://example.com/index.html
+$ cargo run https://maekawatoshiki.github.io/naglfar/example/test.html
 ```
 
 # Reference
