@@ -105,6 +105,14 @@ impl<'a> LineMaker<'a> {
         }
     }
 
+    pub fn calculate_width(&self) -> Au {
+        let mut max_width = Au(0);
+        for line in &self.lines {
+            max_width = max(max_width, line.width);
+        }
+        max_width
+    }
+
     pub fn flush_cur_line(&mut self) {
         // Push remainings to `lines`.
         self.lines.push(Line {

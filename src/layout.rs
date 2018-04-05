@@ -247,13 +247,9 @@ impl<'a> LayoutBox<'a> {
                 linemaker.end_of_lines();
                 linemaker.assign_position(containing_block.content.width);
 
-                self.children = linemaker.new_boxes;
-                self.dimensions.content.width = if linemaker.lines.is_empty() {
-                    containing_block.content.width
-                } else {
-                    linemaker.lines[0].width
-                };
+                self.dimensions.content.width = linemaker.calculate_width();
                 self.dimensions.content.height = linemaker.cur_height;
+                self.children = linemaker.new_boxes;
             }
             // InlineNode and TextNode is contained in AnonymousBlock.
             BoxType::InlineNode | BoxType::TextNode(_) => unreachable!(),
