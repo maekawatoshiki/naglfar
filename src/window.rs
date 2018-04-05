@@ -8,7 +8,7 @@ use gtk::{Inhibit, ObjectExt, WidgetExt, traits::*};
 
 use glib::prelude::*; // or `use gtk::prelude::*;`
 
-use gdk::{ContextExt, Event, EventButton};
+use gdk::{ContextExt, Cursor, CursorType, Event, EventButton, EventMask, EventMotion, WindowExt};
 use gdk_pixbuf::{InterpType, PixbufExt};
 
 use cairo::Context;
@@ -50,7 +50,43 @@ impl RenderingWindow {
 
         window.add(&scrolled_window);
 
-        drawing_area.add_events(256); // '256' means button press event
+        drawing_area.add_events(EventMask::POINTER_MOTION_MASK.bits() as i32);
+        drawing_area
+            .connect("motion-notify-event", false, |args| {
+                let (x, y) = args[1]
+                    .clone()
+                    .downcast::<Event>()
+                    .unwrap()
+                    .get()
+                    .unwrap()
+                    .downcast::<EventMotion>()
+                    .unwrap()
+                    .get_position();
+                ANKERS.with(|ankers| {
+                    let window = args[0]
+                        .clone()
+                        .downcast::<gtk::DrawingArea>()
+                        .unwrap()
+                        .get()
+                        .unwrap()
+                        .get_window()
+                        .unwrap();
+                    if (&*ankers.borrow()).iter().any(|(rect, _)| {
+                        rect.x.to_f64_px() <= x && x <= rect.x.to_f64_px() + rect.width.to_f64_px()
+                            && rect.y.to_f64_px() <= y
+                            && y <= rect.y.to_f64_px() + rect.height.to_f64_px()
+                    }) {
+                        window.set_cursor(Some(&Cursor::new(CursorType::Hand1)));
+                    } else {
+                        // TODO: This is executed many times. It's inefficient.
+                        window.set_cursor(Some(&Cursor::new(CursorType::LeftPtr)));
+                    }
+                });
+                Some(true.to_value())
+            })
+            .unwrap();
+
+        drawing_area.add_events(EventMask::BUTTON_PRESS_MASK.bits() as i32);
         drawing_area
             .connect("button-press-event", false, |args| {
                 let (clicked_x, clicked_y) = args[1]
