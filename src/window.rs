@@ -53,7 +53,7 @@ impl RenderingWindow {
         drawing_area.add_events(256); // '256' means button press event
         drawing_area
             .connect("button-press-event", false, |args| {
-                let (x, y) = args[1]
+                let (clicked_x, clicked_y) = args[1]
                     .clone()
                     .downcast::<Event>()
                     .unwrap()
@@ -64,10 +64,10 @@ impl RenderingWindow {
                     .get_position();
                 ANKERS.with(|ankers| {
                     for (rect, url) in &*ankers.borrow() {
-                        if rect.x.to_f64_px() <= x
-                            && x <= rect.x.to_f64_px() + rect.width.to_f64_px()
-                            && rect.y.to_f64_px() <= y
-                            && y <= rect.y.to_f64_px() + rect.height.to_f64_px()
+                        if rect.x.to_f64_px() <= clicked_x
+                            && clicked_x <= rect.x.to_f64_px() + rect.width.to_f64_px()
+                            && rect.y.to_f64_px() <= clicked_y
+                            && clicked_y <= rect.y.to_f64_px() + rect.height.to_f64_px()
                         {
                             update_html_tree_and_stylesheet(url.to_string());
                             args[0]
@@ -77,6 +77,7 @@ impl RenderingWindow {
                                 .get()
                                 .unwrap()
                                 .queue_draw();
+                            break;
                         }
                     }
                 });
