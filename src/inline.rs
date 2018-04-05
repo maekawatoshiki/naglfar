@@ -547,7 +547,7 @@ use std::cell::RefCell;
 type ImageKey = String; // URL
 
 thread_local!(
-    pub static IMG_CACHE: RefCell<HashMap<ImageKey, gdk_pixbuf::Pixbuf>> = {
+    static IMG_CACHE: RefCell<HashMap<ImageKey, gdk_pixbuf::Pixbuf>> = {
         RefCell::new(HashMap::new())
     };
 );

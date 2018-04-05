@@ -23,7 +23,7 @@ use css::px2pt;
 use interface::update_html_tree_and_stylesheet;
 
 thread_local!(
-    pub static ANKERS: RefCell<HashMap<Rect, String>> = {
+    static ANKERS: RefCell<HashMap<Rect, String>> = {
         RefCell::new(HashMap::new())
     }
 );
