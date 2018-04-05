@@ -94,10 +94,6 @@ thread_local!(
     pub static STYLESHEET: Rc<RefCell<Option<css::Stylesheet>>> = {
       Rc::new(  RefCell::new(None))
     };
-
-    pub static STYLETREE: Rc<RefCell<Option<style::StyledNode<'static>>>> = {
-        Rc::new(RefCell::new(None))
-    };
 );
 
 static mut SRC_UPDATED: bool = false;
