@@ -388,24 +388,20 @@ fn matches(
     match *selector {
         Selector::Simple(ref simple_selector) => matches_simple_selector(elem, simple_selector),
         Selector::Descendant(ref a, ref b) => {
-            matches_descendant_combinator(elem, &**a, &**b, appeared_elements)
+            matches_descendant_combinator(elem, &*a, &**b, appeared_elements)
         }
     }
 }
 
 fn matches_descendant_combinator(
     elem: &ElementData,
-    selector_a: &Selector,
+    simple: &SimpleSelector,
     selector_b: &Selector,
     appeared_elements: &Vec<SimpleSelector>,
 ) -> bool {
-    if let &Selector::Simple(ref simple) = selector_a {
-        appeared_elements.iter().rev().any(|e| {
-            e.tag_name == simple.tag_name && e.id == simple.id && e.class.is_superset(&simple.class)
-        }) && matches(elem, selector_b, appeared_elements)
-    } else {
-        unreachable!()
-    }
+    appeared_elements.iter().rev().any(|e| {
+        e.tag_name == simple.tag_name && e.id == simple.id && e.class.is_superset(&simple.class)
+    }) && matches(elem, selector_b, appeared_elements)
 }
 
 fn matches_simple_selector(elem: &ElementData, selector: &SimpleSelector) -> bool {

@@ -16,7 +16,7 @@ pub struct Rule {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Selector {
     Simple(SimpleSelector),
-    Descendant(Box<Selector>, Box<Selector>),
+    Descendant(SimpleSelector, Box<Selector>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -153,17 +153,19 @@ pub fn pt2px(f: f64) -> f64 {
 pub type Specificity = (usize, usize, usize);
 
 impl Selector {
+    // ref: http://www.w3.org/TR/selectors/#specificity
     pub fn specificity(&self) -> Specificity {
-        // ref: http://www.w3.org/TR/selectors/#specificity
+        fn specificity_simple(simple: &SimpleSelector) -> Specificity {
+            let a = simple.id.iter().count();
+            let b = simple.class.len();
+            let c = simple.tag_name.iter().count();
+            (a, b, c)
+        }
+
         match *self {
-            Selector::Simple(ref simple) => {
-                let a = simple.id.iter().count();
-                let b = simple.class.len();
-                let c = simple.tag_name.iter().count();
-                (a, b, c)
-            }
+            Selector::Simple(ref simple) => specificity_simple(simple),
             Selector::Descendant(ref a, ref b) => {
-                let (a1, b1, c1) = (*a).specificity();
+                let (a1, b1, c1) = specificity_simple(a);
                 let (a2, b2, c2) = (*b).specificity();
                 (a1 + a2, b1 + b2, c1 + c2)
             }
@@ -271,17 +273,17 @@ impl Parser {
     }
 
     fn parse_selector(&mut self) -> Selector {
-        let s1 = Selector::Simple(self.parse_simple_selector());
+        let s1 = self.parse_simple_selector();
         self.consume_whitespace();
         match self.next_char() {
             // Descendant
             c if c.is_alphanumeric() || c == '#' || c == '.' => {
                 let s2 = self.parse_selector();
-                return Selector::Descendant(Box::new(s1), Box::new(s2));
+                return Selector::Descendant(s1, Box::new(s2));
             }
             _ => {}
         }
-        s1
+        Selector::Simple(s1)
     }
 
     fn parse_simple_selector(&mut self) -> SimpleSelector {
@@ -521,27 +523,32 @@ impl fmt::Display for Stylesheet {
         for rule in &self.rules {
             for (i, selector) in rule.selectors.iter().enumerate() {
                 fn show(f: &mut fmt::Formatter, selector: &Selector) -> fmt::Result {
-                    match selector {
-                        &Selector::Simple(ref selector) => {
-                            let mut universal = true;
-                            if let Some(ref tag_name) = selector.tag_name {
-                                universal = false;
-                                try!(write!(f, "{}", tag_name));
-                                for class in &selector.class {
-                                    try!(write!(f, ".{}", class))
-                                }
+                    fn show_simple(
+                        f: &mut fmt::Formatter,
+                        selector: &SimpleSelector,
+                    ) -> fmt::Result {
+                        let mut universal = true;
+                        if let Some(ref tag_name) = selector.tag_name {
+                            universal = false;
+                            try!(write!(f, "{}", tag_name));
+                            for class in &selector.class {
+                                try!(write!(f, ".{}", class))
                             }
-                            if let Some(ref id) = selector.id {
-                                universal = false;
-                                try!(write!(f, "#{}", id));
-                            }
-                            if universal {
-                                try!(write!(f, "*"))
-                            }
-                            Ok(())
                         }
+                        if let Some(ref id) = selector.id {
+                            universal = false;
+                            try!(write!(f, "#{}", id));
+                        }
+                        if universal {
+                            try!(write!(f, "*"))
+                        }
+                        Ok(())
+                    }
+
+                    match selector {
+                        &Selector::Simple(ref selector) => show_simple(f, selector),
                         &Selector::Descendant(ref a, ref b) => {
-                            try!(show(f, &*a));
+                            try!(show_simple(f, &*a));
                             try!(write!(f, " "));
                             show(f, &*b)
                         }
