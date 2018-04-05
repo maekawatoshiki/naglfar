@@ -100,11 +100,12 @@ impl Font {
 
         let mut buf = "".to_string();
         let mut last_splittable_pos = None;
-        for (cn, c) in s.char_indices() {
+        let mut last_pos = 0;
+        for (pos, c) in s.char_indices() {
             buf.push(c);
 
             if c.is_whitespace() || c.is_ascii_punctuation() {
-                last_splittable_pos = Some(cn);
+                last_splittable_pos = Some(pos);
             }
 
             let text_width = self.text_width(buf.as_str());
@@ -112,12 +113,17 @@ impl Font {
                 if let Some(pos) = last_splittable_pos {
                     return pos + 1; // '1' means whitespace or punctuation.
                 } else {
-                    if cn == 0 {
+                    if pos == 0 {
                         break;
                     }
-                    return cn;
+                    if pos - last_pos > 1 {
+                        // if c is multi-byte character
+                        return pos;
+                    }
                 }
             }
+
+            last_pos = pos;
         }
 
         if s.is_empty() {
