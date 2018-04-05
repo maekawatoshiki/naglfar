@@ -18,9 +18,10 @@ impl<'a> LayoutBox<'a> {
     ) {
         self.floats = floats.clone();
 
-        let margin = self.get_margin();
-        let padding = self.get_padding();
-        let border = self.get_border_width();
+        let style = self.get_style_node();
+        let margin = style.margin();
+        let padding = style.padding();
+        let border = style.border_width();
         // Child width can depend on parent width, so we need to calculate this box's width before
         // laying out its children.
         self.calculate_block_width(

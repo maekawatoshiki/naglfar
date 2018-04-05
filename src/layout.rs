@@ -1,5 +1,5 @@
 use style::{Display, StyledNode};
-use css::{Unit, Value};
+use css::Value;
 use dom::{LayoutType, NodeType};
 use float::Floats;
 use font::{Font, FontSlant, FontWeight};
@@ -278,66 +278,9 @@ impl<'a> LayoutBox<'a> {
         }
     }
 
-    pub fn get_padding(&mut self) -> (Value, Value, Value, Value) {
-        let style = self.get_style_node();
-
-        // padding has initial value 0.
-        let zero = Value::Length(0.0, Unit::Px);
-
-        let mut padding_top = style.value("padding-top").and_then(|x| Some(x[0].clone()));
-        let mut padding_bottom = style
-            .value("padding-bottom")
-            .and_then(|x| Some(x[0].clone()));
-        let mut padding_left = style.value("padding-left").and_then(|x| Some(x[0].clone()));
-        let mut padding_right = style
-            .value("padding-right")
-            .and_then(|x| Some(x[0].clone()));
-
-        if let Some(padding) = style.value("padding") {
-            match padding.len() {
-                1 => {
-                    padding_top.get_or_insert_with(|| padding[0].clone());
-                    padding_bottom.get_or_insert_with(|| padding[0].clone());
-                    padding_left.get_or_insert_with(|| padding[0].clone());
-                    padding_right.get_or_insert_with(|| padding[0].clone());
-                }
-                2 => {
-                    padding_top.get_or_insert_with(|| padding[0].clone());
-                    padding_bottom.get_or_insert_with(|| padding[0].clone());
-                    padding_left.get_or_insert_with(|| padding[1].clone());
-                    padding_right.get_or_insert_with(|| padding[1].clone());
-                }
-                3 => {
-                    padding_top.get_or_insert_with(|| padding[0].clone());
-                    padding_left.get_or_insert_with(|| padding[1].clone());
-                    padding_right.get_or_insert_with(|| padding[1].clone());
-                    padding_bottom.get_or_insert_with(|| padding[2].clone());
-                }
-                4 => {
-                    padding_top.get_or_insert_with(|| padding[0].clone());
-                    padding_right.get_or_insert_with(|| padding[1].clone());
-                    padding_bottom.get_or_insert_with(|| padding[2].clone());
-                    padding_left.get_or_insert_with(|| padding[3].clone());
-                }
-                0 | _ => unreachable!(),
-            }
-        }
-
-        padding_top.get_or_insert_with(|| zero.clone());
-        padding_right.get_or_insert_with(|| zero.clone());
-        padding_bottom.get_or_insert_with(|| zero.clone());
-        padding_left.get_or_insert_with(|| zero.clone());
-
-        (
-            padding_top.unwrap(),
-            padding_right.unwrap(),
-            padding_bottom.unwrap(),
-            padding_left.unwrap(),
-        )
-    }
-
     pub fn assign_padding(&mut self) {
-        let (padding_top, padding_right, padding_bottom, padding_left) = self.get_padding();
+        let (padding_top, padding_right, padding_bottom, padding_left) =
+            self.get_style_node().padding();
 
         let d = &mut self.dimensions;
         d.padding.left = Au::from_f64_px(padding_left.to_px().unwrap());
@@ -346,64 +289,8 @@ impl<'a> LayoutBox<'a> {
         d.padding.right = Au::from_f64_px(padding_right.to_px().unwrap());
     }
 
-    pub fn get_margin(&mut self) -> (Value, Value, Value, Value) {
-        let style = self.get_style_node();
-
-        // margin has initial value 0.
-        let zero = Value::Length(0.0, Unit::Px);
-
-        let mut margin_top = style.value("margin-top").and_then(|x| Some(x[0].clone()));
-        let mut margin_bottom = style
-            .value("margin-bottom")
-            .and_then(|x| Some(x[0].clone()));
-        let mut margin_left = style.value("margin-left").and_then(|x| Some(x[0].clone()));
-        let mut margin_right = style.value("margin-right").and_then(|x| Some(x[0].clone()));
-
-        if let Some(margin) = style.value("margin") {
-            match margin.len() {
-                1 => {
-                    margin_top.get_or_insert_with(|| margin[0].clone());
-                    margin_bottom.get_or_insert_with(|| margin[0].clone());
-                    margin_left.get_or_insert_with(|| margin[0].clone());
-                    margin_right.get_or_insert_with(|| margin[0].clone());
-                }
-                2 => {
-                    margin_top.get_or_insert_with(|| margin[0].clone());
-                    margin_bottom.get_or_insert_with(|| margin[0].clone());
-                    margin_left.get_or_insert_with(|| margin[1].clone());
-                    margin_right.get_or_insert_with(|| margin[1].clone());
-                }
-                3 => {
-                    margin_top.get_or_insert_with(|| margin[0].clone());
-                    margin_left.get_or_insert_with(|| margin[1].clone());
-                    margin_right.get_or_insert_with(|| margin[1].clone());
-                    margin_bottom.get_or_insert_with(|| margin[2].clone());
-                }
-                4 => {
-                    margin_top.get_or_insert_with(|| margin[0].clone());
-                    margin_right.get_or_insert_with(|| margin[1].clone());
-                    margin_bottom.get_or_insert_with(|| margin[2].clone());
-                    margin_left.get_or_insert_with(|| margin[3].clone());
-                }
-                0 | _ => unreachable!(),
-            }
-        }
-
-        margin_top.get_or_insert_with(|| zero.clone());
-        margin_right.get_or_insert_with(|| zero.clone());
-        margin_bottom.get_or_insert_with(|| zero.clone());
-        margin_left.get_or_insert_with(|| zero.clone());
-
-        (
-            margin_top.unwrap(),
-            margin_right.unwrap(),
-            margin_bottom.unwrap(),
-            margin_left.unwrap(),
-        )
-    }
-
     pub fn assign_margin(&mut self) {
-        let (margin_top, margin_right, margin_bottom, margin_left) = self.get_margin();
+        let (margin_top, margin_right, margin_bottom, margin_left) = self.get_style_node().margin();
 
         let d = &mut self.dimensions;
         d.margin.left = Au::from_f64_px(margin_left.to_px().unwrap());
@@ -412,70 +299,9 @@ impl<'a> LayoutBox<'a> {
         d.margin.right = Au::from_f64_px(margin_right.to_px().unwrap());
     }
 
-    pub fn get_border_width(&mut self) -> (Value, Value, Value, Value) {
-        let style = self.get_style_node();
-
-        // border has initial value 0.
-        let zero = Value::Length(0.0, Unit::Px);
-
-        let mut border_top = style
-            .value("border-top-width")
-            .and_then(|x| Some(x[0].clone()));
-        let mut border_bottom = style
-            .value("border-bottom-width")
-            .and_then(|x| Some(x[0].clone()));
-        let mut border_left = style
-            .value("border-left-width")
-            .and_then(|x| Some(x[0].clone()));
-        let mut border_right = style
-            .value("border-right-width")
-            .and_then(|x| Some(x[0].clone()));
-
-        if let Some(border) = style.value("border-width") {
-            match border.len() {
-                1 => {
-                    border_top.get_or_insert_with(|| border[0].clone());
-                    border_bottom.get_or_insert_with(|| border[0].clone());
-                    border_left.get_or_insert_with(|| border[0].clone());
-                    border_right.get_or_insert_with(|| border[0].clone());
-                }
-                2 => {
-                    border_top.get_or_insert_with(|| border[0].clone());
-                    border_bottom.get_or_insert_with(|| border[0].clone());
-                    border_left.get_or_insert_with(|| border[1].clone());
-                    border_right.get_or_insert_with(|| border[1].clone());
-                }
-                3 => {
-                    border_top.get_or_insert_with(|| border[0].clone());
-                    border_left.get_or_insert_with(|| border[1].clone());
-                    border_right.get_or_insert_with(|| border[1].clone());
-                    border_bottom.get_or_insert_with(|| border[2].clone());
-                }
-                4 => {
-                    border_top.get_or_insert_with(|| border[0].clone());
-                    border_right.get_or_insert_with(|| border[1].clone());
-                    border_bottom.get_or_insert_with(|| border[2].clone());
-                    border_left.get_or_insert_with(|| border[3].clone());
-                }
-                0 | _ => unreachable!(),
-            }
-        }
-
-        border_top.get_or_insert_with(|| zero.clone());
-        border_right.get_or_insert_with(|| zero.clone());
-        border_bottom.get_or_insert_with(|| zero.clone());
-        border_left.get_or_insert_with(|| zero.clone());
-
-        (
-            border_top.unwrap(),
-            border_right.unwrap(),
-            border_bottom.unwrap(),
-            border_left.unwrap(),
-        )
-    }
-
     pub fn assign_border_width(&mut self) {
-        let (border_top, border_right, border_bottom, border_left) = self.get_border_width();
+        let (border_top, border_right, border_bottom, border_left) =
+            self.get_style_node().border_width();
 
         let d = &mut self.dimensions;
         d.border.left = Au::from_f64_px(border_left.to_px().unwrap());

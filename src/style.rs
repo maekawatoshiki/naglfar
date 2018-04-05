@@ -1,6 +1,6 @@
 use dom::{ElementData, Node, NodeType};
 use css::{parse_attr_style, Declaration, Rule, Selector, SimpleSelector, Specificity, Stylesheet,
-          Value};
+          Unit, Value};
 use std::collections::HashMap;
 
 pub type PropertyMap = HashMap<String, Vec<Value>>;
@@ -102,6 +102,167 @@ impl<'a> StyledNode<'a> {
             NodeType::Text(_) => true,
             _ => false,
         }
+    }
+
+    pub fn padding(&self) -> (Value, Value, Value, Value) {
+        // padding has initial value 0.
+        let zero = Value::Length(0.0, Unit::Px);
+
+        let mut padding_top = self.value("padding-top").and_then(|x| Some(x[0].clone()));
+        let mut padding_bottom = self.value("padding-bottom")
+            .and_then(|x| Some(x[0].clone()));
+        let mut padding_left = self.value("padding-left").and_then(|x| Some(x[0].clone()));
+        let mut padding_right = self.value("padding-right").and_then(|x| Some(x[0].clone()));
+
+        if let Some(padding) = self.value("padding") {
+            match padding.len() {
+                1 => {
+                    padding_top.get_or_insert_with(|| padding[0].clone());
+                    padding_bottom.get_or_insert_with(|| padding[0].clone());
+                    padding_left.get_or_insert_with(|| padding[0].clone());
+                    padding_right.get_or_insert_with(|| padding[0].clone());
+                }
+                2 => {
+                    padding_top.get_or_insert_with(|| padding[0].clone());
+                    padding_bottom.get_or_insert_with(|| padding[0].clone());
+                    padding_left.get_or_insert_with(|| padding[1].clone());
+                    padding_right.get_or_insert_with(|| padding[1].clone());
+                }
+                3 => {
+                    padding_top.get_or_insert_with(|| padding[0].clone());
+                    padding_left.get_or_insert_with(|| padding[1].clone());
+                    padding_right.get_or_insert_with(|| padding[1].clone());
+                    padding_bottom.get_or_insert_with(|| padding[2].clone());
+                }
+                4 => {
+                    padding_top.get_or_insert_with(|| padding[0].clone());
+                    padding_right.get_or_insert_with(|| padding[1].clone());
+                    padding_bottom.get_or_insert_with(|| padding[2].clone());
+                    padding_left.get_or_insert_with(|| padding[3].clone());
+                }
+                0 | _ => unreachable!(),
+            }
+        }
+
+        padding_top.get_or_insert_with(|| zero.clone());
+        padding_right.get_or_insert_with(|| zero.clone());
+        padding_bottom.get_or_insert_with(|| zero.clone());
+        padding_left.get_or_insert_with(|| zero.clone());
+
+        (
+            padding_top.unwrap(),
+            padding_right.unwrap(),
+            padding_bottom.unwrap(),
+            padding_left.unwrap(),
+        )
+    }
+
+    pub fn margin(&self) -> (Value, Value, Value, Value) {
+        // margin has initial value 0.
+        let zero = Value::Length(0.0, Unit::Px);
+
+        let mut margin_top = self.value("margin-top").and_then(|x| Some(x[0].clone()));
+        let mut margin_bottom = self.value("margin-bottom").and_then(|x| Some(x[0].clone()));
+        let mut margin_left = self.value("margin-left").and_then(|x| Some(x[0].clone()));
+        let mut margin_right = self.value("margin-right").and_then(|x| Some(x[0].clone()));
+
+        if let Some(margin) = self.value("margin") {
+            match margin.len() {
+                1 => {
+                    margin_top.get_or_insert_with(|| margin[0].clone());
+                    margin_bottom.get_or_insert_with(|| margin[0].clone());
+                    margin_left.get_or_insert_with(|| margin[0].clone());
+                    margin_right.get_or_insert_with(|| margin[0].clone());
+                }
+                2 => {
+                    margin_top.get_or_insert_with(|| margin[0].clone());
+                    margin_bottom.get_or_insert_with(|| margin[0].clone());
+                    margin_left.get_or_insert_with(|| margin[1].clone());
+                    margin_right.get_or_insert_with(|| margin[1].clone());
+                }
+                3 => {
+                    margin_top.get_or_insert_with(|| margin[0].clone());
+                    margin_left.get_or_insert_with(|| margin[1].clone());
+                    margin_right.get_or_insert_with(|| margin[1].clone());
+                    margin_bottom.get_or_insert_with(|| margin[2].clone());
+                }
+                4 => {
+                    margin_top.get_or_insert_with(|| margin[0].clone());
+                    margin_right.get_or_insert_with(|| margin[1].clone());
+                    margin_bottom.get_or_insert_with(|| margin[2].clone());
+                    margin_left.get_or_insert_with(|| margin[3].clone());
+                }
+                0 | _ => unreachable!(),
+            }
+        }
+
+        margin_top.get_or_insert_with(|| zero.clone());
+        margin_right.get_or_insert_with(|| zero.clone());
+        margin_bottom.get_or_insert_with(|| zero.clone());
+        margin_left.get_or_insert_with(|| zero.clone());
+
+        (
+            margin_top.unwrap(),
+            margin_right.unwrap(),
+            margin_bottom.unwrap(),
+            margin_left.unwrap(),
+        )
+    }
+
+    pub fn border_width(&self) -> (Value, Value, Value, Value) {
+        // border has initial value 0.
+        let zero = Value::Length(0.0, Unit::Px);
+
+        let mut border_top = self.value("border-top-width")
+            .and_then(|x| Some(x[0].clone()));
+        let mut border_bottom = self.value("border-bottom-width")
+            .and_then(|x| Some(x[0].clone()));
+        let mut border_left = self.value("border-left-width")
+            .and_then(|x| Some(x[0].clone()));
+        let mut border_right = self.value("border-right-width")
+            .and_then(|x| Some(x[0].clone()));
+
+        if let Some(border) = self.value("border-width") {
+            match border.len() {
+                1 => {
+                    border_top.get_or_insert_with(|| border[0].clone());
+                    border_bottom.get_or_insert_with(|| border[0].clone());
+                    border_left.get_or_insert_with(|| border[0].clone());
+                    border_right.get_or_insert_with(|| border[0].clone());
+                }
+                2 => {
+                    border_top.get_or_insert_with(|| border[0].clone());
+                    border_bottom.get_or_insert_with(|| border[0].clone());
+                    border_left.get_or_insert_with(|| border[1].clone());
+                    border_right.get_or_insert_with(|| border[1].clone());
+                }
+                3 => {
+                    border_top.get_or_insert_with(|| border[0].clone());
+                    border_left.get_or_insert_with(|| border[1].clone());
+                    border_right.get_or_insert_with(|| border[1].clone());
+                    border_bottom.get_or_insert_with(|| border[2].clone());
+                }
+                4 => {
+                    border_top.get_or_insert_with(|| border[0].clone());
+                    border_right.get_or_insert_with(|| border[1].clone());
+                    border_bottom.get_or_insert_with(|| border[2].clone());
+                    border_left.get_or_insert_with(|| border[3].clone());
+                }
+                0 | _ => unreachable!(),
+            }
+        }
+
+        border_top.get_or_insert_with(|| zero.clone());
+        border_right.get_or_insert_with(|| zero.clone());
+        border_bottom.get_or_insert_with(|| zero.clone());
+        border_left.get_or_insert_with(|| zero.clone());
+
+        (
+            border_top.unwrap(),
+            border_right.unwrap(),
+            border_bottom.unwrap(),
+            border_left.unwrap(),
+        )
     }
 }
 
