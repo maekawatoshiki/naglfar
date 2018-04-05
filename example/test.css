@@ -136,6 +136,9 @@ div.card {
   width: 95%;
   margin: 10px auto;
   padding: 10px 10px 10px 5px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.05);
+  border-width: 1px;
 }
 
 div.card_title {
