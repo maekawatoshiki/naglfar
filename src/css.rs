@@ -455,7 +455,7 @@ impl Parser {
             3 => {
                 let r = u8::from_str_radix(&hex_str[0..1], 16).unwrap();
                 let g = u8::from_str_radix(&hex_str[1..2], 16).unwrap();
-                let b = u8::from_str_radix(&hex_str[1..2], 16).unwrap();
+                let b = u8::from_str_radix(&hex_str[2..3], 16).unwrap();
                 (r * 16 + r, g * 16 + g, b * 16 + b)
             }
             6 => (
@@ -615,7 +615,7 @@ fn test1() {
             z-index: 2; 
             font-size: 10pt; 
             color: #ffffff; 
-            background-color: #003300; 
+            background-color: #030; 
         }";
     let stylesheet = parse(src.to_string());
     assert_eq!(

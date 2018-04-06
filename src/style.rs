@@ -470,7 +470,7 @@ fn test1() {
                </html>";
     let dom_node = html::parse(src.to_string(), Path::new("a.html").to_path_buf());
 
-    let src = "div { width: 100px; height: 50px; color: #ffffff; background-color: #003300; }";
+    let src = "div, div > p, div span { width: 100px; height: 50px; color: #ffffff; background-color: #003300; }";
     let stylesheet = css::parse(src.to_string());
 
     // TODO
