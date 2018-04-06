@@ -16,7 +16,7 @@ use app_units::Au;
 
 #[derive(Clone, Debug)]
 pub struct Line {
-    pub range: Range<usize>, // layoutbox
+    pub range: Range<usize>, // Range of LayoutBox(es) that represent(s) this line.
     pub metrics: LineMetrics,
     pub width: Au,
 }
