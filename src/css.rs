@@ -608,7 +608,7 @@ impl fmt::Display for Stylesheet {
 fn test1() {
     let src = "
         /* Comments... */
-        div, h1, #id, .class, * { 
+        div, h1, #id, .class, p > a, div p, * { 
             width: 70%; 
             height: 50px;
             font-weight: bold; 
@@ -638,6 +638,30 @@ fn test1() {
                                 h
                             },
                         }),
+                        Selector::Child(
+                            SimpleSelector {
+                                tag_name: Some("p".to_string()),
+                                id: None,
+                                class: HashSet::new(),
+                            },
+                            Box::new(Selector::Simple(SimpleSelector {
+                                tag_name: Some("a".to_string()),
+                                id: None,
+                                class: HashSet::new(),
+                            })),
+                        ),
+                        Selector::Descendant(
+                            SimpleSelector {
+                                tag_name: Some("div".to_string()),
+                                id: None,
+                                class: HashSet::new(),
+                            },
+                            Box::new(Selector::Simple(SimpleSelector {
+                                tag_name: Some("p".to_string()),
+                                id: None,
+                                class: HashSet::new(),
+                            })),
+                        ),
                         Selector::Simple(SimpleSelector {
                             tag_name: Some("div".to_string()),
                             id: None,
