@@ -80,20 +80,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 thread_local!(
-    pub static LAYOUT_SAVER: RefCell<(Au, Au, painter::DisplayList)> = {
-        RefCell::new((Au(0), Au(0), vec![]))
-    };
-
-    pub static HTML_SRC_URL: RefCell<Option<String>> = {
-        RefCell::new(None)
-    };
-    
-    pub static HTML_TREE: Rc<RefCell<Option<dom::Node>>> = {
-      Rc::new(  RefCell::new(None))
-    };
-    pub static STYLESHEET: Rc<RefCell<Option<css::Stylesheet>>> = {
-      Rc::new(  RefCell::new(None))
-    };
+    static LAYOUT_SAVER: RefCell<(Au, Au, painter::DisplayList)> = { RefCell::new((Au(0), Au(0), vec![])) };
+    static HTML_SRC_URL: RefCell<Option<String>> = { RefCell::new(None) };
+    static HTML_TREE: Rc<RefCell<Option<dom::Node>>> = { Rc::new(RefCell::new(None)) };
+    static STYLESHEET: Rc<RefCell<Option<css::Stylesheet>>> = { Rc::new(  RefCell::new(None)) };
 );
 
 static mut SRC_UPDATED: bool = false;
@@ -113,10 +103,6 @@ pub fn update_html_tree_and_stylesheet(html_src: String) {
     let html_tree = html::parse(html_source, html_src_path);
     print!("{}", html_tree);
 
-    HTML_TREE.with(|h| {
-        *h.borrow_mut() = Some(html_tree.clone());
-    });
-
     println!("CSS:");
     let mut css_source = "".to_string();
     if let Some(stylesheet_path) = html_tree.find_stylesheet_path() {
@@ -134,6 +120,9 @@ pub fn update_html_tree_and_stylesheet(html_src: String) {
     let stylesheet = css::parse(css_source);
     print!("{}", stylesheet);
 
+    HTML_TREE.with(|h| {
+        *h.borrow_mut() = Some(html_tree);
+    });
     STYLESHEET.with(|s| *s.borrow_mut() = Some(stylesheet));
 
     unsafe {

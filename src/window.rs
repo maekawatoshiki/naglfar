@@ -22,11 +22,7 @@ use font::FONT_DESC;
 use css::px2pt;
 use interface::update_html_tree_and_stylesheet;
 
-thread_local!(
-    static ANKERS: RefCell<HashMap<Rect, String>> = {
-        RefCell::new(HashMap::new())
-    }
-);
+thread_local!(static ANKERS: RefCell<HashMap<Rect, String>> = { RefCell::new(HashMap::new()) });
 
 struct RenderingWindow {
     window: gtk::Window,
@@ -177,10 +173,10 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
     match item {
         &DisplayCommand::SolidColor(ref color, rect) => {
             ctx.rectangle(
-                rect.x.to_px() as f64,
-                rect.y.to_px() as f64,
-                rect.width.to_px() as f64,
-                rect.height.to_px() as f64,
+                rect.x.to_f64_px(),
+                rect.y.to_f64_px(),
+                rect.width.to_f64_px(),
+                rect.height.to_f64_px(),
             );
             ctx.set_source_rgba(
                 color.r as f64 / 255.0,
@@ -191,7 +187,6 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
             ctx.fill();
         }
         &DisplayCommand::Image(ref pixbuf, rect) => {
-            ctx.save();
             ctx.set_source_pixbuf(
                 &pixbuf
                     .scale_simple(
@@ -204,21 +199,15 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
                 rect.y.to_f64_px(),
             );
             ctx.paint();
-            ctx.restore();
         }
         &DisplayCommand::Text(ref text, rect, ref color, ref font) => {
             FONT_DESC.with(|font_desc| {
-                font_desc
-                    .borrow_mut()
-                    .set_size(pango::units_from_double(px2pt(font.size.to_f64_px())));
-                font_desc
-                    .borrow_mut()
-                    .set_style(font.slant.to_pango_font_slant());
-                font_desc
-                    .borrow_mut()
-                    .set_weight(font.weight.to_pango_font_weight());
+                let mut font_desc = font_desc.borrow_mut();
+                font_desc.set_size(pango::units_from_double(px2pt(font.size.to_f64_px())));
+                font_desc.set_style(font.slant.to_pango_font_slant());
+                font_desc.set_weight(font.weight.to_pango_font_weight());
                 pango_layout.set_text(text.as_str());
-                pango_layout.set_font_description(Some(&*font_desc.borrow()));
+                pango_layout.set_font_description(Some(&*font_desc));
             });
 
             ctx.set_source_rgba(
@@ -227,12 +216,13 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
                 color.b as f64 / 255.0,
                 color.a as f64 / 255.0,
             );
-            ctx.move_to(rect.x.to_px() as f64, rect.y.to_px() as f64);
+            ctx.move_to(rect.x.to_f64_px(), rect.y.to_f64_px());
 
             pango_layout.context_changed();
             pangocairo::functions::show_layout(ctx, &pango_layout);
         }
         &DisplayCommand::Anker(ref url, rect) => {
+            // TODO: This is called many times and it's inefficient.
             ANKERS.with(|ankers| {
                 ankers
                     .borrow_mut()
