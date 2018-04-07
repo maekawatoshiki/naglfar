@@ -218,7 +218,6 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
             );
             ctx.move_to(rect.x.to_f64_px(), rect.y.to_f64_px());
 
-            pango_layout.context_changed();
             pangocairo::functions::show_layout(ctx, &pango_layout);
         }
         &DisplayCommand::Anker(ref url, rect) => {
