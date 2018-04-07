@@ -1,7 +1,7 @@
 use layout::{Dimensions, EdgeSizes, LayoutBox, LayoutInfo, Rect};
 use inline::get_image;
 use style;
-use css::{Unit, Value};
+use css::Value;
 
 use std::cmp::{max, min};
 
@@ -161,8 +161,6 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.height = height;
             }
             LayoutInfo::Generic => {
-                // TODO: Both of assign_XXX and calculate_float_width assign margin, padding and
-                // border-width. It's duplicated!
                 self.assign_padding();
                 self.assign_border_width();
                 self.assign_margin();
@@ -231,21 +229,6 @@ impl<'a> LayoutBox<'a> {
         let auto = Value::Keyword("auto".to_string());
         let width = style.value("width").unwrap_or(vec![auto.clone()])[0].clone();
 
-        // margin, border, and padding have initial value 0.
-        let zero = Value::Length(0.0, Unit::Px);
-
-        let margin_left = style.lookup("margin-left", "margin", &vec![zero.clone()])[0].clone();
-        let margin_right = style.lookup("margin-right", "margin", &vec![zero.clone()])[0].clone();
-
-        let border_left =
-            style.lookup("border-left-width", "border-width", &vec![zero.clone()])[0].clone();
-        let border_right =
-            style.lookup("border-right-width", "border-width", &vec![zero.clone()])[0].clone();
-
-        let padding_left = style.lookup("padding-left", "padding", &vec![zero.clone()])[0].clone();
-        let padding_right =
-            style.lookup("padding-right", "padding", &vec![zero.clone()])[0].clone();
-
         let d = &mut self.dimensions;
 
         let mut width_not_specified = false;
@@ -254,27 +237,6 @@ impl<'a> LayoutBox<'a> {
             d.content.width = containing_block.content.width;
         } else if let Some(width) = width.maybe_percent_to_px(cb_width) {
             d.content.width = Au::from_f64_px(width)
-        }
-
-        if let Some(padding_left) = padding_left.maybe_percent_to_px(cb_width) {
-            d.padding.left = Au::from_f64_px(padding_left)
-        }
-        if let Some(padding_right) = padding_right.maybe_percent_to_px(cb_width) {
-            d.padding.right = Au::from_f64_px(padding_right)
-        }
-
-        if let Some(border_left) = border_left.maybe_percent_to_px(cb_width) {
-            d.border.left = Au::from_f64_px(border_left)
-        }
-        if let Some(border_right) = border_right.maybe_percent_to_px(cb_width) {
-            d.border.right = Au::from_f64_px(border_right)
-        }
-
-        if let Some(margin_left) = margin_left.maybe_percent_to_px(cb_width) {
-            d.margin.left = Au::from_f64_px(margin_left)
-        }
-        if let Some(margin_right) = margin_right.maybe_percent_to_px(cb_width) {
-            d.margin.right = Au::from_f64_px(margin_right)
         }
 
         width_not_specified

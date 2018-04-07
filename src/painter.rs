@@ -159,8 +159,13 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
     let d = &layout_box.dimensions;
     let border_box = d.border_box().add_parent_coordinate(x, y);
 
+    let (top_color, right_color, bottom_color, left_color) = match layout_box.style {
+        Some(style) => style.border_color(),
+        None => return,
+    };
+
     // Left border
-    if let Some(left_color) = lookup_color(layout_box, "border-left-color", "border-color") {
+    if let Some(left_color) = left_color {
         list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
             left_color,
             Rect {
@@ -173,7 +178,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
     }
 
     // Right border
-    if let Some(right_color) = lookup_color(layout_box, "border-right-color", "border-color") {
+    if let Some(right_color) = right_color {
         list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
             right_color,
             Rect {
@@ -186,7 +191,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
     }
 
     // Top border
-    if let Some(top_color) = lookup_color(layout_box, "border-top-color", "border-color") {
+    if let Some(top_color) = top_color {
         list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
             top_color,
             Rect {
@@ -199,7 +204,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
     }
 
     // Bottom border
-    if let Some(bottom_color) = lookup_color(layout_box, "border-bottom-color", "border-color") {
+    if let Some(bottom_color) = bottom_color {
         list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
             bottom_color,
             Rect {

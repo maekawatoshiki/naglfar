@@ -1,6 +1,6 @@
 use dom::{ElementData, Node, NodeType};
-use css::{parse_attr_style, Declaration, Rule, Selector, SimpleSelector, Specificity, Stylesheet,
-          Unit, Value};
+use css::{parse_attr_style, Color, Declaration, Rule, Selector, SimpleSelector, Specificity,
+          Stylesheet, Unit, Value};
 use std::collections::HashMap;
 
 pub type PropertyMap = HashMap<String, Vec<Value>>;
@@ -250,6 +250,20 @@ impl<'a> StyledNode<'a> {
                 }
                 0 | _ => unreachable!(),
             }
+        } else if let Some(border_info) = self.value("border") {
+            let mut border_width = None;
+            for border in border_info {
+                if let &Value::Length(_, _) = &border {
+                    border_width = Some(border);
+                    break;
+                }
+            }
+            if let Some(border_width) = border_width {
+                border_top.get_or_insert_with(|| border_width.clone());
+                border_right.get_or_insert_with(|| border_width.clone());
+                border_bottom.get_or_insert_with(|| border_width.clone());
+                border_left.get_or_insert_with(|| border_width.clone());
+            }
         }
 
         border_top.get_or_insert_with(|| zero.clone());
@@ -263,6 +277,62 @@ impl<'a> StyledNode<'a> {
             border_bottom.unwrap(),
             border_left.unwrap(),
         )
+    }
+
+    pub fn border_color(&self) -> (Option<Color>, Option<Color>, Option<Color>, Option<Color>) {
+        let mut border_top = self.value("border-top-color").and_then(|x| x[0].to_color());
+        let mut border_bottom = self.value("border-bottom-color")
+            .and_then(|x| x[0].to_color());
+        let mut border_left = self.value("border-left-color")
+            .and_then(|x| x[0].to_color());
+        let mut border_right = self.value("border-right-color")
+            .and_then(|x| x[0].to_color());
+
+        if let Some(border) = self.value("border-color") {
+            match border.len() {
+                1 => {
+                    border_top.get_or_insert_with(|| border[0].to_color().unwrap());
+                    border_bottom.get_or_insert_with(|| border[0].to_color().unwrap());
+                    border_left.get_or_insert_with(|| border[0].to_color().unwrap());
+                    border_right.get_or_insert_with(|| border[0].to_color().unwrap());
+                }
+                2 => {
+                    border_top.get_or_insert_with(|| border[0].to_color().unwrap());
+                    border_bottom.get_or_insert_with(|| border[0].to_color().unwrap());
+                    border_left.get_or_insert_with(|| border[1].to_color().unwrap());
+                    border_right.get_or_insert_with(|| border[1].to_color().unwrap());
+                }
+                3 => {
+                    border_top.get_or_insert_with(|| border[0].to_color().unwrap());
+                    border_left.get_or_insert_with(|| border[1].to_color().unwrap());
+                    border_right.get_or_insert_with(|| border[1].to_color().unwrap());
+                    border_bottom.get_or_insert_with(|| border[2].to_color().unwrap());
+                }
+                4 => {
+                    border_top.get_or_insert_with(|| border[0].to_color().unwrap());
+                    border_right.get_or_insert_with(|| border[1].to_color().unwrap());
+                    border_bottom.get_or_insert_with(|| border[2].to_color().unwrap());
+                    border_left.get_or_insert_with(|| border[3].to_color().unwrap());
+                }
+                0 | _ => unreachable!(),
+            }
+        } else if let Some(border_info) = self.value("border") {
+            let mut border_color = None;
+            for border in border_info {
+                if let Some(color) = border.to_color() {
+                    border_color = Some(color);
+                    break;
+                }
+            }
+            if let Some(border_color) = border_color {
+                border_top.get_or_insert_with(|| border_color.clone());
+                border_right.get_or_insert_with(|| border_color.clone());
+                border_bottom.get_or_insert_with(|| border_color.clone());
+                border_left.get_or_insert_with(|| border_color.clone());
+            }
+        }
+
+        (border_top, border_right, border_bottom, border_left)
     }
 }
 

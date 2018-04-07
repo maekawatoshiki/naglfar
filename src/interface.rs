@@ -140,34 +140,30 @@ pub fn run_with_url(html_src: String) {
 
         LAYOUT_SAVER.with(|x| {
             let (ref mut last_width, ref mut last_height, ref mut last_displays) = *x.borrow_mut();
-            unsafe {
-                if *last_width == viewport.content.width && *last_height == viewport.content.height
-                    && !SRC_UPDATED
-                {
-                    last_displays.clone()
-                } else {
+            if *last_width == viewport.content.width && *last_height == viewport.content.height
+                && unsafe { !SRC_UPDATED }
+            {
+                last_displays.clone()
+            } else {
+                unsafe {
                     SRC_UPDATED = false;
-                    *last_width = viewport.content.width;
-                    *last_height = viewport.content.height;
-
-                    let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
-                    let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
-                    let style_tree = style::style_tree(
-                        &html_tree,
-                        &stylesheet,
-                        &style::PropertyMap::new(),
-                        &vec![],
-                    );
-                    let layout_tree = layout::layout_tree(&style_tree, viewport);
-                    print!("LAYOUT:\n{}", layout_tree);
-
-                    let display_command = painter::build_display_list(&layout_tree);
-                    println!("DISPLAY:\n{:?}", display_command);
-
-                    *last_displays = display_command.clone();
-
-                    display_command
                 }
+                *last_width = viewport.content.width;
+                *last_height = viewport.content.height;
+
+                let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
+                let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
+                let style_tree =
+                    style::style_tree(&html_tree, &stylesheet, &style::PropertyMap::new(), &vec![]);
+                let layout_tree = layout::layout_tree(&style_tree, viewport);
+                print!("LAYOUT:\n{}", layout_tree);
+
+                let display_command = painter::build_display_list(&layout_tree);
+                println!("DISPLAY:\n{:?}", display_command);
+
+                *last_displays = display_command.clone();
+
+                display_command
             }
         })
     });
