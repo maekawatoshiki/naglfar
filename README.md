@@ -8,14 +8,14 @@ Naglfar is a toy web browser in Rust.
 
 ![Naglfar](https://raw.githubusercontent.com/maekawatoshiki/naglfar/master/screenshot.gif)
 
-# Run
+# Running
 
 ## Requisites
 
 - Latest Rust (recommend [rustup](https://www.rustup.rs/))
 - GTK (for gtk-rs)
 
-## Build & Run
+## Building & Running
 
 Try with the local html file(e.g. ./example/test.html):
 
