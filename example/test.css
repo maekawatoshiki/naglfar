@@ -83,9 +83,7 @@ div.special span {
 span.hl {
   background: #fefe40;
   font-weight: bold;
-  border-width: 1px;
-  border-style: solid;
-  border-color: red;
+  border: 1px solid red;
 }
 
 span.credit {
@@ -136,9 +134,7 @@ div.card {
   width: 95%;
   margin: 10px auto;
   padding: 10px 10px 10px 5px;
-  border-style: solid;
-  border-color: rgba(0, 0, 0, 0.05);
-  border-width: 1px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 div.card_title {
@@ -160,8 +156,6 @@ div.card_content {
 div.card_footer {
   height: 20px;
   text-align: center;
-  border-width: 2px;
-  border-style: solid;
   font-size: 18px;
   padding: 2px;
 }
@@ -169,7 +163,7 @@ div.card_footer {
 div.card_footer1 {
   float: left;
   width: 100px;
-  border-color: #efefef;
+  border: 2px solid #efefef;
 }
 
 div.card_footer2 {
@@ -178,7 +172,7 @@ div.card_footer2 {
   color: white;
   margin-left: 10px;
   background: #4a69ff;
-  border-color: #2a40ed;
+  border: 2px solid #2a40ed;
 }
 
 #header {
