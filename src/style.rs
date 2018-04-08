@@ -317,7 +317,7 @@ impl<'a> StyledNode<'a> {
                 0 | _ => unreachable!(),
             }
         } else if let Some(border_info) = self.value("border") {
-            if let Some(border_color) = || {
+            if let Some(border_color) = (|| {
                 for border in border_info {
                     let color = border.to_color();
                     if color.is_some() {
@@ -325,7 +325,8 @@ impl<'a> StyledNode<'a> {
                     }
                 }
                 None
-            } {
+            })()
+            {
                 border_top.get_or_insert_with(|| border_color.clone());
                 border_right.get_or_insert_with(|| border_color.clone());
                 border_bottom.get_or_insert_with(|| border_color.clone());
