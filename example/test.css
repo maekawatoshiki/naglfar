@@ -65,11 +65,7 @@ h3 {
 a {
   display: inline;
   color: #0000ee;
-  border-width: 0px;
-  border-bottom-width: 1px;
-  border-style: solid;
-  border-color: #0000ee;
-  text-decoration: none;
+  text-decoration: underline;
 }
 
 img {
