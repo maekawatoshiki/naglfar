@@ -1,6 +1,6 @@
 use dom::{ElementData, Node, NodeType};
 use css::{parse_attr_style, Color, Declaration, Rule, Selector, SimpleSelector, Specificity,
-          Stylesheet, Unit, Value};
+          Stylesheet, TextDecoration, Unit, Value};
 use std::collections::HashMap;
 
 pub type PropertyMap = HashMap<String, Vec<Value>>;
@@ -334,6 +334,20 @@ impl<'a> StyledNode<'a> {
 
         (border_top, border_right, border_bottom, border_left)
     }
+
+    pub fn text_decoration(&self) -> Vec<TextDecoration> {
+        if let Some(text_decorations) = self.value("text-decoration") {
+            let mut decorations = vec![];
+            for text_decoration in text_decorations {
+                if let Some(decoration) = text_decoration.to_text_decoration() {
+                    decorations.push(decoration);
+                }
+            }
+            decorations
+        } else {
+            vec![]
+        }
+    }
 }
 
 fn inherit_peoperties(specified_values: &PropertyMap, property_list: Vec<&str>) -> PropertyMap {
@@ -350,6 +364,7 @@ pub fn style_tree<'a>(
     root: &'a Node,
     stylesheet: &'a Stylesheet,
     inherited_property: &PropertyMap,
+    parent_specified_values: &PropertyMap,
     appeared_elements: &Vec<SimpleSelector>,
 ) -> StyledNode<'a> {
     let mut appeared_elements = appeared_elements.clone();
@@ -364,8 +379,17 @@ pub fn style_tree<'a>(
             });
             values
         }
-        // TODO: Fix this implementation
-        NodeType::Text(_) => inherited_property.clone(),
+        NodeType::Text(_) => {
+            // If the parent element is an inline element, inherites the properties.
+            if let Some(display) = parent_specified_values.get("display") {
+                match display[0] {
+                    Value::Keyword(ref k) if k == "inline" => parent_specified_values.clone(),
+                    _ => inherited_property.clone(),
+                }
+            } else {
+                inherited_property.clone()
+            }
+        }
     };
 
     let inherited_property = inherit_peoperties(
@@ -384,7 +408,15 @@ pub fn style_tree<'a>(
         node: root,
         children: root.children
             .iter()
-            .map(|child| style_tree(child, stylesheet, &inherited_property, &appeared_elements))
+            .map(|child| {
+                style_tree(
+                    child,
+                    stylesheet,
+                    &inherited_property,
+                    &specified_values,
+                    &appeared_elements,
+                )
+            })
             .collect(),
         specified_values: specified_values,
     }

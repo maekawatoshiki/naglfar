@@ -19,7 +19,7 @@ use std::{cell::RefCell, cmp::{max, min}, collections::HashMap};
 use layout::Rect;
 use painter::{DisplayCommand, DisplayList};
 use font::FONT_DESC;
-use css::px2pt;
+use css::{TextDecoration, px2pt};
 use interface::update_html_tree_and_stylesheet;
 
 thread_local!(static ANKERS: RefCell<HashMap<Rect, String>> = { RefCell::new(HashMap::new()) });
@@ -141,7 +141,7 @@ impl RenderingWindow {
                     if match &item.command {
                         &DisplayCommand::SolidColor(_, rect)
                         | &DisplayCommand::Image(_, rect)
-                        | &DisplayCommand::Text(_, rect, _, _)
+                        | &DisplayCommand::Text(_, rect, _, _, _)
                         | &DisplayCommand::Anker(_, rect) => {
                             let rect_y = rect.y.to_px();
                             let rect_height = rect.height.to_px();
@@ -200,13 +200,31 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
             );
             ctx.paint();
         }
-        &DisplayCommand::Text(ref text, rect, ref color, ref font) => {
+        &DisplayCommand::Text(ref text, rect, ref color, ref decorations, ref font) => {
             FONT_DESC.with(|font_desc| {
                 let mut font_desc = font_desc.borrow_mut();
                 font_desc.set_size(pango::units_from_double(px2pt(font.size.to_f64_px())));
                 font_desc.set_style(font.slant.to_pango_font_slant());
                 font_desc.set_weight(font.weight.to_pango_font_weight());
+
+                let attr_list = pango::AttrList::new();
+                for decoration in decorations {
+                    match decoration {
+                        &TextDecoration::Underline => {
+                            attr_list.insert(
+                                pango::Attribute::new_underline(pango::Underline::Single).unwrap(),
+                            );
+                        }
+                        &TextDecoration::Overline => unimplemented!(),
+                        &TextDecoration::LineThrough => {
+                            attr_list.insert(pango::Attribute::new_strikethrough(true).unwrap());
+                        }
+                        &TextDecoration::None => {}
+                    }
+                }
+
                 pango_layout.set_text(text.as_str());
+                pango_layout.set_attributes(Some(&attr_list));
                 pango_layout.set_font_description(Some(&*font_desc));
             });
 

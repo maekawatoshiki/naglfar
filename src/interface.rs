@@ -153,8 +153,13 @@ pub fn run_with_url(html_src: String) {
 
                 let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
                 let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
-                let style_tree =
-                    style::style_tree(&html_tree, &stylesheet, &style::PropertyMap::new(), &vec![]);
+                let style_tree = style::style_tree(
+                    &html_tree,
+                    &stylesheet,
+                    &style::PropertyMap::new(),
+                    &style::PropertyMap::new(),
+                    &vec![],
+                );
                 let layout_tree = layout::layout_tree(&style_tree, viewport);
                 print!("LAYOUT:\n{}", layout_tree);
 

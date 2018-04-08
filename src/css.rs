@@ -57,6 +57,15 @@ pub struct Color {
     pub a: u8,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TextDecoration {
+    None,
+    Underline,
+    Overline,
+    LineThrough,
+    // Blink,
+}
+
 pub const BLACK: Color = Color {
     r: 0,
     g: 0,
@@ -102,6 +111,7 @@ impl Value {
             _ => None,
         }
     }
+
     pub fn maybe_percent_to_px(&self, len: f64) -> Option<f64> {
         match *self {
             Value::Length(f, Unit::Px) | Value::Num(f) => Some(f),
@@ -110,6 +120,7 @@ impl Value {
             _ => None,
         }
     }
+
     pub fn to_pt(&self) -> Option<f64> {
         match *self {
             Value::Length(f, Unit::Pt) | Value::Num(f) => Some(f),
@@ -117,12 +128,14 @@ impl Value {
             _ => None,
         }
     }
+
     pub fn to_num(&self) -> f64 {
         match *self {
             Value::Num(f) => f,
             _ => 0.0,
         }
     }
+
     pub fn to_color(&self) -> Option<Color> {
         match *self {
             Value::Color(color) => Some(color),
@@ -132,6 +145,19 @@ impl Value {
                 "RED" => Some(RED),
                 "GREEN" => Some(GREEN),
                 "BLUE" => Some(BLUE),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn to_text_decoration(&self) -> Option<TextDecoration> {
+        match *self {
+            Value::Keyword(ref name) => match name.to_lowercase().as_str() {
+                "none" => Some(TextDecoration::None),
+                "underline" => Some(TextDecoration::Underline),
+                "overline" => Some(TextDecoration::Overline),
+                "line-through" => Some(TextDecoration::LineThrough),
                 _ => None,
             },
             _ => None,

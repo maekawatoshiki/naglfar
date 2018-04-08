@@ -1,7 +1,7 @@
 use layout::{BoxType, LayoutBox, LayoutInfo, Rect};
 use font::Font;
 use dom::{ElementData, LayoutType, NodeType};
-use css::{Color, BLACK};
+use css::{Color, TextDecoration, BLACK};
 use app_units::Au;
 
 use gdk_pixbuf;
@@ -10,7 +10,7 @@ use gdk_pixbuf;
 pub enum DisplayCommand {
     SolidColor(Color, Rect),
     Image(gdk_pixbuf::Pixbuf, Rect),
-    Text(String, Rect, Color, Font),
+    Text(String, Rect, Color, Vec<TextDecoration>, Font),
     Anker(String, Rect),
 }
 
@@ -84,6 +84,10 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
             text.to_string(),
             layout_box.dimensions.content.add_parent_coordinate(x, y),
             get_color(layout_box, "color").unwrap_or(BLACK),
+            match layout_box.style {
+                Some(style) => style.text_decoration(),
+                None => vec![],
+            },
             text_info.font,
         )));
     }
@@ -122,24 +126,7 @@ fn render_anker(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
                 )))
             }
         }
-        _ => {} // BoxType::InlineNode | BoxType::Float => {
-                //     if let NodeType::Element(ElementData {
-                //         ref layout_type, ..
-                //     }) = layout_box.style.unwrap().node.data
-                //     {
-                //         if layout_type == &LayoutType::Image {
-                //             list.push(DisplayCommandInfo::new(DisplayCommand::Image(
-                //                 if let &LayoutInfo::Image(ref pixbuf) = &layout_box.info {
-                //                     pixbuf.clone().unwrap()
-                //                 } else {
-                //                     panic!()
-                //                 },
-                //                 layout_box.dimensions.content.add_parent_coordinate(x, y),
-                //             )))
-                //         }
-                //     }
-                // }
-                // _ => {}
+        _ => {}
     }
 }
 
