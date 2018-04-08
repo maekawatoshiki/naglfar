@@ -576,5 +576,11 @@ fn test1() {
     let stylesheet = css::parse(src.to_string());
 
     // TODO
-    style_tree(&dom_node, &stylesheet, &PropertyMap::new(), &vec![]);
+    style_tree(
+        &dom_node,
+        &stylesheet,
+        &PropertyMap::new(),
+        &PropertyMap::new(),
+        &vec![],
+    );
 }
