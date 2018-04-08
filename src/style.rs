@@ -317,14 +317,15 @@ impl<'a> StyledNode<'a> {
                 0 | _ => unreachable!(),
             }
         } else if let Some(border_info) = self.value("border") {
-            let mut border_color = None;
-            for border in border_info {
-                if let Some(color) = border.to_color() {
-                    border_color = Some(color);
-                    break;
+            if let Some(border_color) = || {
+                for border in border_info {
+                    let color = border.to_color();
+                    if color.is_some() {
+                        return color;
+                    }
                 }
-            }
-            if let Some(border_color) = border_color {
+                None
+            } {
                 border_top.get_or_insert_with(|| border_color.clone());
                 border_right.get_or_insert_with(|| border_color.clone());
                 border_bottom.get_or_insert_with(|| border_color.clone());
