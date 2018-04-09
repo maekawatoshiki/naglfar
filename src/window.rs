@@ -22,7 +22,7 @@ use font::FONT_DESC;
 use css::{TextDecoration, px2pt};
 use interface::update_html_tree_and_stylesheet;
 
-thread_local!(static ANKERS: RefCell<HashMap<Rect, String>> = { RefCell::new(HashMap::new()) });
+thread_local!(static ANKERS: RefCell<HashMap<Rect, String>> = { RefCell::new(HashMap::with_capacity(8)) });
 
 struct RenderingWindow {
     window: gtk::Window,

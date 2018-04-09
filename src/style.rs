@@ -382,14 +382,14 @@ pub fn style_tree<'a>(
             values
         }
         NodeType::Text(_) => {
-            // If the parent element is an inline element, inherites the properties.
             if let Some(display) = parent_specified_values.get("display") {
                 match display[0] {
+                    // If the parent element is an inline element, inherites the parent's properties.
                     Value::Keyword(ref k) if k == "inline" => parent_specified_values.clone(),
                     _ => inherited_property.clone(),
                 }
             } else {
-                inherited_property.clone()
+                unreachable!()
             }
         }
     };
@@ -430,7 +430,7 @@ fn specified_values(
     inherited_property: &PropertyMap,
     appeared_elements: &Vec<SimpleSelector>,
 ) -> PropertyMap {
-    let mut values = HashMap::new();
+    let mut values = HashMap::with_capacity(16);
     let mut rules = matching_rules(elem, stylesheet, appeared_elements);
 
     // Insert inherited properties

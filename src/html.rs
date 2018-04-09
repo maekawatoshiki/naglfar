@@ -139,7 +139,7 @@ impl Parser {
     }
 
     fn parse_attributes(&mut self) -> dom::AttrMap {
-        let mut attributes = HashMap::new();
+        let mut attributes = HashMap::with_capacity(16);
         loop {
             self.consume_whitespace();
             if self.next_char() == '>' {
