@@ -569,12 +569,15 @@ fn test1() {
                    <div id=\"x\">test</div>
                    <p>paragrapgh</p>
                    <span style='color:red;'>aa</span>
+                   <a>link</a>
                    space
                  </body>
                </html>";
     let dom_node = html::parse(src.to_string(), Path::new("a.html").to_path_buf());
 
-    let src = "div, div > p, div span { width: 100px; height: 50px; color: #ffffff; background-color: #003300; }";
+    let src = "* { display: block; }
+               div, body > div, body span { width: 100px; height: 50px; color: #ffffff; background-color: #003300; } 
+               a { display: inline; text-decoration: underline; }";
     let stylesheet = css::parse(src.to_string());
 
     // TODO
