@@ -66,40 +66,26 @@ pub enum TextDecoration {
     // Blink,
 }
 
-pub const BLACK: Color = Color {
-    r: 0,
-    g: 0,
-    b: 0,
-    a: 255,
-};
+macro_rules! color { ($name:ident, $r:expr, $g:expr, $b:expr) => {
+    pub const $name: Color = Color { r: $r, g: $g, b: $b, a: 0xff };
+}}
 
-pub const WHITE: Color = Color {
-    r: 255,
-    g: 255,
-    b: 255,
-    a: 255,
-};
-
-pub const RED: Color = Color {
-    r: 255,
-    g: 0,
-    b: 0,
-    a: 255,
-};
-
-pub const GREEN: Color = Color {
-    r: 0,
-    g: 128,
-    b: 0,
-    a: 255,
-};
-
-pub const BLUE: Color = Color {
-    r: 0,
-    g: 0,
-    b: 255,
-    a: 255,
-};
+color!(BLACK, 0x00, 0x00, 0x00);
+color!(SILVER, 0xc0, 0xc0, 0xc0);
+color!(GRAY, 0x80, 0x80, 0x80);
+color!(WHITE, 0xff, 0xff, 0xff);
+color!(RED, 0xff, 0x00, 0x00);
+color!(MAROON, 0x80, 0x00, 0x00);
+color!(PURPLE, 0x80, 0x00, 0x80);
+color!(FUCHSIA, 0xff, 0x00, 0xff);
+color!(GREEN, 0x00, 0x80, 0x00);
+color!(LIME, 0x00, 0xff, 0x00);
+color!(OLIVE, 0x80, 0x80, 0x00);
+color!(YELLOW, 0xff, 0xff, 0x00);
+color!(NAVY, 0x00, 0x00, 0x80);
+color!(BLUE, 0x00, 0x00, 0xff);
+color!(TEAL, 0x00, 0x80, 0x80);
+color!(AQUA, 0x00, 0xff, 0xff);
 
 impl Copy for Color {}
 
@@ -139,12 +125,23 @@ impl Value {
     pub fn to_color(&self) -> Option<Color> {
         match *self {
             Value::Color(color) => Some(color),
-            Value::Keyword(ref color_name) => match color_name.to_uppercase().as_str() {
-                "BLACK" => Some(BLACK),
-                "WHITE" => Some(WHITE),
-                "RED" => Some(RED),
-                "GREEN" => Some(GREEN),
-                "BLUE" => Some(BLUE),
+            Value::Keyword(ref color_name) => match color_name.as_str() {
+                "black" => Some(BLACK),
+                "silver" => Some(SILVER),
+                "gray" => Some(GRAY),
+                "white" => Some(WHITE),
+                "red" => Some(RED),
+                "maroon" => Some(MAROON),
+                "purple" => Some(PURPLE),
+                "fuchsia" => Some(FUCHSIA),
+                "green" => Some(GREEN),
+                "lime" => Some(LIME),
+                "olive" => Some(OLIVE),
+                "yellow" => Some(YELLOW),
+                "navy" => Some(NAVY),
+                "blue" => Some(BLUE),
+                "teal" => Some(TEAL),
+                "aqua" => Some(AQUA),
                 _ => None,
             },
             _ => None,
@@ -510,7 +507,7 @@ impl Parser {
     // }
 
     fn parse_identifier(&mut self) -> String {
-        self.consume_while(valid_ident_char)
+        self.consume_while(valid_ident_char).to_lowercase()
     }
 
     fn parse_identifier_percent(&mut self) -> String {
