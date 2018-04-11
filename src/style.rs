@@ -1,6 +1,6 @@
 use dom::{ElementData, Node, NodeType};
 use css::{parse_attr_style, Color, Declaration, Rule, Selector, SimpleSelector, Specificity,
-          Stylesheet, TextDecoration, Unit, Value};
+          Stylesheet, TextDecoration, Unit, Value, pt2px};
 use font::{FontSlant, FontWeight};
 
 use std::collections::HashMap;
@@ -371,15 +371,17 @@ impl<'a> StyledNode<'a> {
     }
 
     pub fn line_height(&self) -> Au {
-        let default_line_height = Value::Length(
-            self.font_size().to_f64_px() * DEFAULT_LINE_HEIGHT_SCALE,
-            Unit::Px,
-        );
-        Au::from_f64_px(
-            self.value_with_default("line-height", &vec![default_line_height])[0]
-                .to_px()
-                .unwrap(),
-        )
+        let font_size = self.font_size().to_f64_px();
+        let default_line_height = Value::Length(font_size * DEFAULT_LINE_HEIGHT_SCALE, Unit::Px);
+        let line_height = &self.value_with_default("line-height", &vec![default_line_height])[0];
+        Au::from_f64_px(match line_height {
+            &Value::Keyword(ref k) if k == "normal" => font_size * DEFAULT_LINE_HEIGHT_SCALE,
+            &Value::Length(f, Unit::Px) => f,
+            &Value::Length(f, Unit::Pt) => pt2px(f),
+            &Value::Length(_, _) => unimplemented!(),
+            &Value::Num(f) => font_size * f,
+            _ => panic!(),
+        })
     }
 
     pub fn text_align(&self) -> Value {

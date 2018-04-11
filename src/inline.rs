@@ -403,10 +403,9 @@ impl<'a> LayoutBox<'a> {
     /// Calculate the width of a inline-level replaced(<img>) element in normal flow.
     pub fn calculate_replaced_inline_width_height(&mut self, containing_block: Dimensions) {
         // Replaced Inline Element (<img>)
+        let style = self.get_style_node();
         let (width, height) = match &mut self.info {
-            &mut LayoutInfo::Image(ref mut pixbuf) => {
-                get_image(self.get_style_node(), pixbuf, containing_block)
-            }
+            &mut LayoutInfo::Image(ref mut pixbuf) => get_image(style, pixbuf, containing_block),
             _ => unimplemented!(),
         };
 
