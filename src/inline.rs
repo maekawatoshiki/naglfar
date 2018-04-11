@@ -405,7 +405,7 @@ impl<'a> LayoutBox<'a> {
         // Replaced Inline Element (<img>)
         let (width, height) = match &mut self.info {
             &mut LayoutInfo::Image(ref mut pixbuf) => {
-                get_image(self.style.unwrap(), pixbuf, containing_block)
+                get_image(self.get_style_node(), pixbuf, containing_block)
             }
             _ => unimplemented!(),
         };
