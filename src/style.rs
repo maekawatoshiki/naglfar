@@ -1,7 +1,11 @@
 use dom::{ElementData, Node, NodeType};
 use css::{parse_attr_style, Color, Declaration, Rule, Selector, SimpleSelector, Specificity,
           Stylesheet, TextDecoration, Unit, Value};
+use font::{FontSlant, FontWeight};
+
 use std::collections::HashMap;
+
+use app_units::Au;
 
 pub type PropertyMap = HashMap<String, Vec<Value>>;
 
@@ -33,6 +37,9 @@ pub enum ClearType {
     Right,
     Both,
 }
+
+pub const DEFAULT_FONT_SIZE: f64 = 16.0f64;
+pub const DEFAULT_LINE_HEIGHT_SCALE: f64 = 1.2f64;
 
 impl<'a> StyledNode<'a> {
     pub fn value(&self, name: &str) -> Option<Vec<Value>> {
@@ -94,13 +101,6 @@ impl<'a> StyledNode<'a> {
                 _ => None,
             },
             _ => None,
-        }
-    }
-
-    pub fn has_text_node(&self) -> bool {
-        match self.node.data {
-            NodeType::Text(_) => true,
-            _ => false,
         }
     }
 
@@ -348,6 +348,58 @@ impl<'a> StyledNode<'a> {
             decorations
         } else {
             vec![]
+        }
+    }
+
+    pub fn font_size(&self) -> Au {
+        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
+        Au::from_f64_px(
+            self.value_with_default("font-size", &vec![default_font_size])[0]
+                .to_px()
+                .unwrap(),
+        )
+    }
+
+    pub fn font_weight(&self) -> FontWeight {
+        let default_font_weight = Value::Keyword("normal".to_string());
+        self.value_with_default("font-weight", &vec![default_font_weight])[0].to_font_weight()
+    }
+
+    pub fn font_style(&self) -> FontSlant {
+        let default_font_slant = Value::Keyword("normal".to_string());
+        self.lookup("font-style", "font-style", &vec![default_font_slant])[0].to_font_slant()
+    }
+
+    pub fn line_height(&self) -> Au {
+        let default_line_height = Value::Length(
+            self.font_size().to_f64_px() * DEFAULT_LINE_HEIGHT_SCALE,
+            Unit::Px,
+        );
+        Au::from_f64_px(
+            self.value_with_default("line-height", &vec![default_line_height])[0]
+                .to_px()
+                .unwrap(),
+        )
+    }
+
+    pub fn text_align(&self) -> Value {
+        self.value_with_default("text-align", &vec![Value::Keyword("left".to_string())])[0].clone()
+    }
+}
+
+impl Value {
+    pub fn to_font_weight(&self) -> FontWeight {
+        match self {
+            &Value::Keyword(ref k) if k.as_str() == "normal" => FontWeight::Normal,
+            &Value::Keyword(ref k) if k.as_str() == "bold" => FontWeight::Bold,
+            _ => FontWeight::Normal,
+        }
+    }
+    pub fn to_font_slant(&self) -> FontSlant {
+        match self {
+            &Value::Keyword(ref k) if k.as_str() == "normal" => FontSlant::Normal,
+            &Value::Keyword(ref k) if k.as_str() == "italic" => FontSlant::Italic,
+            _ => FontSlant::Normal,
         }
     }
 }

@@ -1,5 +1,4 @@
 use style::{Display, StyledNode};
-use css::Value;
 use dom::{LayoutType, NodeType};
 use float::Floats;
 use font::{Font, FontSlant, FontWeight};
@@ -17,7 +16,6 @@ use gdk_pixbuf;
 use app_units::Au;
 
 // CSS box model. All sizes are in px.
-// TODO: Support units other than px
 
 #[derive(Clone, Copy, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Rect {
@@ -114,9 +112,6 @@ impl<'a> LayoutBox<'a> {
         }
     }
 }
-
-pub const DEFAULT_FONT_SIZE: f64 = 16.0f64;
-pub const DEFAULT_LINE_HEIGHT: f64 = DEFAULT_FONT_SIZE * 1.2f64;
 
 /// Transform a style tree into a layout tree.
 pub fn layout_tree<'a>(
@@ -337,23 +332,6 @@ impl FontSlant {
         match self {
             &FontSlant::Normal => pango::Style::Normal,
             &FontSlant::Italic => pango::Style::Italic,
-        }
-    }
-}
-
-impl Value {
-    pub fn to_font_weight(&self) -> FontWeight {
-        match self {
-            &Value::Keyword(ref k) if k.as_str() == "normal" => FontWeight::Normal,
-            &Value::Keyword(ref k) if k.as_str() == "bold" => FontWeight::Bold,
-            _ => FontWeight::Normal,
-        }
-    }
-    pub fn to_font_slant(&self) -> FontSlant {
-        match self {
-            &Value::Keyword(ref k) if k.as_str() == "normal" => FontSlant::Normal,
-            &Value::Keyword(ref k) if k.as_str() == "italic" => FontSlant::Italic,
-            _ => FontSlant::Normal,
         }
     }
 }

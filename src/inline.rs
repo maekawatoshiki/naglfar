@@ -1,8 +1,8 @@
-use css::{Unit, Value};
+use css::Value;
 use style::StyledNode;
 use dom::NodeType;
 use font::Font;
-use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, Text, DEFAULT_FONT_SIZE};
+use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, Text};
 use float::Floats;
 
 use std::ops::Range;
@@ -144,11 +144,10 @@ impl<'a> LineMaker<'a> {
                     (available_area.x, available_area.width)
                 };
                 // TODO: Refine
-                let text_align = new_box
-                    .get_style_node()
-                    .value_with_default("text-align", &vec![Value::Keyword("left".to_string())]);
-                let init_width = match text_align[0] {
-                    Value::Keyword(ref k) => match k.to_lowercase().as_str() {
+                let style = new_box.get_style_node();
+                let text_align = style.text_align();
+                let init_width = match text_align {
+                    Value::Keyword(ref k) => match k.as_str() {
                         "center" => (max_width_considered_float - line.width) / 2,
                         "right" => max_width_considered_float - line.width,
                         "left" | _ => Au(0),
@@ -319,27 +318,10 @@ impl<'a> LineMaker<'a> {
             return;
         };
 
-        let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-        let font_size = Au::from_f64_px(
-            style.lookup("font-size", "font-size", &vec![default_font_size])[0]
-                .to_px()
-                .unwrap(),
-        );
-
-        let default_line_height = Value::Length(font_size.to_f64_px() * 1.2, Unit::Px); // TODO: magic number '1.2'
-        let line_height = Au::from_f64_px(
-            style.value_with_default("line-height", &vec![default_line_height])[0]
-                .to_px()
-                .unwrap(),
-        );
-
-        let default_font_weight = Value::Keyword("normal".to_string());
-        let font_weight = style.lookup("font-weight", "font-weight", &vec![default_font_weight])[0]
-            .to_font_weight();
-
-        let default_font_slant = Value::Keyword("normal".to_string());
-        let font_slant =
-            style.lookup("font-style", "font-style", &vec![default_font_slant])[0].to_font_slant();
+        let font_size = style.font_size();
+        let line_height = style.line_height();
+        let font_weight = style.font_weight();
+        let font_slant = style.font_style();
 
         let my_font = Font::new(font_size, font_weight, font_slant);
         let text_width = Au::from_f64_px(my_font.text_width(text));

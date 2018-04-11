@@ -46,7 +46,7 @@ pub enum Unit {
     Px,
     Pt,
     Percent,
-    // Em,
+    Em,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -429,10 +429,11 @@ impl Parser {
     }
 
     fn parse_unit(&mut self) -> Unit {
-        match &*self.parse_identifier_percent().to_ascii_lowercase() {
+        match &*self.parse_identifier_percent() {
             "px" => Unit::Px,
             "pt" => Unit::Pt,
             "%" => Unit::Percent,
+            "em" => Unit::Em,
             _ => panic!("unrecognized unit"),
         }
     }
@@ -511,7 +512,7 @@ impl Parser {
     }
 
     fn parse_identifier_percent(&mut self) -> String {
-        self.consume_while(valid_ident_percent_char)
+        self.consume_while(valid_ident_percent_char).to_lowercase()
     }
 
     fn consume_char_ignore_whitescape(&mut self) -> char {
@@ -612,6 +613,7 @@ impl fmt::Display for Stylesheet {
                             &Value::Length(ref f, Unit::Px) => format!("{}px", f),
                             &Value::Length(ref f, Unit::Pt) => format!("{}pt", f),
                             &Value::Length(ref f, Unit::Percent) => format!("{}%", f),
+                            &Value::Length(ref f, Unit::Em) => format!("{}em", f),
                             &Value::Num(ref f) => format!("{}", f),
                             &Value::Color(ref color) => {
                                 format!("rgba({}, {}, {}, {})", color.r, color.g, color.b, color.a)
