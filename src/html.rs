@@ -14,7 +14,10 @@ thread_local!(
 
 pub fn parse(source: String, file_path: PathBuf) -> dom::Node {
     CUR_DIR.with(|cur_dir| *cur_dir.borrow_mut() = file_path.parent().unwrap().to_path_buf());
-    let mut nodes = Parser::new(source).parse_nodes();
+    let mut nodes = match Parser::new(source).parse_nodes() {
+        Ok(nodes) => nodes,
+        Err(_) => panic!("unknown error"),
+    };
 
     // If the document contains a root element, just return it. Otherwise, create one.
     if nodes.len() == 1 {
@@ -88,119 +91,126 @@ impl Parser {
         }
     }
 
-    fn parse_nodes(&mut self) -> Vec<dom::Node> {
+    fn parse_nodes(&mut self) -> Result<Vec<dom::Node>, ()> {
         let mut nodes: Vec<dom::Node> = vec![];
         loop {
             // TODO: Is this correct?
             match nodes.last() {
                 Some(last) if last.is_inline() && last.contains_text() => {}
-                _ => self.consume_whitespace(),
+                _ => self.consume_whitespace()?,
             };
             if self.eof() || self.starts_with("</") {
                 break;
             }
-            nodes.push(self.parse_node());
+
+            if let Ok(node) = self.parse_node() {
+                nodes.push(node);
+            }
         }
-        nodes
+        Ok(nodes)
     }
 
-    fn parse_node(&mut self) -> dom::Node {
+    fn parse_node(&mut self) -> Result<dom::Node, ()> {
         match self.next_char() {
             '<' => self.parse_element(),
             _ => self.parse_text(),
         }
     }
 
-    fn parse_element(&mut self) -> dom::Node {
+    fn parse_element(&mut self) -> Result<dom::Node, ()> {
         // Opening tag.
-        assert_eq!(self.consume_char(), '<');
-        let tag_name = self.parse_tag_name();
-        let attrs = self.parse_attributes();
-        assert_eq!(self.consume_char(), '>');
+        assert_eq!(self.consume_char()?, '<');
+        let tag_name = self.parse_tag_name()?;
+        let attrs = self.parse_attributes()?;
+        assert_eq!(self.consume_char()?, '>');
 
         if is_not_to_close_tag(tag_name.as_str()) {
-            return dom::Node::elem(tag_name, attrs, vec![]);
+            return Ok(dom::Node::elem(tag_name, attrs, vec![]));
         }
 
         // Contents.
-        let children = self.parse_nodes();
+        let children = self.parse_nodes()?;
 
         // Closing tag.
-        assert_eq!(self.consume_char(), '<');
-        assert_eq!(self.consume_char(), '/');
-        assert_eq!(self.parse_tag_name(), tag_name);
-        assert_eq!(self.consume_char(), '>');
+        if !self.eof() {
+            assert_eq!(self.consume_char()?, '<');
+            assert_eq!(self.consume_char()?, '/');
+            // assert_eq!(, tag_name);
+            self.parse_tag_name()?;
+            assert_eq!(self.consume_char()?, '>');
+        }
 
-        dom::Node::elem(tag_name, attrs, children)
+        Ok(dom::Node::elem(tag_name, attrs, children))
     }
 
-    fn parse_tag_name(&mut self) -> String {
+    fn parse_tag_name(&mut self) -> Result<String, ()> {
         self.consume_while(|c| c.is_alphanumeric())
     }
 
-    fn parse_attributes(&mut self) -> dom::AttrMap {
+    fn parse_attributes(&mut self) -> Result<dom::AttrMap, ()> {
         let mut attributes = HashMap::with_capacity(16);
         loop {
-            self.consume_whitespace();
+            self.consume_whitespace()?;
             if self.next_char() == '>' {
                 break;
             }
-            let (name, value) = url_conv(self.parse_attr());
+            let (name, value) = url_conv(self.parse_attr()?);
             attributes.insert(name, value);
         }
-        attributes
+        Ok(attributes)
     }
 
-    fn parse_attr(&mut self) -> (String, String) {
-        let name = self.parse_tag_name();
-        assert_eq!(self.consume_char(), '=');
-        let value = self.parse_attr_value();
-        (name, value)
+    fn parse_attr(&mut self) -> Result<(String, String), ()> {
+        let name = self.parse_tag_name()?;
+        assert_eq!(self.consume_char()?, '=');
+        let value = self.parse_attr_value()?;
+        Ok((name, value))
     }
 
-    fn parse_attr_value(&mut self) -> String {
-        let open_quote = self.consume_char();
+    fn parse_attr_value(&mut self) -> Result<String, ()> {
+        let open_quote = self.consume_char()?;
         assert!(open_quote == '"' || open_quote == '\'');
-        let value = self.consume_while(|c| c != open_quote);
-        assert_eq!(self.consume_char(), open_quote);
-        value
+        let value = self.consume_while(|c| c != open_quote)?;
+        assert_eq!(self.consume_char()?, open_quote);
+        Ok(value)
     }
 
-    fn parse_text(&mut self) -> dom::Node {
+    fn parse_text(&mut self) -> Result<dom::Node, ()> {
         let mut last = '*'; // any char except space
-        dom::Node::text(self.consume_while(|c| c != '<').chars().fold(
-            "".to_string(),
-            |mut s, c| {
-                if !(last.is_whitespace() && c.is_whitespace()) {
-                    s.push(if c.is_whitespace() { ' ' } else { c });
-                }
-                last = c;
-                s
-            },
+        Ok(dom::Node::text(
+            self.consume_while(|c| c != '<')?
+                .chars()
+                .fold("".to_string(), |mut s, c| {
+                    if !(last.is_whitespace() && c.is_whitespace()) {
+                        s.push(if c.is_whitespace() { ' ' } else { c });
+                    }
+                    last = c;
+                    s
+                }),
         ))
     }
 
-    fn consume_whitespace(&mut self) {
-        self.consume_while(char::is_whitespace);
+    fn consume_whitespace(&mut self) -> Result<(), ()> {
+        self.consume_while(char::is_whitespace).and(Ok(()))
     }
 
-    fn consume_while<F>(&mut self, f: F) -> String
+    fn consume_while<F>(&mut self, f: F) -> Result<String, ()>
     where
         F: Fn(char) -> bool,
     {
         let mut v = vec![];
         while !self.eof() && f(self.next_char()) {
-            v.push(self.consume_char() as u8);
+            v.push(self.consume_char()? as u8);
         }
-        String::from_utf8_lossy(v.as_slice()).to_owned().to_string()
+        Ok(String::from_utf8_lossy(v.as_slice()).to_owned().to_string())
     }
 
-    fn consume_char(&mut self) -> char {
+    fn consume_char(&mut self) -> Result<char, ()> {
         let mut iter = self.input[self.pos..].char_indices();
-        let (_, cur_char) = iter.next().unwrap();
+        let (_, cur_char) = iter.next().ok_or(())?;
         let (next_pos, _) = iter.next().unwrap_or((1, ' '));
         self.pos += next_pos;
-        cur_char
+        Ok(cur_char)
     }
 
     fn next_char(&self) -> char {
