@@ -22,7 +22,7 @@ use font::FONT_DESC;
 use css::{TextDecoration, px2pt};
 use interface::update_html_tree_and_stylesheet;
 
-thread_local!(static ANKERS: RefCell<HashMap<Rect, String>> = { RefCell::new(HashMap::with_capacity(8)) });
+thread_local!(pub static ANKERS: RefCell<HashMap<Rect, String>> = { RefCell::new(HashMap::with_capacity(8)) });
 
 struct RenderingWindow {
     window: gtk::Window,
@@ -95,22 +95,27 @@ impl RenderingWindow {
                     .unwrap()
                     .get_position();
                 ANKERS.with(|ankers| {
-                    for (rect, url) in &*ankers.borrow() {
-                        if rect.x.to_f64_px() <= clicked_x
+                    // TODO: Makes no sense.
+                    let mut ankers = ankers.borrow_mut();
+                    let mut anker_clicked = false;
+                    if let Some((_, url)) = ankers.iter().find(|&(rect, _)| {
+                        rect.x.to_f64_px() <= clicked_x
                             && clicked_x <= rect.x.to_f64_px() + rect.width.to_f64_px()
                             && rect.y.to_f64_px() <= clicked_y
                             && clicked_y <= rect.y.to_f64_px() + rect.height.to_f64_px()
-                        {
-                            update_html_tree_and_stylesheet(url.to_string());
-                            args[0]
-                                .clone()
-                                .downcast::<gtk::DrawingArea>()
-                                .unwrap()
-                                .get()
-                                .unwrap()
-                                .queue_draw();
-                            break;
-                        }
+                    }) {
+                        anker_clicked = true;
+                        update_html_tree_and_stylesheet(url.to_string());
+                        args[0]
+                            .clone()
+                            .downcast::<gtk::DrawingArea>()
+                            .unwrap()
+                            .get()
+                            .unwrap()
+                            .queue_draw();
+                    }
+                    if anker_clicked {
+                        ankers.clear()
                     }
                 });
                 Some(true.to_value())
@@ -141,8 +146,7 @@ impl RenderingWindow {
                     if match &item.command {
                         &DisplayCommand::SolidColor(_, rect)
                         | &DisplayCommand::Image(_, rect)
-                        | &DisplayCommand::Text(_, rect, _, _, _)
-                        | &DisplayCommand::Anker(_, rect) => {
+                        | &DisplayCommand::Text(_, rect, _, _, _) => {
                             let rect_y = rect.y.to_px();
                             let rect_height = rect.height.to_px();
                             let sy = max(rect_y, redraw_start_y as i32);
@@ -237,16 +241,6 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
             ctx.move_to(rect.x.to_f64_px(), rect.y.to_f64_px());
 
             pangocairo::functions::show_layout(ctx, &pango_layout);
-        }
-        &DisplayCommand::Anker(ref url, rect) => {
-            // TODO: This is called many times and it's inefficient.
-            ANKERS.with(|ankers| {
-                ankers
-                    .borrow_mut()
-                    .entry(rect)
-                    .or_insert_with(|| url.to_string())
-                    .clone()
-            });
         }
     }
 }

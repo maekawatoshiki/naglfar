@@ -11,7 +11,6 @@ pub enum DisplayCommand {
     SolidColor(Color, Rect),
     Image(gdk_pixbuf::Pixbuf, Rect),
     Text(String, Rect, Color, Vec<TextDecoration>, Font),
-    Anker(String, Rect),
 }
 
 #[derive(Debug, Clone)]
@@ -70,7 +69,7 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
 
     render_text(list, x, y, layout_box);
     render_image(list, x, y, layout_box);
-    render_anker(list, x, y, layout_box);
+    register_anker(x, y, layout_box);
 }
 
 fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
@@ -116,14 +115,20 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     }
 }
 
-fn render_anker(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+use window::ANKERS;
+
+fn register_anker(x: Au, y: Au, layout_box: &LayoutBox) {
     match layout_box.info {
         LayoutInfo::Anker => {
             if let Some(url) = layout_box.style.unwrap().node.anker_url() {
-                list.push(DisplayCommandInfo::new(DisplayCommand::Anker(
-                    url.to_string(),
-                    layout_box.dimensions.content.add_parent_coordinate(x, y),
-                )))
+                let rect = layout_box.dimensions.content.add_parent_coordinate(x, y);
+                ANKERS.with(|ankers| {
+                    ankers
+                        .borrow_mut()
+                        .entry(rect)
+                        .or_insert_with(|| url.to_string())
+                        .clone()
+                });
             }
         }
         _ => {}
