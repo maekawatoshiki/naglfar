@@ -111,7 +111,7 @@ impl Parser {
     }
 
     fn parse_node(&mut self) -> Result<dom::Node, ()> {
-        match self.next_char() {
+        match self.next_char()? {
             '<' => self.parse_element(),
             _ => self.parse_text(),
         }
@@ -151,7 +151,7 @@ impl Parser {
         let mut attributes = HashMap::with_capacity(16);
         loop {
             self.consume_whitespace()?;
-            if self.next_char() == '>' {
+            if self.next_char()? == '>' {
                 break;
             }
             let (name, value) = url_conv(self.parse_attr()?);
@@ -199,7 +199,7 @@ impl Parser {
         F: Fn(char) -> bool,
     {
         let mut v = vec![];
-        while !self.eof() && f(self.next_char()) {
+        while !self.eof() && f(self.next_char()?) {
             v.push(self.consume_char()? as u8);
         }
         Ok(String::from_utf8_lossy(v.as_slice()).to_owned().to_string())
@@ -213,8 +213,8 @@ impl Parser {
         Ok(cur_char)
     }
 
-    fn next_char(&self) -> char {
-        self.input[self.pos..].chars().next().unwrap()
+    fn next_char(&self) -> Result<char, ()> {
+        self.input[self.pos..].chars().next().ok_or(())
     }
 
     fn starts_with(&self, s: &str) -> bool {
