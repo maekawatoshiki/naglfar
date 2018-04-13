@@ -125,17 +125,13 @@ fn register_anker(x: Au, y: Au, layout_box: &LayoutBox) {
             if let Some(url) = layout_box.style.unwrap().node.anker_url() {
                 let rect = layout_box.dimensions.content.add_parent_coordinate(x, y);
                 ANKERS.with(|ankers| {
-                    ankers
-                        .borrow_mut()
-                        .entry(rect)
-                        .or_insert_with(|| {
-                            if url.chars().next().unwrap() == '#' {
-                                AnkerKind::URLFragment(url[1..].to_string())
-                            } else {
-                                AnkerKind::URL(url.to_string())
-                            }
-                        })
-                        .clone()
+                    ankers.borrow_mut().entry(rect).or_insert_with(|| {
+                        if url.chars().next().unwrap() == '#' {
+                            AnkerKind::URLFragment(url[1..].to_string())
+                        } else {
+                            AnkerKind::URL(url.to_string())
+                        }
+                    });
                 });
             }
         }
@@ -148,18 +144,15 @@ fn register_url_fragment(x: Au, y: Au, layout_box: &LayoutBox) {
         if let NodeType::Element(ref e) = style.node.data {
             if let Some(id) = e.id() {
                 URL_FRAGMENTS.with(|url_fragments| {
-                    url_fragments
-                        .borrow_mut()
-                        .entry(id.to_string())
-                        .or_insert_with(|| {
-                            layout_box
-                                .dimensions
-                                .content
-                                .add_parent_coordinate(x, y)
-                                .y
-                                .to_f64_px()
-                        })
-                        .clone()
+                    url_fragments.borrow_mut().insert(
+                        id.to_string(),
+                        layout_box
+                            .dimensions
+                            .content
+                            .add_parent_coordinate(x, y)
+                            .y
+                            .to_f64_px(),
+                    )
                 });
             }
         }

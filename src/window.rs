@@ -143,16 +143,6 @@ impl RenderingWindow {
                                         let mut adjustment =
                                             scrolled_window.get_vadjustment().unwrap();
                                         adjustment.set_value(*content_y);
-                                        adjustment.value_changed();
-                                        adjustment.changed();
-                                        args[0]
-                                            .clone()
-                                            .downcast::<gtk::ScrolledWindow>()
-                                            .unwrap()
-                                            .get()
-                                            .unwrap()
-                                            // TODO: Is this usage right?
-                                            .set_vadjustment(&adjustment);
                                     }
                                 });
                             }
