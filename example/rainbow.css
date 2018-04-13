@@ -1,0 +1,25 @@
+* {
+  display: block;
+  padding: 12px;
+}
+
+html {                                                                                                                                                                                    
+  width: auto;                                                                                                                                                                            
+  padding: 0px;                                                                                                                                                                           
+  margin: 0px;                                                                                                                                                                            
+  background: white;                                                                                                                                                                      
+}  
+
+a {
+  display: inline;
+  color: #0000ee;
+  text-decoration: underline;
+}
+
+div.a { background: #ff0000; }
+div.b { background: #ffa500; }
+div.c { background: #ffff00; }
+div.d { background: #008000; }
+div.e { background: #0000ff; }
+div.f { background: #4b0082; }
+div.g { background: #800080; }
