@@ -4,7 +4,7 @@ extern crate gtk;
 extern crate pango;
 extern crate pangocairo;
 
-use gtk::{Inhibit, ObjectExt, WidgetExt, traits::*};
+use gtk::{BinExt, Inhibit, ObjectExt, WidgetExt, traits::*};
 
 use glib::prelude::*; // or `use gtk::prelude::*;`
 
@@ -46,9 +46,15 @@ impl RenderingWindow {
 
         window.add(&scrolled_window);
 
-        drawing_area.add_events(EventMask::POINTER_MOTION_MASK.bits() as i32);
-        drawing_area
+        scrolled_window.add_events(EventMask::POINTER_MOTION_MASK.bits() as i32);
+        scrolled_window
             .connect("motion-notify-event", false, |args| {
+                let scrolled_window = args[0]
+                    .clone()
+                    .downcast::<gtk::ScrolledWindow>()
+                    .unwrap()
+                    .get()
+                    .unwrap();
                 let (x, y) = args[1]
                     .clone()
                     .downcast::<Event>()
@@ -58,15 +64,10 @@ impl RenderingWindow {
                     .downcast::<EventMotion>()
                     .unwrap()
                     .get_position();
+                let y = y + scrolled_window.get_vadjustment().unwrap().get_value();
+
                 ANKERS.with(|ankers| {
-                    let window = args[0]
-                        .clone()
-                        .downcast::<gtk::DrawingArea>()
-                        .unwrap()
-                        .get()
-                        .unwrap()
-                        .get_window()
-                        .unwrap();
+                    let window = scrolled_window.get_window().unwrap();
                     if (&*ankers.borrow()).iter().any(|(rect, _)| {
                         rect.x.to_f64_px() <= x && x <= rect.x.to_f64_px() + rect.width.to_f64_px()
                             && rect.y.to_f64_px() <= y
@@ -82,9 +83,15 @@ impl RenderingWindow {
             })
             .unwrap();
 
-        drawing_area.add_events(EventMask::BUTTON_PRESS_MASK.bits() as i32);
-        drawing_area
+        scrolled_window.add_events(EventMask::BUTTON_PRESS_MASK.bits() as i32);
+        scrolled_window
             .connect("button-press-event", false, |args| {
+                let scrolled_window = args[0]
+                    .clone()
+                    .downcast::<gtk::ScrolledWindow>()
+                    .unwrap()
+                    .get()
+                    .unwrap();
                 let (clicked_x, clicked_y) = args[1]
                     .clone()
                     .downcast::<Event>()
@@ -94,6 +101,8 @@ impl RenderingWindow {
                     .downcast::<EventButton>()
                     .unwrap()
                     .get_position();
+                let clicked_y = clicked_y + scrolled_window.get_vadjustment().unwrap().get_value();
+
                 ANKERS.with(|ankers| {
                     // TODO: Makes no sense.
                     let mut ankers = ankers.borrow_mut();
@@ -108,9 +117,11 @@ impl RenderingWindow {
                         update_html_tree_and_stylesheet(url.to_string());
                         args[0]
                             .clone()
-                            .downcast::<gtk::DrawingArea>()
+                            .downcast::<gtk::ScrolledWindow>()
                             .unwrap()
                             .get()
+                            .unwrap()
+                            .get_child() // DrawingArea
                             .unwrap()
                             .queue_draw();
                     }
