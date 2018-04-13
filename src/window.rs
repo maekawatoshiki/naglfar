@@ -22,7 +22,17 @@ use font::FONT_DESC;
 use css::{TextDecoration, px2pt};
 use interface::update_html_tree_and_stylesheet;
 
-thread_local!(pub static ANKERS: RefCell<HashMap<Rect, String>> = { RefCell::new(HashMap::with_capacity(8)) });
+#[derive(Clone, Debug)]
+pub enum AnkerKind {
+    URL(String),
+    URLFragment(String),
+}
+
+thread_local!(
+    pub static ANKERS: RefCell<HashMap<Rect, AnkerKind>> = { RefCell::new(HashMap::with_capacity(8)) };
+    // HashMap<URL Fragment(id), y coordinate of the content
+    pub static URL_FRAGMENTS: RefCell<HashMap<String, f64>> = { RefCell::new(HashMap::with_capacity(8)) }
+);
 
 struct RenderingWindow {
     window: gtk::Window,
@@ -107,23 +117,46 @@ impl RenderingWindow {
                     // TODO: Makes no sense.
                     let mut ankers = ankers.borrow_mut();
                     let mut anker_clicked = false;
-                    if let Some((_, url)) = ankers.iter().find(|&(rect, _)| {
+                    if let Some((_, ankerkind)) = ankers.iter().find(|&(rect, _)| {
                         rect.x.to_f64_px() <= clicked_x
                             && clicked_x <= rect.x.to_f64_px() + rect.width.to_f64_px()
                             && rect.y.to_f64_px() <= clicked_y
                             && clicked_y <= rect.y.to_f64_px() + rect.height.to_f64_px()
                     }) {
-                        anker_clicked = true;
-                        update_html_tree_and_stylesheet(url.to_string());
-                        args[0]
-                            .clone()
-                            .downcast::<gtk::ScrolledWindow>()
-                            .unwrap()
-                            .get()
-                            .unwrap()
-                            .get_child() // DrawingArea
-                            .unwrap()
-                            .queue_draw();
+                        match ankerkind {
+                            &AnkerKind::URL(ref url) => {
+                                anker_clicked = true;
+                                update_html_tree_and_stylesheet(url.to_string());
+                                args[0]
+                                    .clone()
+                                    .downcast::<gtk::ScrolledWindow>()
+                                    .unwrap()
+                                    .get()
+                                    .unwrap()
+                                    .get_child() // DrawingArea
+                                    .unwrap()
+                                    .queue_draw();
+                            }
+                            &AnkerKind::URLFragment(ref id) => {
+                                URL_FRAGMENTS.with(|ufs| {
+                                    if let Some(content_y) = ufs.borrow().get(id) {
+                                        let mut adjustment =
+                                            scrolled_window.get_vadjustment().unwrap();
+                                        adjustment.set_value(*content_y);
+                                        adjustment.value_changed();
+                                        adjustment.changed();
+                                        args[0]
+                                            .clone()
+                                            .downcast::<gtk::ScrolledWindow>()
+                                            .unwrap()
+                                            .get()
+                                            .unwrap()
+                                            // TODO: Is this usage right?
+                                            .set_vadjustment(&adjustment);
+                                    }
+                                });
+                            }
+                        };
                     }
                     if anker_clicked {
                         ankers.clear()

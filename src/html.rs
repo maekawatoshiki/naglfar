@@ -228,10 +228,16 @@ impl Parser {
 
 fn url_conv(attr: (String, String)) -> (String, String) {
     match attr.0.to_lowercase().as_str() {
-        "src" | "href" => (
-            attr.0.clone(),
-            CUR_DIR.with(|dir| dir.borrow().join(attr.1).to_str().unwrap().to_string()),
-        ),
+        "src" | "href" => {
+            if attr.1.len() > 0 && attr.1.chars().next().unwrap() == '#' {
+                (attr.0.clone(), attr.1.clone())
+            } else {
+                (
+                    attr.0.clone(),
+                    CUR_DIR.with(|dir| dir.borrow().join(attr.1).to_str().unwrap().to_string()),
+                )
+            }
+        }
         _ => (attr.0, attr.1),
     }
 }

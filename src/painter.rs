@@ -6,6 +6,8 @@ use app_units::Au;
 
 use gdk_pixbuf;
 
+use window::{AnkerKind, ANKERS, URL_FRAGMENTS};
+
 #[derive(Debug, Clone)]
 pub enum DisplayCommand {
     SolidColor(Color, Rect),
@@ -69,7 +71,9 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
 
     render_text(list, x, y, layout_box);
     render_image(list, x, y, layout_box);
+
     register_anker(x, y, layout_box);
+    register_url_fragment(x, y, layout_box);
 }
 
 fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
@@ -115,8 +119,6 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     }
 }
 
-use window::ANKERS;
-
 fn register_anker(x: Au, y: Au, layout_box: &LayoutBox) {
     match layout_box.info {
         LayoutInfo::Anker => {
@@ -126,12 +128,41 @@ fn register_anker(x: Au, y: Au, layout_box: &LayoutBox) {
                     ankers
                         .borrow_mut()
                         .entry(rect)
-                        .or_insert_with(|| url.to_string())
+                        .or_insert_with(|| {
+                            if url.chars().next().unwrap() == '#' {
+                                AnkerKind::URLFragment(url[1..].to_string())
+                            } else {
+                                AnkerKind::URL(url.to_string())
+                            }
+                        })
                         .clone()
                 });
             }
         }
         _ => {}
+    }
+}
+
+fn register_url_fragment(x: Au, y: Au, layout_box: &LayoutBox) {
+    if let Some(style) = layout_box.style {
+        if let NodeType::Element(ref e) = style.node.data {
+            if let Some(id) = e.id() {
+                URL_FRAGMENTS.with(|url_fragments| {
+                    url_fragments
+                        .borrow_mut()
+                        .entry(id.to_string())
+                        .or_insert_with(|| {
+                            layout_box
+                                .dimensions
+                                .content
+                                .add_parent_coordinate(x, y)
+                                .y
+                                .to_f64_px()
+                        })
+                        .clone()
+                });
+            }
+        }
     }
 }
 
