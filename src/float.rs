@@ -1,4 +1,4 @@
-use layout::{Dimensions, EdgeSizes, LayoutBox, LayoutInfo, Rect};
+use layout::{BoxType, Dimensions, EdgeSizes, LayoutBox, LayoutInfo, Rect};
 use inline::get_image;
 use style;
 use css::Value;
@@ -166,12 +166,38 @@ impl<'a> LayoutBox<'a> {
                 self.assign_margin();
 
                 let width_not_specified = self.calculate_float_width(containing_block);
-                self.layout_block_children(viewport);
+
                 if width_not_specified {
-                    // Basically, self.children has only one AnonymousBlock.
+                    let children = self.children.clone();
+                    let floats = self.floats.clone();
+                    self.layout_float_children(viewport);
+
+                    self.dimensions.content.width = Au(0);
                     for child in &self.children {
-                        self.dimensions.content.width = child.dimensions.content.width;
+                        match self.box_type {
+                            BoxType::BlockNode | BoxType::AnonymousBlock => {
+                                self.dimensions.content.width = max(
+                                    self.dimensions.content.width,
+                                    child.dimensions.margin_box().width,
+                                );
+                            }
+                            BoxType::Float => {
+                                // Ignore whether the float is on left or on right
+                                self.dimensions.content.width +=
+                                    child.dimensions.margin_box().width;
+                            }
+                            _ => {}
+                        }
                     }
+
+                    // Recalculate the descendants' size and position.
+                    // TODO: More efficient implementation needed
+                    self.dimensions.content.height = Au(0);
+                    self.floats = floats;
+                    self.children = children;
+                    self.layout_float_children(viewport);
+                } else {
+                    self.layout_float_children(viewport);
                 }
 
                 self.calculate_block_height();
@@ -185,6 +211,15 @@ impl<'a> LayoutBox<'a> {
             self.dimensions.margin_box(),
             self.style.unwrap().float(),
         ));
+    }
+
+    pub fn layout_float_children(&mut self, viewport: Dimensions) {
+        self.layout_block_children(viewport);
+        // The height of float children in a float element is noticed.
+        self.dimensions.content.height = max(
+            self.dimensions.content.height,
+            self.floats.clearance(style::ClearType::Both),
+        );
     }
 
     pub fn calculate_float_position(&mut self, floats: &mut Floats, containing_block: Dimensions) {

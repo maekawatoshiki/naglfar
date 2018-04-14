@@ -567,6 +567,9 @@ impl fmt::Display for Stylesheet {
                         if let Some(ref tag_name) = selector.tag_name {
                             universal = false;
                             try!(write!(f, "{}", tag_name));
+                        }
+                        if !selector.class.is_empty() {
+                            universal = false;
                             for class in &selector.class {
                                 try!(write!(f, ".{}", class))
                             }

@@ -561,9 +561,21 @@ fn matches_descendant_combinator(
     selector_b: &Selector,
     appeared_elements: &Vec<SimpleSelector>,
 ) -> bool {
-    appeared_elements.iter().rev().any(|e| {
-        e.tag_name == simple.tag_name && e.id == simple.id
-            && !simple.class.iter().any(|class| !e.class.contains(class))
+    appeared_elements.iter().any(|e| {
+        let a = if simple.tag_name.is_some() {
+            e.tag_name == simple.tag_name
+        } else {
+            true
+        };
+        a && if simple.id.is_some() {
+            e.id == simple.id
+        } else {
+            true
+        } && if simple.class.is_empty() {
+            true
+        } else {
+            !simple.class.iter().any(|class| !e.class.contains(class))
+        }
     }) && matches(elem, selector_b, appeared_elements)
 }
 
@@ -574,12 +586,18 @@ fn matches_child_combinator(
     appeared_elements: &Vec<SimpleSelector>,
 ) -> bool {
     if let Some(ref last_elem) = appeared_elements.last() {
-        last_elem.tag_name == simple.tag_name && last_elem.id == simple.id
-            && !simple
+        last_elem.tag_name == simple.tag_name && if simple.id.is_some() {
+            last_elem.id == simple.id
+        } else {
+            true
+        } && if simple.class.is_empty() {
+            true
+        } else {
+            !simple
                 .class
                 .iter()
                 .any(|class| !last_elem.class.contains(class))
-            && matches(elem, selector_b, appeared_elements)
+        } && matches(elem, selector_b, appeared_elements)
     } else {
         false
     }
