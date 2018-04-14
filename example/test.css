@@ -119,15 +119,19 @@ div.sidebar_content {
 }
 
 div.sidebar_element {
-  font-style: italic;
   margin: 4px 0px;
+}
+
+a.sidebar_element {
+  font-style: italic;
   color: #3a6bd6;
   font-size: 13px;
+  text-decoration: none;
 }
 
 div.card {
   background: #ffffff;
-  width: 95%;
+  width: 99%;
   margin: 10px auto;
   padding: 10px 10px 10px 5px;
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -178,7 +182,7 @@ div.card_footer2 {
 #header-inner {
   width: 600px;
   padding: 20px 0px;
-  margin-left: 10%;
+  margin-left: 6%;
 }
 
 #title {
