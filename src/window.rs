@@ -56,7 +56,10 @@ impl RenderingWindow {
 
         window.add(&scrolled_window);
 
-        scrolled_window.add_events(EventMask::POINTER_MOTION_MASK.bits() as i32);
+        scrolled_window.add_events(
+            EventMask::POINTER_MOTION_MASK.bits() as i32
+                | EventMask::BUTTON_PRESS_MASK.bits() as i32,
+        );
         scrolled_window
             .connect("motion-notify-event", false, |args| {
                 let scrolled_window = args[0]
@@ -93,7 +96,6 @@ impl RenderingWindow {
             })
             .unwrap();
 
-        scrolled_window.add_events(EventMask::BUTTON_PRESS_MASK.bits() as i32);
         scrolled_window
             .connect("button-press-event", false, |args| {
                 let scrolled_window = args[0]
