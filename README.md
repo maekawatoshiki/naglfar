@@ -1,7 +1,7 @@
 # Naglfar
 
-[![CircleCI](https://img.shields.io/circleci/project/github/maekawatoshiki/naglfar/master.svg)](https://circleci.com/gh/maekawatoshiki/naglfar)
-[![codecov](https://img.shields.io/codecov/c/github/maekawatoshiki/naglfar/master.svg)](https://codecov.io/gh/maekawatoshiki/naglfar)
+[![CircleCI](https://circleci.com/gh/maekawatoshiki/naglfar.svg?style=shield)](https://circleci.com/gh/maekawatoshiki/naglfar)
+[![codecov](https://codecov.io/gh/maekawatoshiki/naglfar/branch/master/graph/badge.svg)](https://codecov.io/gh/maekawatoshiki/naglfar)
 [![](http://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 Naglfar is a toy web browser in Rust.
