@@ -56,15 +56,15 @@ impl RenderingWindow {
 
         window.add(&scrolled_window);
 
-        scrolled_window.add_events(
+        drawing_area.add_events(
             EventMask::POINTER_MOTION_MASK.bits() as i32
                 | EventMask::BUTTON_PRESS_MASK.bits() as i32,
         );
-        scrolled_window
+        drawing_area
             .connect("motion-notify-event", false, |args| {
-                let scrolled_window = args[0]
+                let drawing_area = args[0]
                     .clone()
-                    .downcast::<gtk::ScrolledWindow>()
+                    .downcast::<gtk::DrawingArea>()
                     .unwrap()
                     .get()
                     .unwrap();
@@ -77,10 +77,9 @@ impl RenderingWindow {
                     .downcast::<EventMotion>()
                     .unwrap()
                     .get_position();
-                let y = y + scrolled_window.get_vadjustment().unwrap().get_value();
 
                 ANKERS.with(|ankers| {
-                    let window = scrolled_window.get_window().unwrap();
+                    let window = drawing_area.get_window().unwrap();
                     if (&*ankers.borrow()).iter().any(|(rect, _)| {
                         rect.x.to_f64_px() <= x && x <= rect.x.to_f64_px() + rect.width.to_f64_px()
                             && rect.y.to_f64_px() <= y
@@ -96,11 +95,11 @@ impl RenderingWindow {
             })
             .unwrap();
 
-        scrolled_window
+        drawing_area
             .connect("button-press-event", false, |args| {
-                let scrolled_window = args[0]
+                let drawing_area = args[0]
                     .clone()
-                    .downcast::<gtk::ScrolledWindow>()
+                    .downcast::<gtk::DrawingArea>()
                     .unwrap()
                     .get()
                     .unwrap();
@@ -113,7 +112,6 @@ impl RenderingWindow {
                     .downcast::<EventButton>()
                     .unwrap()
                     .get_position();
-                let clicked_y = clicked_y + scrolled_window.get_vadjustment().unwrap().get_value();
 
                 ANKERS.with(|ankers| {
                     // TODO: Makes no sense.
@@ -131,19 +129,24 @@ impl RenderingWindow {
                                 update_html_tree_and_stylesheet(url.to_string());
                                 args[0]
                                     .clone()
-                                    .downcast::<gtk::ScrolledWindow>()
+                                    .downcast::<gtk::DrawingArea>()
                                     .unwrap()
                                     .get()
-                                    .unwrap()
-                                    .get_child() // DrawingArea
                                     .unwrap()
                                     .queue_draw();
                             }
                             &AnkerKind::URLFragment(ref id) => {
                                 URL_FRAGMENTS.with(|ufs| {
                                     if let Some(content_y) = ufs.borrow().get(id) {
-                                        let mut adjustment =
-                                            scrolled_window.get_vadjustment().unwrap();
+                                        let mut adjustment = drawing_area
+                                            .get_parent()
+                                            .unwrap()
+                                            .get_parent()
+                                            .unwrap()
+                                            .downcast::<gtk::ScrolledWindow>()
+                                            .unwrap()
+                                            .get_vadjustment()
+                                            .unwrap();
                                         adjustment.set_value(*content_y);
                                     }
                                 });
