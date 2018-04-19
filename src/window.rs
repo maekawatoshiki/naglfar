@@ -4,7 +4,7 @@ extern crate gtk;
 extern crate pango;
 extern crate pangocairo;
 
-use gtk::{BinExt, Inhibit, ObjectExt, WidgetExt, traits::*};
+use gtk::{Inhibit, ObjectExt, WidgetExt, traits::*};
 
 use glib::prelude::*; // or `use gtk::prelude::*;`
 

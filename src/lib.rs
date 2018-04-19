@@ -1,5 +1,6 @@
 pub mod css;
 pub mod style;
+pub mod default_style;
 pub mod html;
 pub mod dom;
 pub mod font;

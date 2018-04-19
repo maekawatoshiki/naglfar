@@ -1,6 +1,7 @@
 use std::{fmt, collections::HashSet};
 
 use html::remove_comments;
+use default_style::default_rules;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Stylesheet {
@@ -264,7 +265,7 @@ impl Parser {
     }
 
     fn parse_rules(&mut self) -> Vec<Rule> {
-        let mut rules = Vec::new();
+        let mut rules = default_rules();
         loop {
             self.consume_whitespace();
             if self.eof() {
