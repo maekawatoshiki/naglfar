@@ -647,114 +647,111 @@ fn test1() {
             background-color: #030; 
         }";
     let stylesheet = parse(src.to_string());
-    assert_eq!(
-        stylesheet,
-        Stylesheet {
-            rules: vec![
-                Rule {
-                    selectors: vec![
-                        Selector::Simple(SimpleSelector {
-                            tag_name: None,
-                            id: Some("id".to_string()),
-                            class: HashSet::new(),
-                        }),
-                        Selector::Simple(SimpleSelector {
-                            tag_name: None,
-                            id: None,
-                            class: {
-                                let mut h = HashSet::new();
-                                h.insert("class".to_string());
-                                h
-                            },
-                        }),
-                        Selector::Child(
-                            SimpleSelector {
-                                tag_name: Some("p".to_string()),
-                                id: None,
-                                class: HashSet::new(),
-                            },
-                            Box::new(Selector::Simple(SimpleSelector {
-                                tag_name: Some("a".to_string()),
-                                id: None,
-                                class: HashSet::new(),
-                            })),
-                        ),
-                        Selector::Descendant(
-                            SimpleSelector {
-                                tag_name: Some("div".to_string()),
-                                id: None,
-                                class: HashSet::new(),
-                            },
-                            Box::new(Selector::Simple(SimpleSelector {
-                                tag_name: Some("p".to_string()),
-                                id: None,
-                                class: HashSet::new(),
-                            })),
-                        ),
-                        Selector::Simple(SimpleSelector {
-                            tag_name: Some("div".to_string()),
-                            id: None,
-                            class: HashSet::new(),
-                        }),
-                        Selector::Simple(SimpleSelector {
-                            tag_name: Some("h1".to_string()),
-                            id: None,
-                            class: HashSet::new(),
-                        }),
-                        Selector::Simple(SimpleSelector {
-                            tag_name: None,
-                            id: None,
-                            class: HashSet::new(),
+    let mut rules = default_rules();
+    rules.append(&mut vec![
+        Rule {
+            selectors: vec![
+                Selector::Simple(SimpleSelector {
+                    tag_name: None,
+                    id: Some("id".to_string()),
+                    class: HashSet::new(),
+                }),
+                Selector::Simple(SimpleSelector {
+                    tag_name: None,
+                    id: None,
+                    class: {
+                        let mut h = HashSet::new();
+                        h.insert("class".to_string());
+                        h
+                    },
+                }),
+                Selector::Child(
+                    SimpleSelector {
+                        tag_name: Some("p".to_string()),
+                        id: None,
+                        class: HashSet::new(),
+                    },
+                    Box::new(Selector::Simple(SimpleSelector {
+                        tag_name: Some("a".to_string()),
+                        id: None,
+                        class: HashSet::new(),
+                    })),
+                ),
+                Selector::Descendant(
+                    SimpleSelector {
+                        tag_name: Some("div".to_string()),
+                        id: None,
+                        class: HashSet::new(),
+                    },
+                    Box::new(Selector::Simple(SimpleSelector {
+                        tag_name: Some("p".to_string()),
+                        id: None,
+                        class: HashSet::new(),
+                    })),
+                ),
+                Selector::Simple(SimpleSelector {
+                    tag_name: Some("div".to_string()),
+                    id: None,
+                    class: HashSet::new(),
+                }),
+                Selector::Simple(SimpleSelector {
+                    tag_name: Some("h1".to_string()),
+                    id: None,
+                    class: HashSet::new(),
+                }),
+                Selector::Simple(SimpleSelector {
+                    tag_name: None,
+                    id: None,
+                    class: HashSet::new(),
+                }),
+            ],
+            declarations: vec![
+                Declaration {
+                    name: "width".to_string(),
+                    values: vec![Value::Length(70.0, Unit::Percent)],
+                },
+                Declaration {
+                    name: "height".to_string(),
+                    values: vec![Value::Length(50.0, Unit::Px)],
+                },
+                Declaration {
+                    name: "font-weight".to_string(),
+                    values: vec![Value::Keyword("bold".to_string())],
+                },
+                Declaration {
+                    name: "z-index".to_string(),
+                    values: vec![Value::Num(2.0)],
+                },
+                Declaration {
+                    name: "font-size".to_string(),
+                    values: vec![Value::Length(10.0, Unit::Pt)],
+                },
+                Declaration {
+                    name: "color".to_string(),
+                    values: vec![
+                        Value::Color(Color {
+                            r: 0xff,
+                            g: 0xff,
+                            b: 0xff,
+                            a: 0xff,
                         }),
                     ],
-                    declarations: vec![
-                        Declaration {
-                            name: "width".to_string(),
-                            values: vec![Value::Length(70.0, Unit::Percent)],
-                        },
-                        Declaration {
-                            name: "height".to_string(),
-                            values: vec![Value::Length(50.0, Unit::Px)],
-                        },
-                        Declaration {
-                            name: "font-weight".to_string(),
-                            values: vec![Value::Keyword("bold".to_string())],
-                        },
-                        Declaration {
-                            name: "z-index".to_string(),
-                            values: vec![Value::Num(2.0)],
-                        },
-                        Declaration {
-                            name: "font-size".to_string(),
-                            values: vec![Value::Length(10.0, Unit::Pt)],
-                        },
-                        Declaration {
-                            name: "color".to_string(),
-                            values: vec![
-                                Value::Color(Color {
-                                    r: 0xff,
-                                    g: 0xff,
-                                    b: 0xff,
-                                    a: 0xff,
-                                }),
-                            ],
-                        },
-                        Declaration {
-                            name: "background-color".to_string(),
-                            values: vec![
-                                Value::Color(Color {
-                                    r: 0x00,
-                                    g: 0x33,
-                                    b: 0x00,
-                                    a: 0xff,
-                                }),
-                            ],
-                        },
+                },
+                Declaration {
+                    name: "background-color".to_string(),
+                    values: vec![
+                        Value::Color(Color {
+                            r: 0x00,
+                            g: 0x33,
+                            b: 0x00,
+                            a: 0xff,
+                        }),
                     ],
                 },
             ],
-        }
-    );
+        },
+    ]);
+    assert_eq!(stylesheet, Stylesheet { rules: rules });
 }
 
 #[test]
