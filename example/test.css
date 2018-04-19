@@ -1,11 +1,8 @@
 /* Naglfar supports comments! */
 
 h1 {
-  font-size: 30px;
-  font-weight: bold;
   font-style: italic;
   background: #dfedfb;
-  padding: 10px;
   color: #1b76c4;
   border-width: 0px;
   border-left-color: #1b76c4;
@@ -15,11 +12,8 @@ h1 {
 }
 
 h2 {
-  font-size: 24px;
-  font-weight: bold;
   font-style: italic;
   background: #ffefaf;
-  padding: 10px;
   color: #ff9f41;
   border-width: 0px;
   border-left-color: #ff9f41;
@@ -29,8 +23,6 @@ h2 {
 }
 
 h3 {
-  font-size: 19px;
-  font-weight: bold;
   font-style: italic;
   background: #ebffeb;
   padding: 10px;
@@ -39,17 +31,6 @@ h3 {
   border-left-color: #0fff0f;
   border-left-width: 7px;
   border-style: solid;
-  margin: 5px 0px;
-}
-
-a {
-  display: inline;
-  color: #0000ee;
-  text-decoration: underline;
-}
-
-img {
-  display: inline;
 }
 
 div.special span {
