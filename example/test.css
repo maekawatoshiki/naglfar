@@ -1,25 +1,5 @@
 /* Naglfar supports comments! */
 
-* {
-  display: block;
-}
-
-span {
-  display: inline;
-}
-
-html {
-  width: auto;
-  padding: 0px;
-  margin: 0px;
-  background: white;
-}
-
-body {
-  padding: 0px;
-  margin: 0px;
-}
-
 h1 {
   font-size: 30px;
   font-weight: bold;
