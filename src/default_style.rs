@@ -19,6 +19,7 @@ thread_local!(
         rule_h3(&mut rules);
         rule_a(&mut rules);
         rule_img(&mut rules);
+        rule_b(&mut rules);
         RefCell::new(rules)
     }
 );
@@ -138,5 +139,15 @@ fn rule_img(rules: &mut Vec<Rule>) {
     rules.push(Rule {
         selectors: vec![tag_name!("img")],
         declarations: vec![decl!("display", keyword!("inline"))],
+    });
+}
+
+fn rule_b(rules: &mut Vec<Rule>) {
+    rules.push(Rule {
+        selectors: vec![tag_name!("b")],
+        declarations: vec![
+            decl!("display", keyword!("inline")),
+            decl!("font-weight", keyword!("bold")),
+        ],
     });
 }
