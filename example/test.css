@@ -49,11 +49,6 @@ span.credit {
   color: #ffffff;
 }
 
-b {
-  font-weight: bold;
-  display: inline;
-}
-
 footer {
   text-align: center;
   background-color: #f5f5f5;
@@ -147,7 +142,7 @@ div.card_footer2 {
 #header-inner {
   width: 600px;
   padding: 20px 0px;
-  margin-left: 6%;
+  margin-left: 3%;
 }
 
 #title {
