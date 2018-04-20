@@ -3,8 +3,10 @@ use css::*;
 use std::collections::HashSet;
 use std::cell::RefCell;
 
-pub fn default_rules() -> Vec<Rule> {
-    DEFAULT_RULES.with(|default_rules| default_rules.borrow().clone())
+pub fn default_style() -> Stylesheet {
+    Stylesheet {
+        rules: DEFAULT_RULES.with(|default_rules| default_rules.borrow().clone()),
+    }
 }
 
 thread_local!(

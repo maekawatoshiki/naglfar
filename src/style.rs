@@ -419,6 +419,7 @@ fn inherit_peoperties(specified_values: &PropertyMap, property_list: Vec<&str>) 
 pub fn style_tree<'a>(
     root: &'a Node,
     stylesheet: &'a Stylesheet,
+    default_style: &Stylesheet,
     inherited_property: &PropertyMap,
     parent_specified_values: &PropertyMap,
     appeared_elements: &Vec<SimpleSelector>,
@@ -427,7 +428,13 @@ pub fn style_tree<'a>(
 
     let specified_values = match root.data {
         NodeType::Element(ref elem) => {
-            let values = specified_values(elem, stylesheet, inherited_property, &appeared_elements);
+            let values = specified_values(
+                elem,
+                default_style,
+                stylesheet,
+                inherited_property,
+                &appeared_elements,
+            );
             appeared_elements.push(SimpleSelector {
                 tag_name: Some(elem.tag_name.clone()),
                 id: elem.id().and_then(|id| Some(id.clone())),
@@ -468,6 +475,7 @@ pub fn style_tree<'a>(
                 style_tree(
                     child,
                     stylesheet,
+                    default_style,
                     &inherited_property,
                     &specified_values,
                     &appeared_elements,
@@ -480,17 +488,14 @@ pub fn style_tree<'a>(
 
 fn specified_values(
     elem: &ElementData,
+    default_style: &Stylesheet,
     stylesheet: &Stylesheet,
     inherited_property: &PropertyMap,
     appeared_elements: &Vec<SimpleSelector>,
 ) -> PropertyMap {
     let mut values = HashMap::with_capacity(16);
-    use default_style::default_rules;
-    let defs = Stylesheet {
-        rules: default_rules(),
-    };
-    let mut rules = matching_rules(elem, &defs, appeared_elements);
-    rules.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
+
+    let rules = matching_rules(elem, &default_style, appeared_elements);
     rules.iter().for_each(|&(_, rule)| {
         rule.declarations.iter().for_each(|declaration| {
             values.insert(declaration.name.clone(), declaration.values.clone());
