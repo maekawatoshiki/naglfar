@@ -68,15 +68,15 @@ fn rule_html(rules: &mut Vec<Rule>) {
     });
 }
 
-fn rule_body(rules: &mut Vec<Rule>) {
-    rules.push(Rule {
-        selectors: vec![tag_name!("body")],
-        declarations: vec![
-            decl!("padding", len_px!(0f64)),
-            decl!("margin", len_px!(0f64)),
-        ],
-    });
-}
+// fn rule_body(rules: &mut Vec<Rule>) {
+//     rules.push(Rule {
+//         selectors: vec![tag_name!("body")],
+//         declarations: vec![
+//             decl!("padding", len_px!(0f64)),
+//             decl!("margin", len_px!(0f64)),
+//         ],
+//     });
+// }
 
 fn rule_span(rules: &mut Vec<Rule>) {
     rules.push(Rule {
