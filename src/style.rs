@@ -485,6 +485,18 @@ fn specified_values(
     appeared_elements: &Vec<SimpleSelector>,
 ) -> PropertyMap {
     let mut values = HashMap::with_capacity(16);
+    use default_style::default_rules;
+    let defs = Stylesheet {
+        rules: default_rules(),
+    };
+    let mut rules = matching_rules(elem, &defs, appeared_elements);
+    rules.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
+    rules.iter().for_each(|&(_, rule)| {
+        rule.declarations.iter().for_each(|declaration| {
+            values.insert(declaration.name.clone(), declaration.values.clone());
+        })
+    });
+
     let mut rules = matching_rules(elem, stylesheet, appeared_elements);
 
     // Insert inherited properties
@@ -588,6 +600,11 @@ fn matches_child_combinator(
 }
 
 fn matches_simple_selector(elem: &ElementData, selector: &SimpleSelector) -> bool {
+    // Universal selector
+    if selector.tag_name.is_none() && selector.id.is_none() && selector.class.is_empty() {
+        return true;
+    }
+
     // Check type selector
     if selector.tag_name.iter().any(|name| elem.tag_name != *name) {
         return false;

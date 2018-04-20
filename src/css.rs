@@ -1,7 +1,6 @@
 use std::{fmt, collections::HashSet};
 
 use html::remove_comments;
-use default_style::default_rules;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Stylesheet {
@@ -265,7 +264,7 @@ impl Parser {
     }
 
     fn parse_rules(&mut self) -> Vec<Rule> {
-        let mut rules = default_rules();
+        let mut rules = vec![];
         loop {
             self.consume_whitespace();
             if self.eof() {
@@ -647,8 +646,7 @@ fn test1() {
             background-color: #030; 
         }";
     let stylesheet = parse(src.to_string());
-    let mut rules = default_rules();
-    rules.append(&mut vec![
+    let mut rules = vec![
         Rule {
             selectors: vec![
                 Selector::Simple(SimpleSelector {
@@ -750,7 +748,7 @@ fn test1() {
                 },
             ],
         },
-    ]);
+    ];
     assert_eq!(stylesheet, Stylesheet { rules: rules });
 }
 
