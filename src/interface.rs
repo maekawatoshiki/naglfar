@@ -5,6 +5,7 @@ use style;
 use layout;
 use painter;
 use window;
+use default_style;
 
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -153,8 +154,7 @@ pub fn run_with_url(html_src: String) {
 
                 let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
                 let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
-                use default_style::default_style;
-                let default_style = default_style();
+                let default_style = default_style::default_style();
                 let style_tree = style::style_tree(
                     &html_tree,
                     &stylesheet,
