@@ -646,7 +646,7 @@ fn test1() {
             background-color: #030; 
         }";
     let stylesheet = parse(src.to_string());
-    let mut rules = vec![
+    let rules = vec![
         Rule {
             selectors: vec![
                 Selector::Simple(SimpleSelector {

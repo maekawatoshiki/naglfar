@@ -639,6 +639,7 @@ fn test1() {
     use html;
     use css;
     use std::path::Path;
+    use default_style::*;
 
     let src = "<html>
                  <head>
@@ -658,10 +659,11 @@ fn test1() {
                a { display: inline; text-decoration: underline; }";
     let stylesheet = css::parse(src.to_string());
 
-    // TODO
+    let default_style = default_style();
     style_tree(
         &dom_node,
         &stylesheet,
+        &default_style,
         &PropertyMap::new(),
         &PropertyMap::new(),
         &vec![],
