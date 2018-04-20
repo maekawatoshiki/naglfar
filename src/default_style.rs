@@ -14,7 +14,7 @@ thread_local!(
         let mut rules = vec![];
         rule_universal(&mut rules);
         rule_html(&mut rules);
-        rule_body(&mut rules);
+        // rule_body(&mut rules);
         rule_span(&mut rules);
         rule_h1(&mut rules);
         rule_h2(&mut rules);
@@ -60,9 +60,9 @@ fn rule_html(rules: &mut Vec<Rule>) {
     rules.push(Rule {
         selectors: vec![tag_name!("html")],
         declarations: vec![
-            decl!("width", keyword!("auto")),
-            decl!("padding", len_px!(0f64)),
-            decl!("margin", len_px!(0f64)),
+            // decl!("width", keyword!("auto")),
+            // decl!("padding", len_px!(0f64)),
+            // decl!("margin", len_px!(0f64)),
             decl!("background", color!(WHITE)),
         ],
     });

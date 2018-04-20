@@ -495,14 +495,8 @@ fn specified_values(
 ) -> PropertyMap {
     let mut values = HashMap::with_capacity(16);
 
-    let rules = matching_rules(elem, &default_style, appeared_elements);
-    rules.iter().for_each(|&(_, rule)| {
-        rule.declarations.iter().for_each(|declaration| {
-            values.insert(declaration.name.clone(), declaration.values.clone());
-        })
-    });
-
-    let mut rules = matching_rules(elem, stylesheet, appeared_elements);
+    let mut rules = matching_rules(elem, &default_style, appeared_elements);
+    rules.append(&mut matching_rules(elem, stylesheet, appeared_elements));
 
     // Insert inherited properties
     inherited_property.iter().for_each(|(name, value)| {
