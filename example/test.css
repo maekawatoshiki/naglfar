@@ -1,5 +1,32 @@
 /* Naglfar supports comments! */
 
+#header {
+  background-color: #f5f5f5;
+  border-width: 0;
+  border-bottom-width: 1px;
+  border-bottom-color: silver;
+  border-bottom-style: solid;
+}
+
+#header .inner {
+  width: 600px;
+  padding: 20px 0px;
+  margin-left: 3%;
+}
+
+#header .inner .title {
+  font-size: 40px;
+  font-weight: bold;
+  margin-left: 65px;
+  line-height: 40px;
+}
+
+#header .inner .description {
+  color: #808080;
+  margin-left: 65px;
+  font-size: 18px;
+}
+
 h1 {
   font-style: italic;
   background: #dfedfb;
@@ -37,7 +64,7 @@ div.special span {
   color: red;
 }
 
-span.hl {
+span.highlight {
   background: #fefe40;
   font-weight: bold;
   border: 1px solid red;
@@ -56,12 +83,12 @@ footer {
   color: #010101;
 }
 
-div.sidebar {
+.sidebar {
   margin: 10px 0px 10px 0%;
   padding: 10px 0 10px 0;
 }
 
-div.sidebar_title {
+.sidebar .title {
   margin: 5px 0px;
   padding-left: 3px;
   border-width: 0px;
@@ -85,7 +112,7 @@ a.sidebar_element {
   text-decoration: none;
 }
 
-div.card {
+.card {
   background: #ffffff;
   width: 99%;
   margin: 10px auto;
@@ -93,7 +120,7 @@ div.card {
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-div.card_title {
+.card .title {
   font-size: 30px;
   margin: 5px 0px;
   padding-left: 5px;
@@ -103,58 +130,31 @@ div.card_title {
   border-style: solid;
 }
 
-div.card_content {
+.card .content {
   color: black;
   margin: 10px 0px;
   padding: 10px 5px;
 }
 
-div.card_footer {
+.card .footer {
   height: 20px;
   text-align: center;
   font-size: 18px;
   padding: 2px;
 }
 
-div.card_footer1 {
+.card .left {
   float: left;
   width: 100px;
   border: 2px solid #efefef;
 }
 
-div.card_footer2 {
+.card .right {
   float: right;
   width: 80px;
   color: white;
   margin-left: 10px;
   background: #4a69ff;
   border: 2px solid #2a40ed;
-}
-
-#header {
-  background-color: #f5f5f5;
-  border-width: 0;
-  border-bottom-width: 1px;
-  border-bottom-color: silver;
-  border-bottom-style: solid;
-}
-
-#header-inner {
-  width: 600px;
-  padding: 20px 0px;
-  margin-left: 3%;
-}
-
-#title {
-  font-size: 40px;
-  font-weight: bold;
-  margin-left: 65px;
-  line-height: 40px;
-}
-
-.description {
-  color: #808080;
-  margin-left: 65px;
-  font-size: 18px;
 }
 

@@ -4,15 +4,16 @@
   <link rel="stylesheet" type="text/css" href="test.css">
   <body>
     <div id="header">
-      <div id="header-inner">
-        <img width="60" src="logo.png" style="float:left"><div id="title">Naglfar</div>
+      <div class="inner">
+        <img width="60" src="logo.png" style="float:left">
+        <div class="title">Naglfar</div>
         <div class="description">A toy web browser in Rust</div>
       </div>
     </div>
     <div style="width:95%;margin-left:auto;margin-right:auto">
       <div style="float:left;width:20%">
         <div class="sidebar">
-          <div class="sidebar_title">
+          <div class="title">
             Table of contents
           </div>
           <div class="sidebar_content">
@@ -57,7 +58,8 @@
             </div>
           </div>
         </div>
-        <div class="sidebar"> <div class="sidebar_title">
+        <div class="sidebar"> 
+          <div class="title">
             Links
           </div>
           <div class="sidebar_content">
@@ -72,20 +74,20 @@
       </div>
       <div style="float:right;width:80%">
         <div class="card" id="card1">
-          <div class="card_title">
+          <div class="title">
             Heading 1, 2, 3
           </div>
-          <div class="card_content">
+          <div class="content">
             <h1>Welcome to Naglfar Example!</h1>
             <h2>Welcome to Naglfar Example!</h2>
             <h3>Welcome to Naglfar Example!</h3>
           </div>
         </div>
         <div class="card" id="card2">
-          <div class="card_title">
+          <div class="title">
             Some sentences
           </div>
-          <div class="card_content special">
+          <div class="content special">
             日本語〜日本語文章サンプル。日本語〜日本語文章サンプル。日本語〜日本語文章サンプル。日本語〜日本語文章サンプル。日本語〜日本語文章サンプル。
             <span>the quick brown fox jumps over the lazy dog.</span>
             the quick brown fox jumps over the lazy dog.
@@ -94,10 +96,10 @@
           </div>
         </div>
         <div class="card" id="card3">
-          <div class="card_title">
+          <div class="title">
             Line Height
           </div>
-          <div class="card_content special">
+          <div class="content">
             <div style='line-height: 2.0'>
               line-height: 2.0; line-height: 2.0; line-height: 2.0; line-height: 2.0; line-height: 2.0;
               line-height: 2.0; line-height: 2.0; line-height: 2.0; line-height: 2.0; line-height: 2.0;
@@ -111,13 +113,13 @@
           </div>
         </div>
         <div class="card" id="card4">
-          <div class="card_title">
+          <div class="title">
             Text Highlighten
           </div>
-          <div class="card_content">
+          <div class="content">
             the quick brown fox jumps over the lazy dog.
             the quick brown fox jumps over the lazy dog.
-            <span class="hl">
+            <span class="highlight">
               the quick brown fox jumps over the lazy dog.
               the quick brown fox jumps over the lazy dog.
               the quick brown fox jumps over the lazy dog.
@@ -128,10 +130,10 @@
           </div>
         </div>
         <div class="card" id="card5">
-          <div class="card_title">
+          <div class="title">
             Text Align
           </div>
-          <div class="card_content">
+          <div class="content">
             <div style="text-align: left; color: red;">
               text-align is left.
             </div>
@@ -144,10 +146,10 @@
           </div>
         </div>
         <div class="card" id="card6">
-          <div class="card_title">
+          <div class="title">
             Floats
           </div>
-          <div class="card_content">
+          <div class="content">
             <div>This line is in a div.</div>
             <div style="float:left;width:20%;height:100px;background:red;color:white;font-size:20px;">I am a floating div</div>
             <div style="float:left;width:100px;height:100px;background:blue;color:white;font-size:20px;">I am a floating div</div>
@@ -161,10 +163,10 @@
           </div>
         </div>
         <div class="card" id="card7">
-          <div class="card_title">
+          <div class="title">
             Image
           </div>
-          <div class="card_content">
+          <div class="content">
             <div>This is a beautiful jpg image: <img src="image1.jpg" width='20%'></div>
             <img src="image2.png" height="100px" style="float:left">
             <img src="image2.png" width="25%" style="float:right">
@@ -181,10 +183,10 @@
           </div>
         </div>
         <div class="card" id="card8">
-          <div class="card_title">
+          <div class="title">
             Code
           </div>
-          <div class="card_content">
+          <div class="content">
             <div style="background:#282c34;padding:10px;font-size:18px;">
               <div style="color:white">
                 <span style="color:#c678dd">int</span> <span style="color:#61afef">main</span>() {
@@ -200,18 +202,18 @@
               </div>
             </div>
             <div style="height: 20px;margin-top:10px;">
-              <div class="card_footer card_footer1"
-              >4 Lines</div><div style="margin-left:10px" class="card_footer card_footer1"
-              >C/C++</div><div class="card_footer card_footer2"
+              <div class="footer left"
+              >4 Lines</div><div style="margin-left:10px" class="footer left"
+              >C/C++</div><div class="footer right"
               >Submit</div>
             </div>
           </div>
         </div>
         <div class="card" id="card9">
-          <div class="card_title">
+          <div class="title">
             Transparency
           </div>
-          <div class="card_content">
+          <div class="content">
             <div style="width:300px;height:100px;background:rgba(250, 230, 100, 0.7);">
               <div style="width:280px;height:80px;background:rgba(250, 100, 230, 0.3);">
                 <div style="width:260px;height:100px;background:rgba(100, 250, 230, 0.3);">
@@ -221,20 +223,20 @@
           </div>
         </div>
         <div class="card" id="card10">
-          <div class="card_title">
+          <div class="title">
             Anker test
           </div>
-          <div class="card_content">
+          <div class="content">
             <div style="text-align:center;padding:10px;">
               <a href="test2.html">Click me!</a>
             </div>
           </div>
         </div>
         <div class="card" id="card11">
-          <div class="card_title">
+          <div class="title">
             Text Decoration
           </div>
-          <div class="card_content">
+          <div class="content">
             <div>
               <span style="text-decoration: underline;">Underline Text! 下線が使える</span>
             </div>
@@ -244,10 +246,10 @@
           </div>
         </div>
         <div class="card" id="card12">
-          <div class="card_title">
+          <div class="title">
             Colors
           </div>
-          <div class="card_content">
+          <div class="content">
             <div style="background: black  ;width:100px;height:100px;float:left;"><span style="color:white;">background: black  </span></div>
             <div style="background: silver ;width:100px;height:100px;float:left;">                     <span>background: silver </span></div>
             <div style="background: gray   ;width:100px;height:100px;float:left;">                     <span>background: gray   </span></div>
@@ -268,10 +270,10 @@
           </div>                       
         </div>                         
         <div class="card" id="todo">
-          <div class="card_title">     
+          <div class="title">     
             TODO
           </div>
-          <div class="card_content">
+          <div class="content">
             <div>- Refine code</div>
             <div>- More efficient implementation</div>
             <div>- Write documents/comments</div>
