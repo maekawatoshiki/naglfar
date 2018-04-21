@@ -51,8 +51,14 @@ impl RenderingWindow {
         let drawing_area = gtk::DrawingArea::new();
         drawing_area.set_size_request(width, height);
 
+        let layout = gtk::Layout::new(None, None);
+        {
+            use gtk::LayoutExt;
+            layout.put(&drawing_area, 0, 0);
+        }
+
         let scrolled_window = gtk::ScrolledWindow::new(None, None);
-        scrolled_window.add_with_viewport(&drawing_area);
+        scrolled_window.add(&layout);
 
         window.add(&scrolled_window);
 
@@ -173,11 +179,28 @@ impl RenderingWindow {
                 let pango_ctx = widget.create_pango_context().unwrap();
                 let mut pango_layout = pango::Layout::new(&pango_ctx);
 
+                let (window_width, window_height) = widget
+                    .get_parent()
+                    .unwrap()
+                    .get_parent()
+                    .unwrap()
+                    .get_parent()
+                    .unwrap()
+                    .downcast::<gtk::Window>()
+                    .unwrap()
+                    .get_size();
                 let items = f(widget);
 
                 if let DisplayCommand::SolidColor(_, rect) = items[0].command {
-                    if widget.get_size_request().1 != rect.height.ceil_to_px() {
-                        widget.set_size_request(-1, rect.height.ceil_to_px())
+                    if window_height != rect.height.ceil_to_px() {
+                        use gtk::LayoutExt;
+                        widget
+                            .get_parent()
+                            .unwrap()
+                            .downcast::<gtk::Layout>()
+                            .unwrap()
+                            .set_size(window_width as u32, rect.height.ceil_to_px() as u32);
+                        widget.set_size_request(window_width, rect.height.ceil_to_px())
                     }
                 }
 
