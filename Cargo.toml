@@ -12,13 +12,16 @@ reqwest = "*"
 
 rand = "*"
 
-gtk = "*"
 gdk = "*"
 gdk-pixbuf = "*"
 cairo-rs = "*"
 pango = "*"
 pangocairo = "*"
 glib = "*"
+
+[dependencies.gtk]
+version = "*"
+features = ["v3_18"]
 
 [profile.dev]
 codegen-units = 16

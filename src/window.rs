@@ -5,6 +5,7 @@ extern crate pango;
 extern crate pangocairo;
 
 use gtk::{Inhibit, ObjectExt, WidgetExt, traits::*};
+use gtk::ContainerExt;
 
 use glib::prelude::*; // or `use gtk::prelude::*;`
 
@@ -51,26 +52,36 @@ impl RenderingWindow {
         let drawing_area = gtk::DrawingArea::new();
         drawing_area.set_size_request(width, height);
 
+        // let button = gtk::Button::new_with_label("I AM BUTTON");
+
         let layout = gtk::Layout::new(None, None);
         {
             use gtk::LayoutExt;
-            layout.put(&drawing_area, 0, 0);
+            // layout.put(&button, 600, 1000);
+        }
+
+        let overlay = gtk::Overlay::new();
+        {
+            use gtk::OverlayExt;
+            overlay.add_overlay(&drawing_area);
+            overlay.reorder_overlay(&drawing_area, 0);
+            overlay.add_overlay(&layout);
+            overlay.reorder_overlay(&layout, 1);
         }
 
         let scrolled_window = gtk::ScrolledWindow::new(None, None);
-        scrolled_window.add(&layout);
+        scrolled_window.add(&overlay);
 
         window.add(&scrolled_window);
-
-        drawing_area.add_events(
+        overlay.add_events(
             EventMask::POINTER_MOTION_MASK.bits() as i32
                 | EventMask::BUTTON_PRESS_MASK.bits() as i32,
         );
-        drawing_area
+        overlay
             .connect("motion-notify-event", false, |args| {
-                let drawing_area = args[0]
+                let overlay = args[0]
                     .clone()
-                    .downcast::<gtk::DrawingArea>()
+                    .downcast::<gtk::Overlay>()
                     .unwrap()
                     .get()
                     .unwrap();
@@ -85,7 +96,7 @@ impl RenderingWindow {
                     .get_position();
 
                 ANKERS.with(|ankers| {
-                    let window = drawing_area.get_window().unwrap();
+                    let window = overlay.get_window().unwrap();
                     if (&*ankers.borrow()).iter().any(|(rect, _)| {
                         rect.x.to_f64_px() <= x && x <= rect.x.to_f64_px() + rect.width.to_f64_px()
                             && rect.y.to_f64_px() <= y
@@ -101,11 +112,11 @@ impl RenderingWindow {
             })
             .unwrap();
 
-        drawing_area
+        overlay
             .connect("button-press-event", false, |args| {
-                let drawing_area = args[0]
+                let overlay = args[0]
                     .clone()
-                    .downcast::<gtk::DrawingArea>()
+                    .downcast::<gtk::Overlay>()
                     .unwrap()
                     .get()
                     .unwrap();
@@ -133,18 +144,12 @@ impl RenderingWindow {
                             &AnkerKind::URL(ref url) => {
                                 anker_clicked = true;
                                 update_html_tree_and_stylesheet(url.to_string());
-                                args[0]
-                                    .clone()
-                                    .downcast::<gtk::DrawingArea>()
-                                    .unwrap()
-                                    .get()
-                                    .unwrap()
-                                    .queue_draw();
+                                overlay.get_children()[0].queue_draw(); // [0] is DrawingArea
                             }
                             &AnkerKind::URLFragment(ref id) => {
                                 URL_FRAGMENTS.with(|ufs| {
                                     if let Some(content_y) = ufs.borrow().get(id) {
-                                        let mut adjustment = drawing_area
+                                        let mut adjustment = overlay
                                             .get_parent()
                                             .unwrap()
                                             .get_parent()
@@ -179,28 +184,17 @@ impl RenderingWindow {
                 let pango_ctx = widget.create_pango_context().unwrap();
                 let mut pango_layout = pango::Layout::new(&pango_ctx);
 
-                let (window_width, window_height) = widget
-                    .get_parent()
-                    .unwrap()
-                    .get_parent()
-                    .unwrap()
-                    .get_parent()
-                    .unwrap()
-                    .downcast::<gtk::Window>()
-                    .unwrap()
-                    .get_size();
                 let items = f(widget);
 
                 if let DisplayCommand::SolidColor(_, rect) = items[0].command {
-                    if window_height != rect.height.ceil_to_px() {
-                        use gtk::LayoutExt;
+                    if widget.get_size_request().1 != rect.height.ceil_to_px() {
                         widget
                             .get_parent()
                             .unwrap()
-                            .downcast::<gtk::Layout>()
+                            .downcast::<gtk::Overlay>()
                             .unwrap()
-                            .set_size(window_width as u32, rect.height.ceil_to_px() as u32);
-                        widget.set_size_request(window_width, rect.height.ceil_to_px())
+                            .set_size_request(-1, rect.height.ceil_to_px());
+                        widget.set_size_request(-1, rect.height.ceil_to_px())
                     }
                 }
 
