@@ -9,7 +9,8 @@ use gtk::ContainerExt;
 
 use glib::prelude::*; // or `use gtk::prelude::*;`
 
-use gdk::{ContextExt, Cursor, CursorType, Event, EventButton, EventMask, EventMotion, WindowExt};
+use gdk::{ContextExt, Cursor, CursorType, Event, EventButton, EventMask, EventMotion, WindowExt,
+          RGBA};
 use gdk_pixbuf::{InterpType, PixbufExt};
 
 use cairo::Context;
@@ -49,6 +50,15 @@ impl RenderingWindow {
         let window = gtk::Window::new(gtk::WindowType::Toplevel);
         window.set_title("Naglfar");
         window.set_default_size(width, height);
+        window.override_background_color(
+            gtk::StateFlags::from_bits(gtk::StateFlags::NORMAL.bits()).unwrap(),
+            Some(&RGBA {
+                red: 1.0,
+                green: 1.0,
+                blue: 1.0,
+                alpha: 1.0,
+            }),
+        );
 
         let drawing_area = gtk::DrawingArea::new();
         drawing_area.set_size_request(width, height);
