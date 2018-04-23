@@ -55,13 +55,6 @@ impl RenderingWindow {
 
         let layout = gtk::Layout::new(None, None);
 
-        use gtk::LayoutExt;
-        {
-            let label = gtk::Label::new(None);
-            label.set_markup("<span size='20'>hello</span>");
-            layout.put(&label, 10, 10);
-        }
-
         let overlay = gtk::Overlay::new();
         {
             use gtk::OverlayExt;
