@@ -69,9 +69,9 @@ impl RenderingWindow {
         {
             use gtk::OverlayExt;
             overlay.add_overlay(&drawing_area);
-            overlay.reorder_overlay(&drawing_area, 0);
+            overlay.set_child_index(&drawing_area, 0);
             overlay.add_overlay(&layout);
-            overlay.reorder_overlay(&layout, 1);
+            overlay.set_child_index(&layout, 1);
         }
 
         let scrolled_window = gtk::ScrolledWindow::new(None, None);

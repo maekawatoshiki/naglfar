@@ -246,7 +246,7 @@ impl<'a> LineMaker<'a> {
         }
         // Non-replaced inline elements(like <span>)
         match layoutbox.info {
-            LayoutInfo::Generic => {
+            LayoutInfo::Generic | LayoutInfo::Anker => {
                 let mut linemaker = self.clone();
 
                 layout_text(layoutbox, &mut linemaker, max_width, containing_block);
@@ -310,7 +310,6 @@ impl<'a> LineMaker<'a> {
                     .downcast::<gtk::Label>()
                     .unwrap();
                 use pango;
-                use gtk::StyleContextExt;
 
                 let mut linemaker = self.clone();
                 layout_text(
@@ -330,9 +329,6 @@ impl<'a> LineMaker<'a> {
                     ).as_str(),
                 );
                 use gtk::LabelExt;
-                use gtk::ContainerExt;
-                use gtk::ButtonExt;
-                use gdk::WindowExt;
                 let button_height = button.get_allocated_height();
                 button.set_valign(gtk::Align::Baseline);
                 let width = Au::from_f64_px(label.get_allocated_width() as f64 + 10.0);
