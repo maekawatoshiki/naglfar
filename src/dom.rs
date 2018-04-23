@@ -25,6 +25,7 @@ pub enum LayoutType {
     Text,
     Image,
     Anker,
+    Button,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,6 +50,7 @@ impl Node {
                 layout_type: match name.to_lowercase().as_str() {
                     "img" => LayoutType::Image,
                     "a" => LayoutType::Anker,
+                    "button" => LayoutType::Button,
                     _ => LayoutType::Generic,
                 },
                 tag_name: name,

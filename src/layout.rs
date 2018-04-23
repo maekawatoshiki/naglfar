@@ -12,6 +12,7 @@ use std::ops::Range;
 use cairo;
 use pango;
 use gdk_pixbuf;
+use gtk;
 
 use app_units::Au;
 
@@ -49,6 +50,7 @@ pub enum LayoutInfo {
     Text,
     Image(Option<gdk_pixbuf::Pixbuf>),
     Anker,
+    Button(Option<gtk::Button>, usize),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -124,7 +126,8 @@ pub fn layout_tree<'a>(
     // The layout algorithm expects the container height to start at 0.
     containing_block.content.height = Au::from_f64_px(0.0);
 
-    let mut root_box = build_layout_tree(node);
+    let mut id = 0;
+    let mut root_box = build_layout_tree(node, &mut id);
     root_box.layout(
         &mut Floats::new(),
         Au(0),
@@ -136,7 +139,7 @@ pub fn layout_tree<'a>(
 }
 
 /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
-fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
+fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, id: &mut usize) -> LayoutBox<'a> {
     // Create the root box.
     let mut root = LayoutBox::new(
         match style_node.display() {
@@ -160,6 +163,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
             LayoutType::Text => LayoutInfo::Text,
             LayoutType::Image => LayoutInfo::Image(None),
             LayoutType::Anker => LayoutInfo::Anker,
+            LayoutType::Button => LayoutInfo::Button(None, *id),
         },
     );
 
@@ -171,9 +175,10 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
     // Create the descendant boxes.
     let mut float_insert_point: Option<usize> = None;
     for (i, child) in style_node.children.iter().enumerate() {
+        *id += i;
         match (child.display(), child.float()) {
             (Display::Block, style::FloatType::None) => {
-                root.children.push(build_layout_tree(child));
+                root.children.push(build_layout_tree(child, id));
                 if float_insert_point.is_some() {
                     float_insert_point = None;
                 }
@@ -182,14 +187,14 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
             | (Display::InlineBlock, style::FloatType::None) => {
                 root.get_inline_container()
                     .children
-                    .push(build_layout_tree(child));
+                    .push(build_layout_tree(child, id));
                 float_insert_point = Some(i);
             }
             (_, style::FloatType::Left) | (_, style::FloatType::Right) => {
                 if let Some(pos) = float_insert_point {
-                    root.children.insert(pos, build_layout_tree(child));
+                    root.children.insert(pos, build_layout_tree(child, id));
                 } else {
-                    root.children.push(build_layout_tree(child));
+                    root.children.push(build_layout_tree(child, id));
                 }
             }
             (Display::None, _) => {} // Don't lay out nodes with `display: none;`

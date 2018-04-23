@@ -177,10 +177,12 @@ impl<'a> LineMaker<'a> {
         max_width: Au,
         containing_block: Dimensions,
     ) {
-        // Non-replaced inline elements(like <span>)
-        if layoutbox.style.unwrap().node.contains_text() {
-            let mut linemaker = self.clone();
-
+        fn layout_text<'a>(
+            mut layoutbox: LayoutBox<'a>,
+            linemaker: &mut LineMaker<'a>,
+            max_width: Au,
+            containing_block: Dimensions,
+        ) {
             linemaker.work_list = VecDeque::from(layoutbox.children.clone());
             layoutbox.children.clear();
 
@@ -241,35 +243,157 @@ impl<'a> LineMaker<'a> {
                 layoutbox.dimensions.content.height = new_box.dimensions.content.height;
                 *new_box = layoutbox;
             }
+        }
+        // Non-replaced inline elements(like <span>)
+        match layoutbox.info {
+            LayoutInfo::Generic => {
+                let mut linemaker = self.clone();
 
-            self.new_boxes = linemaker.new_boxes;
-            self.lines = linemaker.lines;
-            self.start = linemaker.start;
-            self.end = linemaker.end;
-            self.cur_width = linemaker.cur_width;
-            self.cur_height = linemaker.cur_height;
-            self.cur_metrics = linemaker.cur_metrics;
-        } else {
-            // Replaced Inline Element (<img>)
-            let width;
-            let height;
-            layoutbox.layout_inline(&mut self.floats, containing_block);
-            width = layoutbox.dimensions.border_box().width;
-            height = layoutbox.dimensions.border_box().height;
+                layout_text(layoutbox, &mut linemaker, max_width, containing_block);
 
-            if self.cur_width + width > max_width {
-                self.flush_cur_line();
-                self.end += 1;
-
-                self.cur_width = width;
-                self.cur_metrics.above_baseline = height;
-            } else {
-                self.end += 1;
-                self.cur_width += width;
-                self.cur_metrics.above_baseline = max(self.cur_metrics.above_baseline, height);
+                self.new_boxes = linemaker.new_boxes;
+                self.lines = linemaker.lines;
+                self.start = linemaker.start;
+                self.end = linemaker.end;
+                self.cur_width = linemaker.cur_width;
+                self.cur_height = linemaker.cur_height;
+                self.cur_metrics = linemaker.cur_metrics;
             }
+            LayoutInfo::Image(_) => {
+                // Replaced Inline Element (<img>)
+                let width;
+                let height;
+                layoutbox.layout_inline(&mut self.floats, containing_block);
+                width = layoutbox.dimensions.border_box().width;
+                height = layoutbox.dimensions.border_box().height;
 
-            self.new_boxes.push(layoutbox);
+                if self.cur_width + width > max_width {
+                    self.flush_cur_line();
+                    self.end += 1;
+
+                    self.cur_width = width;
+                    self.cur_metrics.above_baseline = height;
+                } else {
+                    self.end += 1;
+                    self.cur_width += width;
+                    self.cur_metrics.above_baseline = max(self.cur_metrics.above_baseline, height);
+                }
+
+                self.new_boxes.push(layoutbox);
+            }
+            LayoutInfo::Button(_, _) => {
+                let btn_text = text(&layoutbox);
+                use gtk::Button;
+                use gtk::BinExt;
+                use gtk::WidgetExt;
+                use window::BUTTONS;
+                // println!("d {:?}", d);
+
+                let button = match &mut layoutbox.info {
+                    &mut LayoutInfo::Button(ref mut btn, ref id) => {
+                        let button = BUTTONS.with(|b| {
+                            b.borrow_mut()
+                                .entry(*id)
+                                .or_insert_with(|| Button::new_with_label(btn_text.as_str()))
+                                .clone()
+                        });
+                        *btn = Some(button.clone());
+                        button
+                    }
+                    _ => unreachable!(),
+                };
+                use glib::prelude::*; // or `use gtk::prelude::*;`
+                use gtk;
+                let label = button
+                    .get_child()
+                    .unwrap()
+                    .downcast::<gtk::Label>()
+                    .unwrap();
+                use pango;
+                use gtk::StyleContextExt;
+
+                let mut linemaker = self.clone();
+                layout_text(
+                    layoutbox.clone(),
+                    &mut linemaker,
+                    max_width,
+                    containing_block,
+                );
+
+                let font = get_font(&linemaker);
+                use css::px2pt;
+                label.set_markup(
+                    format!(
+                        "<span size='{}'>{}</span>",
+                        pango::units_from_double(px2pt(font.size.to_f64_px())),
+                        btn_text
+                    ).as_str(),
+                );
+                use gtk::LabelExt;
+                use gtk::ContainerExt;
+                use gtk::ButtonExt;
+                use gdk::WindowExt;
+                let button_height = button.get_allocated_height();
+                button.set_valign(gtk::Align::Baseline);
+                let width = Au::from_f64_px(label.get_allocated_width() as f64 + 10.0);
+
+                let mut d = Au::from_f64_px(button_height as f64) - font.size;
+                println!("height: {} {:?}", button_height, d);
+
+                layoutbox.dimensions.content.width = width;
+                layoutbox.dimensions.content.height = Au::from_f64_px(button_height as f64);
+
+                layoutbox.children.clear();
+
+                if self.cur_width + width > max_width {
+                    self.flush_cur_line();
+                    self.end += 1;
+
+                    self.cur_width = width;
+                } else {
+                    self.end += 1;
+                    self.cur_width += width;
+                }
+                self.cur_metrics.above_baseline = max(
+                    // Au(0),
+                    font.get_ascent_descent().0 + d / 2,
+                    linemaker.cur_metrics.above_baseline,
+                );
+                self.cur_metrics.under_baseline = max(
+                    // Au(0),
+                    font.get_ascent_descent().1 + d / 2,
+                    self.cur_metrics.under_baseline,
+                );
+
+                self.new_boxes.push(layoutbox);
+
+                // Get the font found first
+                fn get_font<'a>(linemaker: &LineMaker<'a>) -> Font {
+                    fn font<'a>(b: &LayoutBox<'a>) -> Font {
+                        if let BoxType::TextNode(Text { ref font, .. }) = b.box_type {
+                            font.clone()
+                        } else {
+                            for child in &b.children {
+                                return font(child);
+                            }
+                            panic!()
+                        }
+                    }
+                    font(linemaker.new_boxes.last().unwrap())
+                }
+                fn text<'a>(b: &LayoutBox<'a>) -> String {
+                    if let NodeType::Text(ref text) = b.get_style_node().node.data {
+                        text.clone()
+                    } else {
+                        let mut t = "".to_string();
+                        for child in &b.children {
+                            t += text(&child).as_str();
+                        }
+                        t
+                    }
+                }
+            }
+            _ => {}
         }
     }
 

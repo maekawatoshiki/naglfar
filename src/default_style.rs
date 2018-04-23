@@ -22,6 +22,7 @@ thread_local!(
         rule_a(&mut rules);
         rule_img(&mut rules);
         rule_b(&mut rules);
+        rule_button(&mut rules);
         RefCell::new(rules)
     }
 );
@@ -151,5 +152,12 @@ fn rule_b(rules: &mut Vec<Rule>) {
             decl!("display", keyword!("inline")),
             decl!("font-weight", keyword!("bold")),
         ],
+    });
+}
+
+fn rule_button(rules: &mut Vec<Rule>) {
+    rules.push(Rule {
+        selectors: vec![tag_name!("button")],
+        declarations: vec![decl!("display", keyword!("inline"))],
     });
 }

@@ -5,6 +5,7 @@ use css::{Color, TextDecoration, BLACK};
 use app_units::Au;
 
 use gdk_pixbuf;
+use gtk;
 
 use window::{AnkerKind, ANKERS, URL_FRAGMENTS};
 
@@ -13,6 +14,7 @@ pub enum DisplayCommand {
     SolidColor(Color, Rect),
     Image(gdk_pixbuf::Pixbuf, Rect),
     Text(String, Rect, Color, Vec<TextDecoration>, Font),
+    Button(gtk::Button, Rect),
 }
 
 #[derive(Debug, Clone)]
@@ -40,8 +42,15 @@ pub fn build_display_list(layout_root: &LayoutBox) -> DisplayList {
 }
 
 fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
-    render_background(list, x, y, layout_box);
-    render_borders(list, x, y, layout_box);
+    let is_input_elem = match layout_box.info {
+        LayoutInfo::Button(_, _) => true,
+        _ => false,
+    };
+
+    let mut buf = DisplayList::new();
+
+    render_background(&mut buf, x, y, layout_box);
+    render_borders(&mut buf, x, y, layout_box);
 
     let mut children = layout_box.children.clone();
     children.sort_by(|&LayoutBox { z_index: a, .. }, &LayoutBox { z_index: b, .. }| a.cmp(&b));
@@ -51,7 +60,7 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
         .filter(|child| child.box_type != BoxType::Float)
     {
         render_layout_box(
-            list,
+            &mut buf,
             x + layout_box.dimensions.content.x,
             y + layout_box.dimensions.content.y,
             &child,
@@ -62,18 +71,39 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
         .filter(|child| child.box_type == BoxType::Float)
     {
         render_layout_box(
-            list,
+            &mut buf,
             x + layout_box.dimensions.content.x,
             y + layout_box.dimensions.content.y,
             &child,
         );
     }
 
-    render_text(list, x, y, layout_box);
-    render_image(list, x, y, layout_box);
+    render_text(&mut buf, x, y, layout_box);
+    render_image(&mut buf, x, y, layout_box);
 
     register_anker(x, y, layout_box);
     register_url_fragment(x, y, layout_box);
+
+    if is_input_elem {
+        render_button(list, &mut buf, x, y, layout_box);
+    } else {
+        list.append(&mut buf);
+    }
+}
+
+fn render_button(
+    list: &mut DisplayList,
+    _children: &mut DisplayList,
+    x: Au,
+    y: Au,
+    layout_box: &LayoutBox,
+) {
+    if let &LayoutInfo::Button(ref btn, _) = &layout_box.info {
+        list.push(DisplayCommandInfo::new(DisplayCommand::Button(
+            btn.clone().unwrap(),
+            layout_box.dimensions.content.add_parent_coordinate(x, y),
+        )));
+    }
 }
 
 fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {

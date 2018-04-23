@@ -31,8 +31,9 @@ pub enum AnkerKind {
 
 thread_local!(
     pub static ANKERS: RefCell<HashMap<Rect, AnkerKind>> = { RefCell::new(HashMap::with_capacity(8)) };
-    // HashMap<URL Fragment(id), y coordinate of the content
-    pub static URL_FRAGMENTS: RefCell<HashMap<String, f64>> = { RefCell::new(HashMap::with_capacity(8)) }
+    // HashMap<URL Fragment(id), y coordinate of the content>
+    pub static URL_FRAGMENTS: RefCell<HashMap<String, f64>> = { RefCell::new(HashMap::with_capacity(8)) };
+    pub static BUTTONS: RefCell<HashMap<usize, gtk::Button>> = { RefCell::new(HashMap::with_capacity(8)) };
 );
 
 struct RenderingWindow {
@@ -52,12 +53,13 @@ impl RenderingWindow {
         let drawing_area = gtk::DrawingArea::new();
         drawing_area.set_size_request(width, height);
 
-        // let button = gtk::Button::new_with_label("I AM BUTTON");
-
         let layout = gtk::Layout::new(None, None);
+
+        use gtk::LayoutExt;
         {
-            use gtk::LayoutExt;
-            // layout.put(&button, 600, 1000);
+            let label = gtk::Label::new(None);
+            label.set_markup("<span size='20'>hello</span>");
+            layout.put(&label, 10, 10);
         }
 
         let overlay = gtk::Overlay::new();
@@ -197,12 +199,22 @@ impl RenderingWindow {
                         widget.set_size_request(-1, rect.height.ceil_to_px())
                     }
                 }
+                let overlay = widget
+                    .get_parent()
+                    .unwrap()
+                    .downcast::<gtk::Overlay>()
+                    .unwrap();
+                let layout = &overlay.get_children()[1]
+                    .clone()
+                    .downcast::<gtk::Layout>()
+                    .unwrap(); // [1] is Layout
 
                 for item in &items {
                     if match &item.command {
                         &DisplayCommand::SolidColor(_, rect)
                         | &DisplayCommand::Image(_, rect)
-                        | &DisplayCommand::Text(_, rect, _, _, _) => {
+                        | &DisplayCommand::Text(_, rect, _, _, _)
+                        | &DisplayCommand::Button(_, rect) => {
                             let rect_y = rect.y.to_px();
                             let rect_height = rect.height.to_px();
                             let sy = max(rect_y, redraw_start_y as i32);
@@ -210,9 +222,11 @@ impl RenderingWindow {
                             ey - sy > 0
                         }
                     } {
-                        render_item(cairo_context, &mut pango_layout, &item.command);
+                        render_item(cairo_context, &mut pango_layout, layout, &item.command);
                     }
                 }
+
+                layout.show_all();
 
                 Inhibit(true)
             });
@@ -229,7 +243,12 @@ impl RenderingWindow {
     }
 }
 
-fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCommand) {
+fn render_item(
+    ctx: &Context,
+    pango_layout: &mut pango::Layout,
+    layout: &gtk::Layout,
+    item: &DisplayCommand,
+) {
     match item {
         &DisplayCommand::SolidColor(ref color, rect) => {
             ctx.rectangle(
@@ -297,6 +316,10 @@ fn render_item(ctx: &Context, pango_layout: &mut pango::Layout, item: &DisplayCo
             ctx.move_to(rect.x.to_f64_px(), rect.y.to_f64_px());
 
             pangocairo::functions::show_layout(ctx, &pango_layout);
+        }
+        &DisplayCommand::Button(ref btn, rect) => {
+            use gtk::LayoutExt;
+            layout.put(btn, rect.x.ceil_to_px(), rect.y.ceil_to_px());
         }
     }
 }
