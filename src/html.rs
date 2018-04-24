@@ -154,15 +154,22 @@ impl Parser {
             if self.next_char()? == '>' {
                 break;
             }
-            let (name, value) = url_conv(self.parse_attr()?);
-            attributes.insert(name, value);
+            match self.parse_attr() {
+                Ok(x) => {
+                    let (name, value) = url_conv(x);
+                    attributes.insert(name, value);
+                }
+                Err(()) => {}
+            }
         }
         Ok(attributes)
     }
 
     fn parse_attr(&mut self) -> Result<(String, String), ()> {
         let name = self.parse_tag_name()?;
-        assert_eq!(self.consume_char()?, '=');
+        if self.consume_char()? != '=' {
+            return Err(());
+        }
         let value = self.parse_attr_value()?;
         Ok((name, value))
     }
@@ -170,7 +177,7 @@ impl Parser {
     fn parse_attr_value(&mut self) -> Result<String, ()> {
         let open_quote = self.consume_char()?;
         assert!(open_quote == '"' || open_quote == '\'');
-        let value = self.consume_while(|c| c != open_quote)?;
+        let value = self.consume_while(|c| c != open_quote && c != '>')?;
         assert_eq!(self.consume_char()?, open_quote);
         Ok(value)
     }
