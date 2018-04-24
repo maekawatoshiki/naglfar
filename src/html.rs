@@ -175,10 +175,17 @@ impl Parser {
     }
 
     fn parse_attr_value(&mut self) -> Result<String, ()> {
-        let open_quote = self.consume_char()?;
-        assert!(open_quote == '"' || open_quote == '\'');
+        let open_quote = self.next_char()?;
+        let mut open_quote_appeared = false;
+        if open_quote != '"' && open_quote != '\'' {
+            open_quote_appeared = true;
+        } else {
+            self.consume_char()?; // " or '
+        }
         let value = self.consume_while(|c| c != open_quote && c != '>')?;
-        assert_eq!(self.consume_char()?, open_quote);
+        if open_quote_appeared {
+            assert_eq!(self.consume_char()?, open_quote)
+        }
         Ok(value)
     }
 
