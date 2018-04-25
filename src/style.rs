@@ -450,7 +450,7 @@ pub fn style_tree<'a>(
                     _ => inherited_property.clone(),
                 }
             } else {
-                unreachable!()
+                inherited_property.clone()
             }
         }
     };
