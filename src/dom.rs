@@ -74,7 +74,6 @@ impl Node {
             NodeType::Text(_) => LayoutType::Text,
         }
     }
-
     pub fn is_inline(&self) -> bool {
         match self.data {
             NodeType::Element(ElementData { ref tag_name, .. }) => match tag_name.as_str() {
@@ -95,9 +94,8 @@ impl Node {
             }
             _ => {
                 for child in &self.children {
-                    let node = child.find_first_node_by_tag_name(expected);
-                    if node.is_some() {
-                        return node;
+                    if let Some(node) = child.find_first_node_by_tag_name(expected) {
+                        return Some(node);
                     }
                 }
                 None
