@@ -246,8 +246,10 @@ fn url_conv(attr: (String, String)) -> (String, String) {
     match attr.0.to_lowercase().as_str() {
         "src" | "href" => {
             if attr.1.len() > 0 && attr.1.chars().next().unwrap() == '#' {
+                // URL Fragment
                 (attr.0.clone(), attr.1.clone())
             } else {
+                // Normal URL
                 (
                     attr.0.clone(),
                     CUR_DIR.with(|dir| dir.borrow().join(attr.1).to_str().unwrap().to_string()),
