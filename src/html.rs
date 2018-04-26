@@ -6,14 +6,17 @@ use std::path::PathBuf;
 use std::cmp::max;
 use std::str::from_utf8;
 
-thread_local!(
-    pub static CUR_DIR: RefCell<PathBuf> = {
-        RefCell::new(PathBuf::new())
-    };
-);
+thread_local!(pub static CUR_DIR: RefCell<PathBuf> = { RefCell::new(PathBuf::new()) });
 
 pub fn parse(source: String, file_path: PathBuf) -> dom::Node {
-    CUR_DIR.with(|cur_dir| *cur_dir.borrow_mut() = file_path.parent().unwrap().to_path_buf());
+    CUR_DIR.with(|cur_dir| {
+        *cur_dir.borrow_mut() = if let Some(parent) = file_path.parent() {
+            parent.to_path_buf()
+        } else {
+            // file_path terminates in '/' (like www.example.com/ex1/)
+            file_path.to_path_buf()
+        }
+    });
     let mut nodes = match Parser::new(source).parse_nodes() {
         Ok(nodes) => nodes,
         Err(_) => panic!("unknown error"),
