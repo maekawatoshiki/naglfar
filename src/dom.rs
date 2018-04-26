@@ -93,9 +93,15 @@ impl Node {
             NodeType::Element(ElementData { ref tag_name, .. }) if expected == tag_name => {
                 Some(self)
             }
-            _ => self.children
-                .iter()
-                .find(|child| child.find_first_node_by_tag_name(expected).is_some()),
+            _ => {
+                for child in &self.children {
+                    let node = child.find_first_node_by_tag_name(expected);
+                    if node.is_some() {
+                        return node;
+                    }
+                }
+                None
+            }
         }
     }
 
