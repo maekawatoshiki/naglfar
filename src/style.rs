@@ -451,7 +451,9 @@ pub fn style_tree<'a>(
                 }
             } else {
                 inherited_property.clone()
-            }
+            }.into_iter()
+                .filter(|&(ref name, _)| name != "float")
+                .collect()
         }
     };
 

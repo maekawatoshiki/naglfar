@@ -50,7 +50,7 @@ impl Node {
                 layout_type: match name.to_lowercase().as_str() {
                     "img" => LayoutType::Image,
                     "a" => LayoutType::Anker,
-                    "button" => LayoutType::Button,
+                    // "button" => LayoutType::Button,
                     _ => LayoutType::Generic,
                 },
                 tag_name: name,
