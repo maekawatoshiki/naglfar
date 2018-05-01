@@ -113,6 +113,10 @@ impl<'a> LayoutBox<'a> {
             r.range = range;
         }
     }
+
+    pub fn in_normal_flow(&self) -> bool {
+        self.box_type != BoxType::Float
+    }
 }
 
 /// Transform a style tree into a layout tree.
@@ -191,11 +195,11 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, id: &mut usize) -> Layo
                 float_insert_point = Some(i);
             }
             (_, style::FloatType::Left) | (_, style::FloatType::Right) => {
-                if let Some(pos) = float_insert_point {
-                    root.children.insert(pos, build_layout_tree(child, id));
-                } else {
-                    root.children.push(build_layout_tree(child, id));
-                }
+                // if let Some(pos) = float_insert_point {
+                //     root.children.insert(pos, build_layout_tree(child, id));
+                // } else {
+                root.children.push(build_layout_tree(child, id));
+                // }
             }
             (Display::None, _) => {} // Don't lay out nodes with `display: none;`
         }

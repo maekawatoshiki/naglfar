@@ -242,7 +242,7 @@ impl<'a> LayoutBox<'a> {
 
             child.layout(&mut floats, last_margin_bottom, *d, *d, viewport);
 
-            if child.box_type != BoxType::Float {
+            if child.in_normal_flow() {
                 last_margin_bottom = child.dimensions.margin.bottom;
                 // Increment the height so each child is laid out below the previous one.
                 d.content.height += child.dimensions.margin_box().height;
