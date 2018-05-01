@@ -20,7 +20,7 @@ Naglfar is a toy web browser in Rust.
 Try with the local html file(e.g. ./example/test.html):
 
 ```sh
-$ cargo run file:///../../example/test.html
+$ cargo run file://`pwd`/example/test.html
 ```
 
 Try with the html file on the Internet:
