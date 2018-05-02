@@ -1,6 +1,6 @@
 use css::{Unit, Value};
 use float::Floats;
-use layout::{BoxType, Dimensions, LayoutBox};
+use layout::{Dimensions, LayoutBox};
 
 use std::cmp::max;
 

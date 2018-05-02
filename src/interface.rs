@@ -33,13 +33,14 @@ use self::rand::Rng;
 pub fn download(url_str: &str) -> (String, PathBuf) {
     let url = HTML_SRC_URL.with(|html_src_url| {
         let mut html_src_url = html_src_url.borrow_mut();
-        // If url_str is not absolute URL
-        if Url::parse(url_str).is_err() {
-            if let Some(ref mut html_src_url) = *html_src_url {
-                let mut url = Url::parse(html_src_url.as_str()).unwrap();
-                url.set_path(url_str);
-                return url;
-            }
+        if let Ok(parsed) = Url::parse(url_str) {
+            // If url_str is absolute URL(starts with scheme://)
+            *html_src_url = Some(url_str.to_string());
+            return parsed;
+        } else if let Some(ref mut html_src_url) = *html_src_url {
+            let mut url = Url::parse(html_src_url.as_str()).unwrap();
+            url.set_path(url_str);
+            return url;
         }
         *html_src_url = Some(url_str.to_string());
         Url::parse(url_str).unwrap()
