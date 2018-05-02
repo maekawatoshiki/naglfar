@@ -102,6 +102,13 @@ impl Parser {
                 Some(last) if last.is_inline() && last.contains_text() => {}
                 _ => self.consume_whitespace()?,
             };
+
+            if self.starts_with("<!") {
+                self.consume_while(|c| c != '>')?;
+                assert_eq!(self.consume_char()?, '>');
+                continue;
+            }
+
             if self.eof() || self.starts_with("</") {
                 break;
             }

@@ -270,7 +270,24 @@ impl Parser {
             if self.eof() {
                 break;
             }
-            rules.push(self.parse_rule());
+
+            if self.next_char() == '@' {
+                // TODO: Implement correctly
+                assert_eq!(self.consume_char(), '@');
+                assert_eq!(self.parse_identifier().as_str(), "media");
+                self.consume_while(|c| c != '{');
+                self.consume_char();
+                loop {
+                    self.consume_whitespace();
+                    if self.next_char() == '}' {
+                        break;
+                    }
+                    self.parse_rule();
+                }
+                self.consume_char();
+            } else {
+                rules.push(self.parse_rule());
+            }
         }
         rules
     }

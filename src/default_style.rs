@@ -24,6 +24,7 @@ thread_local!(
         rule_b(&mut rules);
         rule_button(&mut rules);
         rule_style(&mut rules);
+        rule_title(&mut rules);
         RefCell::new(rules)
     }
 );
@@ -166,6 +167,13 @@ fn rule_button(rules: &mut Vec<Rule>) {
 fn rule_style(rules: &mut Vec<Rule>) {
     rules.push(Rule {
         selectors: vec![tag_name!("style")],
+        declarations: vec![decl!("display", keyword!("none"))],
+    });
+}
+
+fn rule_title(rules: &mut Vec<Rule>) {
+    rules.push(Rule {
+        selectors: vec![tag_name!("title")],
         declarations: vec![decl!("display", keyword!("none"))],
     });
 }
