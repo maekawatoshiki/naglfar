@@ -113,6 +113,14 @@ impl Node {
             })
     }
 
+    pub fn find_stylesheet_in_style_tag(&self) -> Option<String> {
+        self.find_first_node_by_tag_name("style")
+            .and_then(|&Node { ref children, .. }| match children[0].data {
+                NodeType::Element(_) => None,
+                NodeType::Text(ref s) => Some(s.clone()),
+            })
+    }
+
     pub fn image_url(&self) -> Option<&String> {
         match self.data {
             NodeType::Element(ElementData { ref attrs, .. }) => attrs.get("src"),

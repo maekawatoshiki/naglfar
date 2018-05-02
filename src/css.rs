@@ -287,6 +287,10 @@ impl Parser {
         loop {
             selectors.push(self.parse_selector());
             self.consume_whitespace();
+            // if self.next_char() == ':' {
+            //
+            // }
+
             match self.next_char() {
                 ',' => {
                     self.consume_char();
@@ -392,6 +396,7 @@ impl Parser {
                 break;
             }
             values.push(self.parse_value());
+            self.skip_char_if_any(',');
         }
         values
     }
@@ -400,6 +405,7 @@ impl Parser {
         match self.next_char() {
             '0'...'9' => self.parse_length(),
             '#' => self.parse_color(),
+            '\"' => self.parse_string(),
             _ => {
                 let ident = self.parse_identifier();
                 match ident.as_str() {
@@ -426,6 +432,14 @@ impl Parser {
             _ => false,
         });
         s.parse().unwrap()
+    }
+
+    fn parse_string(&mut self) -> Value {
+        // TODO: Implement correctly
+        assert_eq!(self.consume_char(), '\"');
+        self.consume_while(|c| c != '\"');
+        assert_eq!(self.consume_char(), '\"');
+        Value::Num(0.0)
     }
 
     fn parse_unit(&mut self) -> Unit {
@@ -543,6 +557,12 @@ impl Parser {
         let (next_pos, _) = iter.next().unwrap_or((1, ' '));
         self.pos += next_pos;
         cur_char
+    }
+
+    fn skip_char_if_any(&mut self, c: char) {
+        if !self.eof() && self.next_char() == c {
+            assert_eq!(self.consume_char(), c);
+        }
     }
 
     fn next_char(&mut self) -> char {

@@ -119,6 +119,8 @@ pub fn update_html_tree_and_stylesheet(html_src: String) {
             .read_to_string(&mut css_source)
             .ok()
             .expect("cannot read file");
+    } else if let Some(stylesheet_str) = html_tree.find_stylesheet_in_style_tag() {
+        css_source = stylesheet_str;
     } else {
         println!("*** Not found any stylesheet but continue ***");
     }
