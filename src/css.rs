@@ -287,9 +287,9 @@ impl Parser {
         loop {
             selectors.push(self.parse_selector());
             self.consume_whitespace();
-            // if self.next_char() == ':' {
-            //
-            // }
+            // TODO: Implement correctly
+            self.parse_pseudo_class();
+            self.consume_whitespace();
 
             match self.next_char() {
                 ',' => {
@@ -352,6 +352,14 @@ impl Parser {
             }
         }
         selector
+    }
+
+    fn parse_pseudo_class(&mut self) {
+        // TODO: Implement correctly
+        if self.skip_char_if_any(':') {
+            self.consume_whitespace();
+            self.parse_identifier();
+        }
     }
 
     fn parse_declarations(&mut self) -> Vec<Declaration> {
@@ -559,10 +567,12 @@ impl Parser {
         cur_char
     }
 
-    fn skip_char_if_any(&mut self, c: char) {
+    fn skip_char_if_any(&mut self, c: char) -> bool {
         if !self.eof() && self.next_char() == c {
             assert_eq!(self.consume_char(), c);
+            return true;
         }
+        false
     }
 
     fn next_char(&mut self) -> char {
