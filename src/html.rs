@@ -248,6 +248,9 @@ fn url_conv(attr: (String, String)) -> (String, String) {
             if attr.1.len() > 0 && attr.1.chars().next().unwrap() == '#' {
                 // URL Fragment
                 (attr.0.clone(), attr.1.clone())
+            } else if attr.1.starts_with("http") || attr.1.starts_with("file") {
+                // Absolute URL
+                (attr.0.clone(), attr.1.clone())
             } else {
                 // Normal URL
                 (
