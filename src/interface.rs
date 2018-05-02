@@ -31,14 +31,17 @@ use self::rand::Rng;
 // If ``url_str`` starts with ``file://``, doesn't do anything special.
 //  Just returns (local file name, local file path).
 pub fn download(url_str: &str) -> (String, PathBuf) {
-    let url = HTML_SRC_URL.with(|a| {
-        let mut a = a.borrow_mut();
-        if let Some(ref mut a) = *a {
-            let mut url = Url::parse(a.as_str()).unwrap();
-            url.set_path(url_str);
-            return url;
+    let url = HTML_SRC_URL.with(|html_src_url| {
+        let mut html_src_url = html_src_url.borrow_mut();
+        // If url_str is not absolute URL
+        if Url::parse(url_str).is_err() {
+            if let Some(ref mut html_src_url) = *html_src_url {
+                let mut url = Url::parse(html_src_url.as_str()).unwrap();
+                url.set_path(url_str);
+                return url;
+            }
         }
-        *a = Some(url_str.to_string());
+        *html_src_url = Some(url_str.to_string());
         Url::parse(url_str).unwrap()
     });
 

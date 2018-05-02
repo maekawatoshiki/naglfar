@@ -8,9 +8,9 @@ use gtk::{Inhibit, ObjectExt, WidgetExt, traits::*};
 use gtk::ContainerExt;
 
 use glib::prelude::*; // or `use gtk::prelude::*;`
+use glib;
 
-use gdk::{ContextExt, Cursor, CursorType, Event, EventButton, EventMask, EventMotion, WindowExt,
-          RGBA};
+use gdk::{ContextExt, Cursor, CursorType, Event, EventButton, EventMask, EventMotion, RGBA};
 use gdk_pixbuf::{InterpType, PixbufExt};
 
 use cairo::Context;
@@ -74,16 +74,59 @@ impl RenderingWindow {
             overlay.set_child_index(&layout, 1);
         }
 
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
+        let entry = gtk::Entry::new();
+        vbox.pack_start(&entry, false, false, 0);
+
+        entry
+            .connect("activate", true, |args| {
+                let entry = args[0]
+                    .clone()
+                    .downcast::<glib::Object>()
+                    .unwrap()
+                    .get()
+                    .unwrap()
+                    .downcast::<gtk::Entry>()
+                    .unwrap();
+                let vbox = entry.get_parent().unwrap().downcast::<gtk::Box>().unwrap();
+                let scrolled_window = vbox.get_children()[1]
+                    .clone()
+                    .downcast::<gtk::ScrolledWindow>()
+                    .unwrap();
+                let viewport = scrolled_window
+                    .get_child()
+                    .unwrap()
+                    .downcast::<gtk::Viewport>()
+                    .unwrap();
+                let overlay = viewport
+                    .get_child()
+                    .unwrap()
+                    .downcast::<gtk::Overlay>()
+                    .unwrap();
+                let drawing_area = overlay.get_children()[0].clone();
+
+                let url = entry.get_text().unwrap();
+                println!("URL: {}", url);
+                update_html_tree_and_stylesheet(url);
+                ANKERS.with(|ankers| ankers.borrow_mut().clear());
+                drawing_area.queue_draw();
+                None
+            })
+            .unwrap();
+
         let scrolled_window = gtk::ScrolledWindow::new(None, None);
         scrolled_window.add(&overlay);
+        vbox.pack_start(&scrolled_window, true, true, 0);
 
-        window.add(&scrolled_window);
+        window.add(&vbox);
         overlay.add_events(
             EventMask::POINTER_MOTION_MASK.bits() as i32
                 | EventMask::BUTTON_PRESS_MASK.bits() as i32,
         );
         overlay
             .connect("motion-notify-event", false, |args| {
+                use gdk::WindowExt;
                 let overlay = args[0]
                     .clone()
                     .downcast::<gtk::Overlay>()
