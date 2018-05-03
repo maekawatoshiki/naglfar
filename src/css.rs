@@ -305,7 +305,10 @@ impl Parser {
             selectors.push(self.parse_selector());
             self.consume_whitespace();
             // TODO: Implement correctly
-            self.parse_pseudo_class();
+            if self.parse_pseudo_class() {
+                self.consume_whitespace();
+                continue;
+            }
             self.consume_whitespace();
 
             match self.next_char() {
@@ -371,12 +374,15 @@ impl Parser {
         selector
     }
 
-    fn parse_pseudo_class(&mut self) {
+    fn parse_pseudo_class(&mut self) -> bool {
         // TODO: Implement correctly
         if self.skip_char_if_any(':') {
+            self.skip_char_if_any(':');
             self.consume_whitespace();
             self.parse_identifier();
+            return true;
         }
+        false
     }
 
     fn parse_declarations(&mut self) -> Vec<Declaration> {
@@ -436,6 +442,7 @@ impl Parser {
                 match ident.as_str() {
                     "rgb" => self.parse_rgb_color(),
                     "rgba" => self.parse_rgba_color(),
+                    "url" => self.parse_url(),
                     _ => Value::Keyword(ident),
                 }
             }
@@ -509,6 +516,14 @@ impl Parser {
             b: b as u8,
             a: (255.0 * a) as u8,
         })
+    }
+
+    fn parse_url(&mut self) -> Value {
+        // TODO: Implement correctly
+        assert_eq!(self.consume_char_ignore_whitescape(), '(');
+        self.consume_while(|c| c != ')');
+        assert_eq!(self.consume_char_ignore_whitescape(), ')');
+        Value::Num(0.0)
     }
 
     fn parse_color(&mut self) -> Value {

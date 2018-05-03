@@ -103,14 +103,36 @@ impl Node {
         }
     }
 
+    pub fn find_nodes_by_tag_name<'a>(&'a self, expected: &str, buf: &mut Vec<&'a Node>) {
+        match self.data {
+            NodeType::Element(ElementData { ref tag_name, .. }) if expected == tag_name => {
+                buf.push(self)
+            }
+            _ => for child in &self.children {
+                child.find_nodes_by_tag_name(expected, buf)
+            },
+        }
+    }
+
     pub fn find_stylesheet_path(&self) -> Option<PathBuf> {
-        self.find_first_node_by_tag_name("link")
-            .and_then(|&Node { ref data, .. }| match data {
-                &NodeType::Element(ElementData { ref attrs, .. }) => attrs
-                    .get("href")
-                    .and_then(|filename| Some(Path::new(filename).to_path_buf())),
-                &NodeType::Text(_) => None,
-            })
+        let mut buf = vec![];
+        self.find_nodes_by_tag_name("link", &mut buf);
+        for &Node { ref data, .. } in buf {
+            match data {
+                &NodeType::Element(ElementData { ref attrs, .. }) => {
+                    if let Some(name) = attrs.get("rel") {
+                        println!(">>{}", name);
+                        if name == "stylesheet" {
+                            return attrs
+                                .get("href")
+                                .and_then(|filename| Some(Path::new(filename).to_path_buf()));
+                        }
+                    }
+                }
+                &NodeType::Text(_) => {}
+            }
+        }
+        None
     }
 
     pub fn find_stylesheet_in_style_tag(&self) -> Option<String> {
