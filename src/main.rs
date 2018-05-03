@@ -7,7 +7,7 @@ use clap::{App, Arg};
 const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() {
-    let mut app = App::new("Naglfar")
+    let app = App::new("Naglfar")
         .version(VERSION_STR)
         .author("uint256_t")
         .about("Naglfar is a web browser implementation in Rust")
@@ -18,10 +18,12 @@ fn main() {
         );
     let app_matches = app.clone().get_matches();
 
-    if let Some(url) = app_matches.value_of("URL") {
-        interface::run_with_url(url.to_string())
+    interface::run_with_url(if let Some(url) = app_matches.value_of("URL") {
+        url.to_string()
     } else {
-        app.print_help().unwrap();
-        println!();
-    }
+        let mut cur_dir = std::env::current_dir().unwrap();
+        cur_dir.push("example");
+        cur_dir.push("top.html");
+        format!("file://{}", cur_dir.to_str().unwrap())
+    });
 }

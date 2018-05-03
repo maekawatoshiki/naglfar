@@ -8,22 +8,28 @@ Naglfar is a toy web browser in Rust.
 
 ![Naglfar](https://raw.githubusercontent.com/maekawatoshiki/naglfar/master/screenshot.gif)
 
-# Running
+# Try Naglfar
 
 ## Requisites
 
 - Latest Rust (recommend [rustup](https://www.rustup.rs/))
 - GTK (for gtk-rs)
 
-## Building & Running
+## Build & Run
 
-Try with the local html file(e.g. ./example/test.html):
+A blank window will appear if you run Naglfar with no option.
+
+```sh
+$ cargo run
+```
+
+Give the local html file (e.g. ./example/test.html):
 
 ```sh
 $ cargo run file://`pwd`/example/test.html
 ```
 
-Try with the html file on the Internet:
+Give the html file on the Internet:
 (But most of web sites are too much for Naglfar...)
 
 ```sh

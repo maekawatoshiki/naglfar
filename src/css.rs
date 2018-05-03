@@ -305,10 +305,7 @@ impl Parser {
             selectors.push(self.parse_selector());
             self.consume_whitespace();
             // TODO: Implement correctly
-            if self.parse_pseudo_class() {
-                self.consume_whitespace();
-                continue;
-            }
+            self.parse_pseudo_class_or_element();
             self.consume_whitespace();
 
             match self.next_char() {
@@ -374,15 +371,13 @@ impl Parser {
         selector
     }
 
-    fn parse_pseudo_class(&mut self) -> bool {
+    fn parse_pseudo_class_or_element(&mut self) {
         // TODO: Implement correctly
         if self.skip_char_if_any(':') {
             self.skip_char_if_any(':');
             self.consume_whitespace();
             self.parse_identifier();
-            return true;
         }
-        false
     }
 
     fn parse_declarations(&mut self) -> Vec<Declaration> {
