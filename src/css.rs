@@ -304,10 +304,6 @@ impl Parser {
         loop {
             selectors.push(self.parse_selector());
             self.consume_whitespace();
-            // TODO: Implement correctly
-            self.parse_pseudo_class_or_element();
-            self.consume_whitespace();
-
             match self.next_char() {
                 ',' => {
                     self.consume_char();
@@ -324,6 +320,9 @@ impl Parser {
 
     fn parse_selector(&mut self) -> Selector {
         let s1 = self.parse_simple_selector();
+        self.consume_whitespace();
+        // TODO: Implement correctly
+        self.parse_pseudo_class_or_element();
         self.consume_whitespace();
         match self.next_char() {
             // Descendant
