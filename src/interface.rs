@@ -26,10 +26,10 @@ use std::io::{BufWriter, Write};
 extern crate rand;
 use self::rand::Rng;
 
-// If ``url_str`` starts with ``http(s)://``, downloads the specified file:
-//  Returns (downloaded file name, file path(URL without ``http(s)://domain/``)).
-// If ``url_str`` starts with ``file://``, doesn't do anything special.
-//  Just returns (local file name, local file path).
+/// If ``url_str`` starts with ``http(s)://``, downloads the specified file:
+///  Returns (downloaded file name, file path(URL without ``http(s)://domain/``)).
+/// If ``url_str`` starts with ``file://``, doesn't do anything special.
+///  Just returns (local file name, local file path).
 pub fn download(url_str: &str) -> (String, PathBuf) {
     let url = HTML_SRC_URL.with(|html_src_url| {
         let mut html_src_url = html_src_url.borrow_mut();
@@ -112,7 +112,6 @@ pub fn update_html_tree_and_stylesheet(html_src: String) {
     let mut css_source = "".to_string();
     if let Some(stylesheet_path) = html_tree.find_stylesheet_path() {
         let (css_cache_name, _) = download(stylesheet_path.to_str().unwrap());
-        println!("{}", css_cache_name);
         OpenOptions::new()
             .read(true)
             .open(css_cache_name)
