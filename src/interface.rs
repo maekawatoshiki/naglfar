@@ -52,8 +52,6 @@ pub fn download(url_str: &str) -> (String, PathBuf) {
     } else {
         // http(s)://
 
-        println!("download {}", url.as_str());
-
         let mut content: Vec<u8> = vec![];
         reqwest::get(url.clone())
             .unwrap()
@@ -73,6 +71,8 @@ pub fn download(url_str: &str) -> (String, PathBuf) {
                 "html"
             }
         );
+
+        println!("downloaded {}", url.as_str());
 
         let mut f = BufWriter::new(fs::File::create(tmpfile_name.as_str()).unwrap());
         f.write_all(content.as_slice()).unwrap();
