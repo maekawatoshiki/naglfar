@@ -15,7 +15,7 @@ Naglfar is a toy web browser in Rust.
 - Latest Rust (recommend [rustup](https://www.rustup.rs/))
 - GTK (for gtk-rs)
 
-## Build & Run
+## Run
 
 A blank window will appear if you run Naglfar with no option.
 
