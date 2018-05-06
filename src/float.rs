@@ -160,7 +160,7 @@ impl<'a> LayoutBox<'a> {
                 self.dimensions.content.width = width;
                 self.dimensions.content.height = height;
             }
-            LayoutInfo::Generic => {
+            LayoutInfo::Generic | LayoutInfo::Anker => {
                 self.assign_padding();
                 self.assign_border_width();
                 self.assign_margin();
@@ -202,7 +202,7 @@ impl<'a> LayoutBox<'a> {
 
                 self.calculate_block_height();
             }
-            _ => unimplemented!(),
+            _ => unimplemented!("{:?}", self.info),
         };
 
         self.calculate_float_position(floats, containing_block);
