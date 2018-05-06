@@ -88,7 +88,7 @@ thread_local!(
     static LAYOUT_SAVER: RefCell<(Au, Au, painter::DisplayList)> = { RefCell::new((Au(0), Au(0), vec![])) };
     static HTML_SRC_URL: RefCell<Option<String>> = { RefCell::new(None) };
     static HTML_TREE: Rc<RefCell<Option<dom::Node>>> = { Rc::new(RefCell::new(None)) };
-    static STYLESHEET: Rc<RefCell<Option<css::Stylesheet>>> = { Rc::new(  RefCell::new(None)) };
+    static STYLESHEET: Rc<RefCell<Option<css::Stylesheet>>> = { Rc::new(RefCell::new(None)) };
 );
 
 static mut SRC_UPDATED: bool = false;
