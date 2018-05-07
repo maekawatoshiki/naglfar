@@ -1,5 +1,5 @@
 use css::Value;
-use style::StyledNode;
+use style::{PropertyMap, StyledNode};
 use dom::NodeType;
 use font::Font;
 use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, Text};
@@ -44,10 +44,10 @@ impl LineMetrics {
 }
 
 #[derive(Clone, Debug)]
-pub struct LineMaker<'a> {
+pub struct LineMaker {
     pub pending: Line,
-    pub work_list: VecDeque<LayoutBox<'a>>,
-    pub new_boxes: Vec<LayoutBox<'a>>,
+    pub work_list: VecDeque<LayoutBox>,
+    pub new_boxes: Vec<LayoutBox>,
     pub floats: Floats,
     pub lines: Vec<Line>,
     pub start: usize,
@@ -57,8 +57,8 @@ pub struct LineMaker<'a> {
     pub cur_metrics: LineMetrics,
 }
 
-impl<'a> LineMaker<'a> {
-    pub fn new(boxes: Vec<LayoutBox<'a>>, floats: Floats) -> LineMaker {
+impl LineMaker {
+    pub fn new(boxes: Vec<LayoutBox>, floats: Floats) -> LineMaker {
         LineMaker {
             pending: Line {
                 range: 0..0,
@@ -144,8 +144,7 @@ impl<'a> LineMaker<'a> {
                     (available_area.x, available_area.width)
                 };
                 // TODO: Refine
-                let style = new_box.get_style_node();
-                let text_align = style.text_align();
+                let text_align = new_box.property.text_align();
                 let init_width = match text_align {
                     Value::Keyword(ref k) => match k.as_str() {
                         "center" => (max_width_considered_float - line.width) / 2,
@@ -173,13 +172,13 @@ impl<'a> LineMaker<'a> {
 
     fn run_on_inline_node(
         &mut self,
-        mut layoutbox: LayoutBox<'a>,
+        mut layoutbox: LayoutBox,
         max_width: Au,
         containing_block: Dimensions,
     ) {
-        fn layout_text<'a>(
-            mut layoutbox: LayoutBox<'a>,
-            linemaker: &mut LineMaker<'a>,
+        fn layout_text(
+            mut layoutbox: LayoutBox,
+            linemaker: &mut LineMaker,
             max_width: Au,
             containing_block: Dimensions,
         ) {
@@ -364,8 +363,8 @@ impl<'a> LineMaker<'a> {
                 self.new_boxes.push(layoutbox);
 
                 // Get the font found first
-                fn get_font<'a>(linemaker: &LineMaker<'a>) -> Font {
-                    fn font<'a>(b: &LayoutBox<'a>) -> Font {
+                fn get_font(linemaker: &LineMaker) -> Font {
+                    fn font(b: &LayoutBox) -> Font {
                         if let BoxType::TextNode(Text { ref font, .. }) = b.box_type {
                             font.clone()
                         } else {
@@ -377,8 +376,8 @@ impl<'a> LineMaker<'a> {
                     }
                     font(linemaker.new_boxes.last().unwrap())
                 }
-                fn text<'a>(b: &LayoutBox<'a>) -> String {
-                    if let NodeType::Text(ref text) = b.get_style_node().node.data {
+                fn text(b: &LayoutBox) -> String {
+                    if let NodeType::Text(ref text) = b.node.data {
                         text.clone()
                     } else {
                         let mut t = "".to_string();
@@ -393,7 +392,7 @@ impl<'a> LineMaker<'a> {
         }
     }
 
-    fn run_on_inline_block_node(&mut self, mut layoutbox: LayoutBox<'a>, max_width: Au) {
+    fn run_on_inline_block_node(&mut self, mut layoutbox: LayoutBox, max_width: Au) {
         let mut containing_block: Dimensions = ::std::default::Default::default();
         containing_block.content.width = max_width - self.cur_width;
         layoutbox.layout(
@@ -429,10 +428,10 @@ impl<'a> LineMaker<'a> {
         }
     }
 
-    fn run_on_text_node(&mut self, layoutbox: LayoutBox<'a>, max_width: Au) {
-        let style = layoutbox.style.unwrap();
+    fn run_on_text_node(&mut self, layoutbox: LayoutBox, max_width: Au) {
+        let style = layoutbox.get_style_node();
 
-        let text = if let NodeType::Text(ref text) = style.node.data {
+        let text = if let NodeType::Text(ref text) = layoutbox.node.data {
             &text[self.pending.range.clone()]
         } else {
             return;
@@ -505,7 +504,7 @@ impl<'a> LineMaker<'a> {
     }
 }
 
-impl<'a> LayoutBox<'a> {
+impl LayoutBox {
     /// Lay out a inline-level element and its descendants.
     pub fn layout_inline(&mut self, _floats: &mut Floats, containing_block: Dimensions) {
         match self.info {
@@ -523,9 +522,10 @@ impl<'a> LayoutBox<'a> {
     /// Calculate the width of a inline-level replaced(<img>) element in normal flow.
     pub fn calculate_replaced_inline_width_height(&mut self, containing_block: Dimensions) {
         // Replaced Inline Element (<img>)
-        let style = self.get_style_node();
         let (width, height) = match &mut self.info {
-            &mut LayoutInfo::Image(ref mut pixbuf) => get_image(style, pixbuf, containing_block),
+            &mut LayoutInfo::Image(ref mut pixbuf) => {
+                get_image(&self.node, pixbuf, containing_block)
+            }
             _ => unimplemented!(),
         };
 
@@ -534,7 +534,7 @@ impl<'a> LayoutBox<'a> {
     }
 }
 
-impl<'a> LayoutBox<'a> {
+impl LayoutBox {
     fn get_first_text_node(&self) -> Option<&LayoutBox> {
         match self.box_type {
             BoxType::TextNode(_) => Some(self),
@@ -561,51 +561,8 @@ impl<'a> LayoutBox<'a> {
     }
 }
 
-pub fn get_image<'a>(
-    style: &'a StyledNode<'a>,
-    pixbuf: &mut Option<gdk_pixbuf::Pixbuf>,
-    containing_block: Dimensions,
-) -> (Au, Au) {
-    let cb_width = containing_block.content.width.to_f64_px();
-    let cb_height = containing_block.content.height.to_f64_px();
-
-    let pixbuf = match pixbuf {
-        &mut Some(ref pixbuf) => pixbuf.clone(),
-        &mut None => {
-            *pixbuf = Some(style.get_pixbuf());
-            pixbuf.clone().unwrap()
-        }
-    };
-
-    let specified_width_px = style
-        .node
-        .attr("width")
-        .and_then(|w| w.maybe_percent_to_px(cb_width));
-    // The same as above
-    let specified_height_px = style
-        .node
-        .attr("height")
-        .and_then(|h| h.maybe_percent_to_px(cb_height));
-
-    match (specified_width_px, specified_height_px) {
-        (Some(width), Some(height)) => (Au::from_f64_px(width), Au::from_f64_px(height)),
-        (Some(width), None) => (
-            Au::from_f64_px(width),
-            Au::from_f64_px(width * (pixbuf.get_height() as f64 / pixbuf.get_width() as f64)),
-        ),
-        (None, Some(height)) => (
-            Au::from_f64_px(height * (pixbuf.get_width() as f64 / pixbuf.get_height() as f64)),
-            Au::from_f64_px(height),
-        ),
-        (None, None) => (
-            Au::from_f64_px(pixbuf.get_width() as f64),
-            Au::from_f64_px(pixbuf.get_height() as f64),
-        ),
-    }
-}
-
 // TODO: Implement correctly
-impl<'a> LayoutBox<'a> {
+impl LayoutBox {
     /// Lay out a inline-block-level element and its descendants.
     pub fn layout_inline_block(
         &mut self,
@@ -635,12 +592,10 @@ impl<'a> LayoutBox<'a> {
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
     /// ref. https://www.w3.org/TR/CSS2/visudet.html#inlineblock-width
     pub fn calculate_inline_block_width(&mut self, _containing_block: Dimensions) {
-        let style = self.get_style_node();
-
         // `width` has initial value `auto`.
         // TODO: Implement calculating shrink-to-fit width
         let auto = Value::Keyword("auto".to_string());
-        let width = &style.value("width").unwrap_or(vec![auto.clone()])[0];
+        let width = &self.property.value("width").unwrap_or(vec![auto.clone()])[0];
 
         if width == &auto {
             // TODO
@@ -648,6 +603,45 @@ impl<'a> LayoutBox<'a> {
         }
 
         self.dimensions.content.width = Au::from_f64_px(width.to_px().unwrap());
+    }
+}
+use dom::Node;
+pub fn get_image(
+    node: &Node,
+    pixbuf: &mut Option<gdk_pixbuf::Pixbuf>,
+    containing_block: Dimensions,
+) -> (Au, Au) {
+    let cb_width = containing_block.content.width.to_f64_px();
+    let cb_height = containing_block.content.height.to_f64_px();
+
+    let pixbuf = match pixbuf {
+        &mut Some(ref pixbuf) => pixbuf.clone(),
+        &mut None => {
+            *pixbuf = Some(get_pixbuf(node));
+            pixbuf.clone().unwrap()
+        }
+    };
+
+    let specified_width_px = node.attr("width")
+        .and_then(|w| w.maybe_percent_to_px(cb_width));
+    // The same as above
+    let specified_height_px = node.attr("height")
+        .and_then(|h| h.maybe_percent_to_px(cb_height));
+
+    match (specified_width_px, specified_height_px) {
+        (Some(width), Some(height)) => (Au::from_f64_px(width), Au::from_f64_px(height)),
+        (Some(width), None) => (
+            Au::from_f64_px(width),
+            Au::from_f64_px(width * (pixbuf.get_height() as f64 / pixbuf.get_width() as f64)),
+        ),
+        (None, Some(height)) => (
+            Au::from_f64_px(height * (pixbuf.get_width() as f64 / pixbuf.get_height() as f64)),
+            Au::from_f64_px(height),
+        ),
+        (None, None) => (
+            Au::from_f64_px(pixbuf.get_width() as f64),
+            Au::from_f64_px(pixbuf.get_height() as f64),
+        ),
     }
 }
 
@@ -662,18 +656,15 @@ thread_local!(
 );
 
 use interface::download;
-
-impl<'a> StyledNode<'a> {
-    pub fn get_pixbuf(&self) -> gdk_pixbuf::Pixbuf {
-        IMG_CACHE.with(|c| {
-            let image_url = self.node.image_url().unwrap();
-            c.borrow_mut()
-                .entry(image_url.clone())
-                .or_insert_with(|| {
-                    let (cache_name, _) = download(image_url.as_str());
-                    gdk_pixbuf::Pixbuf::new_from_file(cache_name.as_str()).unwrap()
-                })
-                .clone()
-        })
-    }
+pub fn get_pixbuf(node: &Node) -> gdk_pixbuf::Pixbuf {
+    IMG_CACHE.with(|c| {
+        let image_url = node.image_url().unwrap();
+        c.borrow_mut()
+            .entry(image_url.clone())
+            .or_insert_with(|| {
+                let (cache_name, _) = download(image_url.as_str());
+                gdk_pixbuf::Pixbuf::new_from_file(cache_name.as_str()).unwrap()
+            })
+            .clone()
+    })
 }

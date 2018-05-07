@@ -6,7 +6,7 @@ use std::cmp::max;
 
 use app_units::Au;
 
-impl<'a> LayoutBox<'a> {
+impl LayoutBox {
     /// Lay out a block-level element and its descendants.
     pub fn layout_block(
         &mut self,
@@ -18,10 +18,9 @@ impl<'a> LayoutBox<'a> {
     ) {
         self.floats = floats.clone();
 
-        let style = self.get_style_node();
-        let margin = style.margin();
-        let padding = style.padding();
-        let border = style.border_width();
+        let margin = self.property.margin();
+        let padding = self.property.padding();
+        let border = self.property.border_width();
         // Child width can depend on parent width, so we need to calculate this box's width before
         // laying out its children.
         self.calculate_block_width(
@@ -60,12 +59,11 @@ impl<'a> LayoutBox<'a> {
         padding: (Value, Value, Value, Value),
         border: (Value, Value, Value, Value),
     ) {
-        let style = self.get_style_node();
         let cb_width = containing_block.content.width.to_f64_px();
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
-        let mut width = style.value("width").unwrap_or(vec![auto.clone()])[0].clone();
+        let mut width = self.property.value("width").unwrap_or(vec![auto.clone()])[0].clone();
 
         let mut margin_left = margin.3;
         let mut margin_right = margin.1;
@@ -186,7 +184,6 @@ impl<'a> LayoutBox<'a> {
         padding: (Value, Value, Value, Value),
         border: (Value, Value, Value, Value),
     ) {
-        let style = self.get_style_node();
         let cb_width = containing_block.content.width.to_f64_px();
         let d = &mut self.dimensions;
 
@@ -210,7 +207,7 @@ impl<'a> LayoutBox<'a> {
         d.padding.top = Au::from_f64_px(padding.0.maybe_percent_to_px(cb_width).unwrap());
         d.padding.bottom = Au::from_f64_px(padding.2.maybe_percent_to_px(cb_width).unwrap());
 
-        self.z_index = style.lookup("z-index", "z-index", &vec![zero])[0]
+        self.z_index = self.property.lookup("z-index", "z-index", &vec![zero])[0]
             .clone()
             .to_num() as i32;
 
@@ -229,11 +226,9 @@ impl<'a> LayoutBox<'a> {
 
         // TODO: Consider a better way to position children.
         for child in &mut self.children {
-            if let Some(style) = child.style {
-                if let Some(clear) = style.clear() {
-                    let clearance = floats.clearance(clear);
-                    d.content.height += clearance;
-                }
+            if let Some(clear) = child.property.clear() {
+                let clearance = floats.clearance(clear);
+                d.content.height += clearance;
             }
 
             if floats.is_present() {

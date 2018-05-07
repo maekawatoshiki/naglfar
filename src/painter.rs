@@ -108,7 +108,7 @@ fn render_button(
 
 fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     if let &BoxType::TextNode(ref text_info) = &layout_box.box_type {
-        let text = if let NodeType::Text(ref text) = layout_box.style.unwrap().node.data {
+        let text = if let NodeType::Text(ref text) = layout_box.node.data {
             &text.as_str()[text_info.range.clone()]
         } else {
             unreachable!()
@@ -117,10 +117,7 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
             text.to_string(),
             layout_box.dimensions.content.add_parent_coordinate(x, y),
             get_color(layout_box, "color").unwrap_or(BLACK),
-            match layout_box.style {
-                Some(style) => style.text_decoration(),
-                None => vec![],
-            },
+            layout_box.property.text_decoration(),
             text_info.font,
         )));
     }
@@ -131,7 +128,7 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
         BoxType::InlineNode | BoxType::Float => {
             if let NodeType::Element(ElementData {
                 ref layout_type, ..
-            }) = layout_box.style.unwrap().node.data
+            }) = layout_box.node.data
             {
                 if layout_type == &LayoutType::Image {
                     list.push(DisplayCommandInfo::new(DisplayCommand::Image(
@@ -152,7 +149,7 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
 fn register_anker(x: Au, y: Au, layout_box: &LayoutBox) {
     match layout_box.info {
         LayoutInfo::Anker => {
-            if let Some(url) = layout_box.style.unwrap().node.anker_url() {
+            if let Some(url) = layout_box.node.anker_url() {
                 let rect = layout_box.dimensions.content.add_parent_coordinate(x, y);
                 ANKERS.with(|ankers| {
                     ankers.borrow_mut().entry(rect).or_insert_with(|| {
@@ -170,21 +167,19 @@ fn register_anker(x: Au, y: Au, layout_box: &LayoutBox) {
 }
 
 fn register_url_fragment(x: Au, y: Au, layout_box: &LayoutBox) {
-    if let Some(style) = layout_box.style {
-        if let NodeType::Element(ref e) = style.node.data {
-            if let Some(id) = e.id() {
-                URL_FRAGMENTS.with(|url_fragments| {
-                    url_fragments.borrow_mut().insert(
-                        id.to_string(),
-                        layout_box
-                            .dimensions
-                            .content
-                            .add_parent_coordinate(x, y)
-                            .y
-                            .to_f64_px(),
-                    )
-                });
-            }
+    if let NodeType::Element(ref e) = layout_box.node.data {
+        if let Some(id) = e.id() {
+            URL_FRAGMENTS.with(|url_fragments| {
+                url_fragments.borrow_mut().insert(
+                    id.to_string(),
+                    layout_box
+                        .dimensions
+                        .content
+                        .add_parent_coordinate(x, y)
+                        .y
+                        .to_f64_px(),
+                )
+            });
         }
     }
 }
@@ -205,10 +200,7 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
     let d = &layout_box.dimensions;
     let border_box = d.border_box().add_parent_coordinate(x, y);
 
-    let (top_color, right_color, bottom_color, left_color) = match layout_box.style {
-        Some(style) => style.border_color(),
-        None => return,
-    };
+    let (top_color, right_color, bottom_color, left_color) = layout_box.property.border_color();
 
     // Left border
     if let Some(left_color) = left_color {
@@ -265,22 +257,19 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
 
 /// Return the specified color for CSS property `name`, or None if no color was specified.
 fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
-    match layout_box.style {
-        Some(style) => match style.value(name) {
-            Some(maybe_color) => maybe_color[0].to_color(),
-            _ => None,
-        },
-        None => None,
+    match layout_box.property.value(name) {
+        Some(maybe_color) => maybe_color[0].to_color(),
+        _ => None,
     }
 }
 
 /// Return the specified color for CSS property `name` or `fallback_name`, or None if no color was specified.
 fn lookup_color(layout_box: &LayoutBox, name: &str, fallback_name: &str) -> Option<Color> {
-    match layout_box.style {
-        Some(style) => match style.lookup_without_default(name, fallback_name) {
-            Some(maybe_color) => maybe_color[0].to_color(),
-            _ => None,
-        },
-        None => None,
+    match layout_box
+        .property
+        .lookup_without_default(name, fallback_name)
+    {
+        Some(maybe_color) => maybe_color[0].to_color(),
+        _ => None,
     }
 }

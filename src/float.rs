@@ -143,7 +143,7 @@ impl Floats {
     }
 }
 
-impl<'a> LayoutBox<'a> {
+impl LayoutBox {
     pub fn layout_float(
         &mut self,
         floats: &mut Floats,
@@ -156,7 +156,7 @@ impl<'a> LayoutBox<'a> {
         // Replaced Inline Element (<img>)
         match self.info {
             LayoutInfo::Image(ref mut pixbuf) => {
-                let (width, height) = get_image(self.style.unwrap(), pixbuf, containing_block);
+                let (width, height) = get_image(&self.node, pixbuf, containing_block);
                 self.dimensions.content.width = width;
                 self.dimensions.content.height = height;
             }
@@ -209,7 +209,7 @@ impl<'a> LayoutBox<'a> {
 
         floats.add_float(Float::new(
             self.dimensions.margin_box(),
-            self.style.unwrap().float(),
+            self.get_style_node().float(),
         ));
     }
 
@@ -232,7 +232,7 @@ impl<'a> LayoutBox<'a> {
                 margin_box.height,
             );
             if margin_box.width <= available_area.width {
-                self.dimensions.content.x = match self.style.unwrap().float() {
+                self.dimensions.content.x = match self.property.float() {
                     style::FloatType::Left => self.dimensions.left_offset() + available_area.x,
                     style::FloatType::Right => {
                         available_area.width + available_area.x - self.dimensions.content.width
@@ -257,12 +257,11 @@ impl<'a> LayoutBox<'a> {
     /// ref. https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html#float-width
     // TODO: Implement correctly!
     pub fn calculate_float_width(&mut self, containing_block: Dimensions) -> bool {
-        let style = self.get_style_node();
         let cb_width = containing_block.content.width.to_f64_px();
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
-        let width = style.value("width").unwrap_or(vec![auto.clone()])[0].clone();
+        let width = self.property.value("width").unwrap_or(vec![auto.clone()])[0].clone();
 
         let d = &mut self.dimensions;
 
