@@ -1,10 +1,14 @@
-use style::{Display, StyledNode};
-use dom::{LayoutType, NodeType};
+use style::{Display, PropertyMap};
+use dom::{ElementData, LayoutType, Node, NodeType};
 use float::Floats;
 use font::{Font, FontSlant, FontWeight};
 use inline::LineMaker;
 use style;
+use default_style;
+use css::{parse_attr_style, Declaration, Rule, Selector, SimpleSelector, Specificity, Stylesheet,
+          Value};
 
+use std::collections::HashMap;
 use std::default::Default;
 use std::fmt;
 use std::ops::Range;
@@ -120,13 +124,6 @@ impl LayoutBox {
     }
 }
 
-use dom::{ElementData, Node};
-use default_style;
-use css::{parse_attr_style, Color, Declaration, Rule, Selector, SimpleSelector, Specificity,
-          Stylesheet, TextDecoration, Unit, Value, pt2px};
-use style::PropertyMap;
-use std::collections::HashMap;
-
 /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
 fn build_layout_tree(
     node: &Node,
@@ -165,7 +162,7 @@ fn build_layout_tree(
                     }
                 } else {
                     inherited_property.clone()
-                }.get()
+                }.0
                     .into_iter()
                     .filter(|&(ref name, _)| name != "float")
                     .collect(),
@@ -184,7 +181,7 @@ fn build_layout_tree(
             "color",
         ],
     );
-    println!("{:?}", specified_values);
+
     // Create the root box.
     let mut root = LayoutBox::new(
         match specified_values.display() {
@@ -226,7 +223,7 @@ fn build_layout_tree(
     let mut float_insert_point: Option<usize> = None;
     for (i, child) in node.children.iter().enumerate() {
         *id += i;
-        let a = build_layout_tree(
+        let child = build_layout_tree(
             child,
             stylesheet,
             default_style,
@@ -235,16 +232,16 @@ fn build_layout_tree(
             &appeared_elements,
             id,
         );
-        match (a.property.display(), a.property.float()) {
+        match (child.property.display(), child.property.float()) {
             (Display::Block, style::FloatType::None) => {
-                root.children.push(a);
+                root.children.push(child);
                 if float_insert_point.is_some() {
                     float_insert_point = None;
                 }
             }
             (Display::Inline, style::FloatType::None)
             | (Display::InlineBlock, style::FloatType::None) => {
-                root.get_inline_container().children.push(a);
+                root.get_inline_container().children.push(child);
                 float_insert_point = Some(i);
             }
             (Display::None, _) => {} // Don't lay out nodes with `display: none;`
@@ -252,7 +249,7 @@ fn build_layout_tree(
                 // if let Some(pos) = float_insert_point {
                 //     root.children.insert(pos, build_layout_tree(child, id));
                 // } else {
-                root.children.push(a);
+                root.children.push(child);
                 // }
             }
         }
@@ -262,15 +259,14 @@ fn build_layout_tree(
 }
 
 fn inherit_peoperties(specified_values: &PropertyMap, property_list: Vec<&str>) -> PropertyMap {
-    let mut inherited_property = PropertyMap::new();
+    let mut inherited_property = HashMap::new();
+    let specified_values = &specified_values.0;
     for property in property_list {
-        if let Some(value) = specified_values.0.get(property) {
-            inherited_property
-                .0
-                .insert(property.to_string(), value.clone());
+        if let Some(value) = specified_values.get(property) {
+            inherited_property.insert(property.to_string(), value.clone());
         }
     }
-    inherited_property
+    PropertyMap::new_with(inherited_property)
 }
 
 fn specified_values(
@@ -422,8 +418,8 @@ pub fn layout_tree(
     mut containing_block: Dimensions,
 ) -> LayoutBox {
     // Save the initial containing block height for calculating percent heights.
-    let saved_block = containing_block.clone();
-    let viewport = containing_block.clone();
+    let saved_block = containing_block;
+    let viewport = containing_block;
     // The layout algorithm expects the container height to start at 0.
     containing_block.content.height = Au::from_f64_px(0.0);
 

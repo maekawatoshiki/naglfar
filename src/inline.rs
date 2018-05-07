@@ -1,5 +1,4 @@
 use css::Value;
-use style::{PropertyMap, StyledNode};
 use dom::NodeType;
 use font::Font;
 use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, Text};

@@ -1,11 +1,9 @@
 use html;
 use dom;
 use css;
-use style;
 use layout;
 use painter;
 use window;
-use default_style;
 
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -161,10 +159,10 @@ pub fn run_with_url(html_src: String) {
                 let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
                 let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
                 let layout_tree = layout::layout_tree(&html_tree, &stylesheet, viewport);
-                print!("LAYOUT:\n{}", layout_tree);
+                // print!("LAYOUT:\n{}", layout_tree);
 
                 let display_command = painter::build_display_list(&layout_tree);
-                println!("DISPLAY:\n{:?}", display_command);
+                // println!("DISPLAY:\n{:?}", display_command);
 
                 *last_displays = display_command.clone();
 
