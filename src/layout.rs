@@ -1,4 +1,4 @@
-use style::{Display, PropertyMap};
+use style::{Display, Style};
 use dom::{ElementData, LayoutType, Node, NodeType};
 use float::Floats;
 use font::{Font, FontSlant, FontWeight};
@@ -72,7 +72,7 @@ pub enum BoxType {
 #[derive(Clone, Debug)]
 pub struct LayoutBox {
     pub node: Node,
-    pub property: PropertyMap,
+    pub property: Style,
     pub dimensions: Dimensions,
     pub z_index: i32,
     pub box_type: BoxType,
@@ -90,12 +90,7 @@ pub struct Text {
 pub type Texts = Vec<Text>;
 
 impl LayoutBox {
-    pub fn new(
-        box_type: BoxType,
-        node: Node,
-        property: PropertyMap,
-        info: LayoutInfo,
-    ) -> LayoutBox {
+    pub fn new(box_type: BoxType, node: Node, property: Style, info: LayoutInfo) -> LayoutBox {
         LayoutBox {
             node: node,
             property: property,
@@ -108,7 +103,7 @@ impl LayoutBox {
         }
     }
 
-    pub fn get_style_node(&self) -> &PropertyMap {
+    pub fn get_style_node(&self) -> &Style {
         &self.property
     }
 
@@ -124,63 +119,63 @@ impl LayoutBox {
     }
 }
 
+use std::cell::RefCell;
+thread_local!(pub static STYLES: RefCell<HashMap<usize, Style>> = { RefCell::new(HashMap::new()) };);
+
 /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
 fn build_layout_tree(
     node: &Node,
     stylesheet: &Stylesheet,
     default_style: &Stylesheet,
-    inherited_property: &PropertyMap,
-    parent_specified_values: &PropertyMap,
+    inherited_property: &Style,
+    parent_specified_values: &Style,
     appeared_elements: &Vec<SimpleSelector>,
     id: &mut usize,
 ) -> LayoutBox {
     let mut appeared_elements = appeared_elements.clone();
-
-    let specified_values = match node.data {
-        NodeType::Element(ref elem) => {
-            let values = specified_values(
-                elem,
-                default_style,
-                stylesheet,
-                inherited_property,
-                &appeared_elements,
-            );
-            appeared_elements.push(SimpleSelector {
-                tag_name: Some(elem.tag_name.clone()),
-                id: elem.id().and_then(|id| Some(id.clone())),
-                class: elem.classes().iter().map(|x| x.to_string()).collect(),
-            });
-            values
-        }
-        NodeType::Text(_) => {
-            PropertyMap::new_with(
-                if let Some(display) = parent_specified_values.0.get("display") {
-                    match display[0] {
-                        // If the parent element is an inline element, inherites the parent's properties.
-                        Value::Keyword(ref k) if k == "inline" => parent_specified_values.clone(),
-                        _ => inherited_property.clone(),
+    let specified_values = STYLES.with(|property| {
+        property
+            .borrow_mut()
+            .entry(*id)
+            .or_insert_with(|| {
+                match node.data {
+                    NodeType::Element(ref elem) => {
+                        let values = specified_values(
+                            elem,
+                            default_style,
+                            stylesheet,
+                            inherited_property,
+                            &appeared_elements,
+                        );
+                        appeared_elements.push(SimpleSelector {
+                            tag_name: Some(elem.tag_name.clone()),
+                            id: elem.id().and_then(|id| Some(id.clone())),
+                            class: elem.classes().iter().map(|x| x.to_string()).collect(),
+                        });
+                        values
                     }
-                } else {
-                    inherited_property.clone()
-                }.0
-                    .into_iter()
-                    .filter(|&(ref name, _)| name != "float")
-                    .collect(),
-            )
-        }
-    };
-
-    let inherited_property = inherit_peoperties(
-        &specified_values,
-        vec![
-            "font-size",
-            "line-height",
-            "font-weight",
-            "font-style",
-            "text-align",
-            "color",
-        ],
-    );
+                    NodeType::Text(_) => {
+                        Style::new_with(
+                            if let Some(display) = parent_specified_values.0.get("display") {
+                                match display[0] {
+                                    // If the parent element is an inline element, inherites the parent's properties.
+                                    Value::Keyword(ref k) if k == "inline" => {
+                                        parent_specified_values.clone()
+                                    }
+                                    _ => inherited_property.clone(),
+                                }
+                            } else {
+                                inherited_property.clone()
+                            }.0
+                                .into_iter()
+                                .filter(|&(ref name, _)| name != "float")
+                                .collect(),
+                        )
+                    }
+                }
+            })
+            .clone()
+    });
 
     // Create the root box.
     let mut root = LayoutBox::new(
@@ -219,10 +214,22 @@ fn build_layout_tree(
         style::FloatType::Left | style::FloatType::Right => root.box_type = BoxType::Float,
     }
 
+    let inherited_property = inherit_peoperties(
+        &specified_values,
+        vec![
+            "font-size",
+            "line-height",
+            "font-weight",
+            "font-style",
+            "text-align",
+            "color",
+        ],
+    );
+
     // Create the descendant boxes.
     let mut float_insert_point: Option<usize> = None;
     for (i, child) in node.children.iter().enumerate() {
-        *id += i;
+        *id += 1;
         let child = build_layout_tree(
             child,
             stylesheet,
@@ -258,7 +265,7 @@ fn build_layout_tree(
     root
 }
 
-fn inherit_peoperties(specified_values: &PropertyMap, property_list: Vec<&str>) -> PropertyMap {
+fn inherit_peoperties(specified_values: &Style, property_list: Vec<&str>) -> Style {
     let mut inherited_property = HashMap::new();
     let specified_values = &specified_values.0;
     for property in property_list {
@@ -266,16 +273,16 @@ fn inherit_peoperties(specified_values: &PropertyMap, property_list: Vec<&str>) 
             inherited_property.insert(property.to_string(), value.clone());
         }
     }
-    PropertyMap::new_with(inherited_property)
+    Style::new_with(inherited_property)
 }
 
 fn specified_values(
     elem: &ElementData,
     default_style: &Stylesheet,
     stylesheet: &Stylesheet,
-    inherited_property: &PropertyMap,
+    inherited_property: &Style,
     appeared_elements: &Vec<SimpleSelector>,
-) -> PropertyMap {
+) -> Style {
     let mut values = HashMap::with_capacity(16);
 
     let mut rules = matching_rules(elem, &default_style, appeared_elements);
@@ -301,7 +308,7 @@ fn specified_values(
         }
     }
 
-    PropertyMap::new_with(values)
+    Style::new_with(values)
 }
 
 type MatchedRule<'a> = (Specificity, &'a Rule);
@@ -413,7 +420,7 @@ fn matches_simple_selector(elem: &ElementData, selector: &SimpleSelector) -> boo
 
 /// Transform a style tree into a layout tree.
 pub fn layout_tree(
-    root: &Node,
+    root: Node,
     stylesheet: &Stylesheet,
     mut containing_block: Dimensions,
 ) -> LayoutBox {
@@ -429,8 +436,8 @@ pub fn layout_tree(
         &root,
         &stylesheet,
         &default_style,
-        &style::PropertyMap::new(),
-        &style::PropertyMap::new(),
+        &style::Style::new(),
+        &style::Style::new(),
         &vec![],
         &mut id,
     );
@@ -444,72 +451,6 @@ pub fn layout_tree(
     root_box
 }
 
-// /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
-// fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>, id: &mut usize) -> LayoutBox<'a> {
-//     // Create the root box.
-//     let mut root = LayoutBox::new(
-//         match style_node.display() {
-//             Display::Block => BoxType::BlockNode,
-//             Display::Inline => match style_node.node.data {
-//                 NodeType::Element(_) => BoxType::InlineNode,
-//                 NodeType::Text(ref s) => BoxType::TextNode(Text {
-//                     font: Font::new_empty(),
-//                     range: 0..s.len(),
-//                 }),
-//             },
-//             Display::InlineBlock => match style_node.node.data {
-//                 NodeType::Element(_) => BoxType::InlineBlockNode,
-//                 NodeType::Text(_) => panic!(),
-//             },
-//             Display::None => panic!("Root node has display: none."),
-//         },
-//         Some(style_node),
-//         match style_node.node.layout_type() {
-//             LayoutType::Generic => LayoutInfo::Generic,
-//             LayoutType::Text => LayoutInfo::Text,
-//             LayoutType::Image => LayoutInfo::Image(None),
-//             LayoutType::Anker => LayoutInfo::Anker,
-//             LayoutType::Button => LayoutInfo::Button(None, *id),
-//         },
-//     );
-//
-//     match style_node.float() {
-//         style::FloatType::None => {}
-//         style::FloatType::Left | style::FloatType::Right => root.box_type = BoxType::Float,
-//     }
-//
-//     // Create the descendant boxes.
-//     let mut float_insert_point: Option<usize> = None;
-//     for (i, child) in style_node.children.iter().enumerate() {
-//         *id += i;
-//         match (child.display(), child.float()) {
-//             (Display::Block, style::FloatType::None) => {
-//                 root.children.push(build_layout_tree(child, id));
-//                 if float_insert_point.is_some() {
-//                     float_insert_point = None;
-//                 }
-//             }
-//             (Display::Inline, style::FloatType::None)
-//             | (Display::InlineBlock, style::FloatType::None) => {
-//                 root.get_inline_container()
-//                     .children
-//                     .push(build_layout_tree(child, id));
-//                 float_insert_point = Some(i);
-//             }
-//             (_, style::FloatType::Left) | (_, style::FloatType::Right) => {
-//                 // if let Some(pos) = float_insert_point {
-//                 //     root.children.insert(pos, build_layout_tree(child, id));
-//                 // } else {
-//                 root.children.push(build_layout_tree(child, id));
-//                 // }
-//             }
-//             (Display::None, _) => {} // Don't lay out nodes with `display: none;`
-//         }
-//     }
-//
-//     root
-// }
-//
 impl LayoutBox {
     /// Lay out a box and its descendants.
     /// `saved_block` is used to know the maximum width/height of the box, calculate the percent
@@ -576,7 +517,7 @@ impl LayoutBox {
                     _ => self.children.push(LayoutBox::new(
                         BoxType::AnonymousBlock,
                         Node::text("".to_string()),
-                        PropertyMap::new(),
+                        Style::new(),
                         LayoutInfo::Generic,
                     )),
                 }

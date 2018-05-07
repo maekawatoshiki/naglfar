@@ -1,4 +1,3 @@
-use dom::Node;
 use css::{Color, TextDecoration, Unit, Value, pt2px};
 use font::{FontSlant, FontWeight};
 
@@ -7,23 +6,16 @@ use std::collections::HashMap;
 use app_units::Au;
 
 #[derive(Clone, Debug)]
-pub struct PropertyMap(pub HashMap<String, Vec<Value>>);
+pub struct Style(pub HashMap<String, Vec<Value>>);
 
-impl PropertyMap {
-    pub fn new() -> PropertyMap {
-        PropertyMap(HashMap::new())
+impl Style {
+    pub fn new() -> Style {
+        Style(HashMap::new())
     }
 
-    pub fn new_with(hashmap: HashMap<String, Vec<Value>>) -> PropertyMap {
-        PropertyMap(hashmap)
+    pub fn new_with(hashmap: HashMap<String, Vec<Value>>) -> Style {
+        Style(hashmap)
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct StyledNode<'a> {
-    pub node: &'a Node,
-    pub specified_values: PropertyMap,
-    pub children: Vec<StyledNode<'a>>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -51,7 +43,7 @@ pub enum ClearType {
 pub const DEFAULT_FONT_SIZE: f64 = 16.0f64;
 pub const DEFAULT_LINE_HEIGHT_SCALE: f64 = 1.2f64;
 
-impl PropertyMap {
+impl Style {
     pub fn value(&self, name: &str) -> Option<Vec<Value>> {
         self.0.get(name).cloned()
     }
@@ -439,15 +431,5 @@ fn test1() {
     let src = "* { display: block; }
                div, body > div, body span { width: 100px; height: 50px; color: #ffffff; background-color: #003300; } 
                a { display: inline; text-decoration: underline; }";
-    let stylesheet = css::parse(src.to_string());
-
-    let default_style = default_style();
-    style_tree(
-        &dom_node,
-        &stylesheet,
-        &default_style,
-        &PropertyMap::new(),
-        &PropertyMap::new(),
-        &vec![],
-    );
+    css::parse(src.to_string());
 }

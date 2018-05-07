@@ -130,6 +130,8 @@ pub fn update_html_tree_and_stylesheet(html_src: String) {
     });
     STYLESHEET.with(|s| *s.borrow_mut() = Some(stylesheet));
 
+    layout::STYLES.with(|s| s.borrow_mut().clear());
+
     unsafe {
         SRC_UPDATED = true;
     }
@@ -158,7 +160,7 @@ pub fn run_with_url(html_src: String) {
 
                 let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
                 let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
-                let layout_tree = layout::layout_tree(&html_tree, &stylesheet, viewport);
+                let layout_tree = layout::layout_tree(html_tree, &stylesheet, viewport);
                 // print!("LAYOUT:\n{}", layout_tree);
 
                 let display_command = painter::build_display_list(&layout_tree);
