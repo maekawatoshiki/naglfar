@@ -119,9 +119,6 @@ impl LayoutBox {
     }
 }
 
-use std::cell::RefCell;
-thread_local!(pub static STYLES: RefCell<HashMap<usize, Style>> = { RefCell::new(HashMap::new()) };);
-
 /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
 fn build_layout_tree(
     node: &Node,
@@ -133,49 +130,39 @@ fn build_layout_tree(
     id: &mut usize,
 ) -> LayoutBox {
     let mut appeared_elements = appeared_elements.clone();
-    let specified_values = STYLES.with(|property| {
-        property
-            .borrow_mut()
-            .entry(*id)
-            .or_insert_with(|| {
-                match node.data {
-                    NodeType::Element(ref elem) => {
-                        let values = specified_values(
-                            elem,
-                            default_style,
-                            stylesheet,
-                            inherited_property,
-                            &appeared_elements,
-                        );
-                        appeared_elements.push(SimpleSelector {
-                            tag_name: Some(elem.tag_name.clone()),
-                            id: elem.id().and_then(|id| Some(id.clone())),
-                            class: elem.classes().iter().map(|x| x.to_string()).collect(),
-                        });
-                        values
+    let specified_values = match node.data {
+        NodeType::Element(ref elem) => {
+            let values = specified_values(
+                elem,
+                default_style,
+                stylesheet,
+                inherited_property,
+                &appeared_elements,
+            );
+            appeared_elements.push(SimpleSelector {
+                tag_name: Some(elem.tag_name.clone()),
+                id: elem.id().and_then(|id| Some(id.clone())),
+                class: elem.classes().iter().map(|x| x.to_string()).collect(),
+            });
+            values
+        }
+        NodeType::Text(_) => {
+            Style::new_with(
+                if let Some(display) = parent_specified_values.0.get("display") {
+                    match display[0] {
+                        // If the parent element is an inline element, inherites the parent's properties.
+                        Value::Keyword(ref k) if k == "inline" => parent_specified_values.clone(),
+                        _ => inherited_property.clone(),
                     }
-                    NodeType::Text(_) => {
-                        Style::new_with(
-                            if let Some(display) = parent_specified_values.0.get("display") {
-                                match display[0] {
-                                    // If the parent element is an inline element, inherites the parent's properties.
-                                    Value::Keyword(ref k) if k == "inline" => {
-                                        parent_specified_values.clone()
-                                    }
-                                    _ => inherited_property.clone(),
-                                }
-                            } else {
-                                inherited_property.clone()
-                            }.0
-                                .into_iter()
-                                .filter(|&(ref name, _)| name != "float")
-                                .collect(),
-                        )
-                    }
-                }
-            })
-            .clone()
-    });
+                } else {
+                    inherited_property.clone()
+                }.0
+                    .into_iter()
+                    .filter(|&(ref name, _)| name != "float")
+                    .collect(),
+            )
+        }
+    };
 
     // Create the root box.
     let mut root = LayoutBox::new(
@@ -418,29 +405,40 @@ fn matches_simple_selector(elem: &ElementData, selector: &SimpleSelector) -> boo
     true
 }
 
+use std::cell::RefCell;
+thread_local!(pub static LAYOUT_BOX: RefCell<Option<LayoutBox>> = { RefCell::new(None) };);
+
 /// Transform a style tree into a layout tree.
 pub fn layout_tree(
-    root: Node,
+    root: &Node,
     stylesheet: &Stylesheet,
     mut containing_block: Dimensions,
 ) -> LayoutBox {
+    let mut root_box = LAYOUT_BOX.with(|layout_box| {
+        layout_box
+            .borrow_mut()
+            .get_or_insert_with(|| {
+                let mut id = 0;
+                let default_style = default_style::default_style();
+                build_layout_tree(
+                    root,
+                    &stylesheet,
+                    &default_style,
+                    &style::Style::new(),
+                    &style::Style::new(),
+                    &vec![],
+                    &mut id,
+                )
+            })
+            .clone()
+    });
+
     // Save the initial containing block height for calculating percent heights.
     let saved_block = containing_block;
     let viewport = containing_block;
     // The layout algorithm expects the container height to start at 0.
     containing_block.content.height = Au::from_f64_px(0.0);
 
-    let mut id = 0;
-    let default_style = default_style::default_style();
-    let mut root_box = build_layout_tree(
-        &root,
-        &stylesheet,
-        &default_style,
-        &style::Style::new(),
-        &style::Style::new(),
-        &vec![],
-        &mut id,
-    );
     root_box.layout(
         &mut Floats::new(),
         Au(0),
@@ -448,6 +446,7 @@ pub fn layout_tree(
         saved_block,
         viewport,
     );
+
     root_box
 }
 
