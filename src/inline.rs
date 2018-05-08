@@ -1,5 +1,5 @@
 use css::Value;
-use dom::NodeType;
+use dom::{Node, NodeType};
 use font::Font;
 use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, Text};
 use float::Floats;
@@ -604,7 +604,7 @@ impl LayoutBox {
         self.dimensions.content.width = Au::from_f64_px(width.to_px().unwrap());
     }
 }
-use dom::Node;
+
 pub fn get_image(
     node: &Node,
     pixbuf: &mut Option<gdk_pixbuf::Pixbuf>,
@@ -648,22 +648,58 @@ use std::cell::RefCell;
 
 type ImageKey = String; // URL
 
+use threadpool::ThreadPool;
+use std::sync::Mutex;
+
 thread_local!(
-    static IMG_CACHE: RefCell<HashMap<ImageKey, gdk_pixbuf::Pixbuf>> = {
+    pub static IMG_CACHE: RefCell<HashMap<ImageKey, gdk_pixbuf::Pixbuf>> = {
         RefCell::new(HashMap::new())
     };
+    pub static IMG_DOWNLOADER: RefCell<ThreadPool> = {
+        RefCell::new(ThreadPool::new(4))
+    };
 );
+lazy_static!{
+    pub static ref IMG_NAMES: Mutex<Vec<String>> = {
+        Mutex::new(vec![])
+    };
+}
 
 use interface::download;
 pub fn get_pixbuf(node: &Node) -> gdk_pixbuf::Pixbuf {
-    IMG_CACHE.with(|c| {
-        let image_url = node.image_url().unwrap();
-        c.borrow_mut()
-            .entry(image_url.clone())
-            .or_insert_with(|| {
-                let (cache_name, _) = download(image_url.as_str());
-                gdk_pixbuf::Pixbuf::new_from_file(cache_name.as_str()).unwrap()
-            })
-            .clone()
-    })
+    let image_url = node.image_url().unwrap();
+    use interface::HTML_SRC_URL;
+    let a = if let Some(ref a) = *HTML_SRC_URL.lock().unwrap() {
+        a.starts_with("http")
+    } else {
+        false
+    };
+    if a {
+        let image_url = image_url.clone();
+        IMG_DOWNLOADER.with(move |d| {
+            d.borrow_mut().execute(move || {
+                println!("thread start");
+                let a = download(image_url.as_str()).0;
+                IMG_NAMES.lock().unwrap().push(a);
+            });
+        });
+        IMG_CACHE.with(|c| {
+            c.borrow_mut()
+                .entry("./example/notfound.png".to_string())
+                .or_insert_with(|| {
+                    gdk_pixbuf::Pixbuf::new_from_file("./example/notfound.png").unwrap()
+                })
+                .clone()
+        })
+    } else {
+        IMG_CACHE.with(|c| {
+            c.borrow_mut()
+                .entry(image_url.clone())
+                .or_insert_with(|| {
+                    let (cache_name, _) = download(image_url.as_str());
+                    gdk_pixbuf::Pixbuf::new_from_file(cache_name.as_str()).unwrap()
+                })
+                .clone()
+        })
+    }
 }

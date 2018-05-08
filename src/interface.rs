@@ -29,8 +29,8 @@ use self::rand::Rng;
 /// If ``url_str`` starts with ``file://``, doesn't do anything special.
 ///  Just returns (local file name, local file path).
 pub fn download(url_str: &str) -> (String, PathBuf) {
-    let url = HTML_SRC_URL.with(|html_src_url| {
-        let mut html_src_url = html_src_url.borrow_mut();
+    let url = (|| {
+        let mut html_src_url = HTML_SRC_URL.lock().unwrap();
         if let Ok(parsed) = Url::parse(url_str) {
             // If url_str is absolute URL(starts with scheme://)
             *html_src_url = Some(url_str.to_string());
@@ -42,7 +42,7 @@ pub fn download(url_str: &str) -> (String, PathBuf) {
         }
         *html_src_url = Some(url_str.to_string());
         Url::parse(url_str).unwrap()
-    });
+    })();
 
     if url.scheme().to_ascii_lowercase() == "file" {
         // file://
@@ -84,10 +84,14 @@ use std::rc::Rc;
 
 thread_local!(
     static LAYOUT_SAVER: RefCell<(Au, Au, painter::DisplayList)> = { RefCell::new((Au(0), Au(0), vec![])) };
-    static HTML_SRC_URL: RefCell<Option<String>> = { RefCell::new(None) };
     static HTML_TREE: Rc<RefCell<Option<dom::Node>>> = { Rc::new(RefCell::new(None)) };
     static STYLESHEET: Rc<RefCell<Option<css::Stylesheet>>> = { Rc::new(RefCell::new(None)) };
 );
+
+use std::sync::Mutex;
+lazy_static! {
+    pub static ref HTML_SRC_URL: Mutex<Option<String>> = { Mutex::new(None) };
+}
 
 static mut SRC_UPDATED: bool = false;
 

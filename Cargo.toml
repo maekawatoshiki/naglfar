@@ -19,7 +19,8 @@ cairo-rs = "*"
 pango = "*"
 pangocairo = "*"
 glib = "*"
-
+lazy_static = "*"
+threadpool = "*"
 
 [profile.dev]
 codegen-units = 16

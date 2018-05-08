@@ -274,6 +274,27 @@ impl RenderingWindow {
 
                 layout.show_all();
 
+                gtk::idle_add(|| {
+                    use inline::{IMG_CACHE, IMG_DOWNLOADER, IMG_NAMES};
+                    IMG_DOWNLOADER.with(move |d| {
+                        d.borrow().join();
+                        println!("ss{:?}", IMG_NAMES.lock().unwrap().len());
+                        for cached_name in &*IMG_NAMES.lock().unwrap() {
+                            println!("downloaded file name: {}", cached_name);
+                            IMG_CACHE.with(|c| {
+                                c.borrow_mut()
+                                    .entry(cached_name.to_string())
+                                    .or_insert_with(|| {
+                                        gdk_pixbuf::Pixbuf::new_from_file(cached_name.as_str())
+                                            .unwrap()
+                                    })
+                                    .clone()
+                            });
+                        }
+                    });
+                    Continue(false)
+                });
+
                 Inhibit(true)
             });
 

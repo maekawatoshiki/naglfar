@@ -18,5 +18,8 @@ extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate glib;
 extern crate gtk;
+#[macro_use]
+extern crate lazy_static;
 extern crate pango;
 extern crate pangocairo;
+extern crate threadpool;
