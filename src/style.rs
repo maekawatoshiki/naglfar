@@ -270,33 +270,22 @@ impl Style {
 
         return_if_possible!();
 
-        if let Some(border_info) = self.value("border-top") {
-            let mut border_width = None;
-            for border in border_info {
-                if let &Value::Length(_, _) = &border {
-                    border_width = Some(border);
-                    break;
+        macro_rules! f { ($name:expr, $var:expr) => {
+            if let Some(border_info) = self.value($name) {
+                for border in border_info {
+                    if let &Value::Length(_, _) = &border {
+                        $var.get_or_insert_with(|| border.clone());
+                        break;
+                    }
                 }
             }
-            if let Some(border_width) = border_width {
-                border_top.get_or_insert_with(|| border_width.clone());
-            }
-        }
+            return_if_possible!();
+        } }
 
-        if let Some(border_info) = self.value("border-bottom") {
-            let mut border_width = None;
-            for border in border_info {
-                if let &Value::Length(_, _) = &border {
-                    border_width = Some(border);
-                    break;
-                }
-            }
-            if let Some(border_width) = border_width {
-                border_bottom.get_or_insert_with(|| border_width.clone());
-            }
-        }
-
-        return_if_possible!();
+        f!("border-top", border_top);
+        f!("border-bottom", border_bottom);
+        f!("border-left", border_left);
+        f!("border-right", border_right);
 
         if let Some(border_info) = self.value("border") {
             let mut border_width = None;
@@ -380,22 +369,26 @@ impl Style {
 
         return_if_possible!();
 
-        if let Some(border_info) = self.value("border-bottom") {
-            if let Some(border_color) = (|| {
-                for border in border_info {
-                    let color = border.to_color();
-                    if color.is_some() {
-                        return color;
+        macro_rules! f { ($name:expr, $var:expr) => {
+            if let Some(border_info) = self.value($name) {
+                if let Some(border_color) = (|| {
+                    for border in border_info {
+                        let color = border.to_color();
+                        if color.is_some() { return color; }
                     }
+                    None
+                })()
+                {
+                    $var.get_or_insert_with(|| border_color.clone());
                 }
-                None
-            })()
-            {
-                border_bottom.get_or_insert_with(|| border_color.clone());
             }
-        }
+            return_if_possible!();
+        } }
 
-        return_if_possible!();
+        f!("border-top", border_top);
+        f!("border-bottom", border_bottom);
+        f!("border-left", border_left);
+        f!("border-right", border_right);
 
         if let Some(border_info) = self.value("border") {
             if let Some(border_color) = (|| {
