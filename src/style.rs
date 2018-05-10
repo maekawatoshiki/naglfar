@@ -224,6 +224,20 @@ impl Style {
         let mut border_right = self.value("border-right-width")
             .and_then(|x| Some(x[0].clone()));
 
+        macro_rules! return_if_possible {
+            () => {
+                if border_top.is_some() && border_bottom.is_some()
+                    && border_left.is_some() && border_right.is_some() {
+                    return (
+                        border_top.unwrap(), border_right.unwrap(),
+                        border_bottom.unwrap(), border_left.unwrap(),
+                    );
+                }
+            }
+        }
+
+        return_if_possible!();
+
         if let Some(border) = self.value("border-width") {
             match border.len() {
                 1 => {
@@ -252,7 +266,39 @@ impl Style {
                 }
                 0 | _ => unreachable!(),
             }
-        } else if let Some(border_info) = self.value("border") {
+        }
+
+        return_if_possible!();
+
+        if let Some(border_info) = self.value("border-top") {
+            let mut border_width = None;
+            for border in border_info {
+                if let &Value::Length(_, _) = &border {
+                    border_width = Some(border);
+                    break;
+                }
+            }
+            if let Some(border_width) = border_width {
+                border_top.get_or_insert_with(|| border_width.clone());
+            }
+        }
+
+        if let Some(border_info) = self.value("border-bottom") {
+            let mut border_width = None;
+            for border in border_info {
+                if let &Value::Length(_, _) = &border {
+                    border_width = Some(border);
+                    break;
+                }
+            }
+            if let Some(border_width) = border_width {
+                border_bottom.get_or_insert_with(|| border_width.clone());
+            }
+        }
+
+        return_if_possible!();
+
+        if let Some(border_info) = self.value("border") {
             let mut border_width = None;
             for border in border_info {
                 if let &Value::Length(_, _) = &border {
@@ -290,6 +336,18 @@ impl Style {
         let mut border_right = self.value("border-right-color")
             .and_then(|x| x[0].to_color());
 
+        macro_rules! return_if_possible {
+            () => {
+                if border_top.is_some() && border_bottom.is_some()
+                    && border_left.is_some() && border_right.is_some() {
+                    return (
+                        border_top, border_right,
+                        border_bottom, border_left,
+                    );
+                }
+            }
+        }
+
         if let Some(border) = self.value("border-color") {
             match border.len() {
                 1 => {
@@ -318,7 +376,28 @@ impl Style {
                 }
                 0 | _ => unreachable!(),
             }
-        } else if let Some(border_info) = self.value("border") {
+        }
+
+        return_if_possible!();
+
+        if let Some(border_info) = self.value("border-bottom") {
+            if let Some(border_color) = (|| {
+                for border in border_info {
+                    let color = border.to_color();
+                    if color.is_some() {
+                        return color;
+                    }
+                }
+                None
+            })()
+            {
+                border_bottom.get_or_insert_with(|| border_color.clone());
+            }
+        }
+
+        return_if_possible!();
+
+        if let Some(border_info) = self.value("border") {
             if let Some(border_color) = (|| {
                 for border in border_info {
                     let color = border.to_color();
