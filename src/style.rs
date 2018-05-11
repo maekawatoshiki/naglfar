@@ -6,15 +6,44 @@ use std::collections::HashMap;
 use app_units::Au;
 
 #[derive(Clone, Debug)]
-pub struct Style(pub HashMap<String, Vec<Value>>);
+pub struct Style {
+    pub property: HashMap<String, Vec<Value>>,
+    pub cached: CachedProperties,
+}
+
+// pub struct Style(pub HashMap<String, Vec<Value>>);
 
 impl Style {
     pub fn new() -> Style {
-        Style(HashMap::new())
+        Style {
+            property: HashMap::new(),
+            cached: CachedProperties::new(),
+        }
     }
 
     pub fn new_with(hashmap: HashMap<String, Vec<Value>>) -> Style {
-        Style(hashmap)
+        Style {
+            property: hashmap,
+            cached: CachedProperties::new(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CachedProperties {
+    // Option<(top, right, bottom, left)>
+    margin: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
+    padding: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
+    border_width: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
+}
+
+impl CachedProperties {
+    pub fn new() -> CachedProperties {
+        CachedProperties {
+            margin: (None, None, None, None),
+            padding: (None, None, None, None),
+            border_width: (None, None, None, None),
+        }
     }
 }
 
@@ -45,7 +74,7 @@ pub const DEFAULT_LINE_HEIGHT_SCALE: f64 = 1.2f64;
 
 impl Style {
     pub fn value(&self, name: &str) -> Option<Vec<Value>> {
-        self.0.get(name).cloned()
+        self.property.get(name).cloned()
     }
 
     pub fn value_with_default(&self, name: &str, default: &Vec<Value>) -> Vec<Value> {
@@ -106,7 +135,17 @@ impl Style {
         }
     }
 
-    pub fn padding(&self) -> (Value, Value, Value, Value) {
+    pub fn padding(&mut self) -> (Value, Value, Value, Value) {
+        match (
+            self.cached.padding.0.clone(),
+            self.cached.padding.1.clone(),
+            self.cached.padding.2.clone(),
+            self.cached.padding.3.clone(),
+        ) {
+            (Some(top), Some(right), Some(bottom), Some(left)) => return (top, right, bottom, left),
+            _ => {}
+        }
+
         // padding has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
@@ -151,6 +190,11 @@ impl Style {
         padding_bottom.get_or_insert_with(|| zero.clone());
         padding_left.get_or_insert_with(|| zero.clone());
 
+        self.cached.padding.0 = padding_top.clone();
+        self.cached.padding.1 = padding_right.clone();
+        self.cached.padding.2 = padding_bottom.clone();
+        self.cached.padding.3 = padding_left.clone();
+
         (
             padding_top.unwrap(),
             padding_right.unwrap(),
@@ -159,7 +203,17 @@ impl Style {
         )
     }
 
-    pub fn margin(&self) -> (Value, Value, Value, Value) {
+    pub fn margin(&mut self) -> (Value, Value, Value, Value) {
+        match (
+            self.cached.margin.0.clone(),
+            self.cached.margin.1.clone(),
+            self.cached.margin.2.clone(),
+            self.cached.margin.3.clone(),
+        ) {
+            (Some(top), Some(right), Some(bottom), Some(left)) => return (top, right, bottom, left),
+            _ => {}
+        }
+
         // margin has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
@@ -203,6 +257,11 @@ impl Style {
         margin_bottom.get_or_insert_with(|| zero.clone());
         margin_left.get_or_insert_with(|| zero.clone());
 
+        self.cached.margin.0 = margin_top.clone();
+        self.cached.margin.1 = margin_right.clone();
+        self.cached.margin.2 = margin_bottom.clone();
+        self.cached.margin.3 = margin_left.clone();
+
         (
             margin_top.unwrap(),
             margin_right.unwrap(),
@@ -211,7 +270,17 @@ impl Style {
         )
     }
 
-    pub fn border_width(&self) -> (Value, Value, Value, Value) {
+    pub fn border_width(&mut self) -> (Value, Value, Value, Value) {
+        match (
+            self.cached.border_width.0.clone(),
+            self.cached.border_width.1.clone(),
+            self.cached.border_width.2.clone(),
+            self.cached.border_width.3.clone(),
+        ) {
+            (Some(top), Some(right), Some(bottom), Some(left)) => return (top, right, bottom, left),
+            _ => {}
+        }
+
         // border has initial value 0.
         let zero = Value::Length(0.0, Unit::Px);
 
@@ -308,6 +377,10 @@ impl Style {
         border_bottom.get_or_insert_with(|| zero.clone());
         border_left.get_or_insert_with(|| zero.clone());
 
+        self.cached.border_width.0 = border_top.clone();
+        self.cached.border_width.1 = border_right.clone();
+        self.cached.border_width.2 = border_bottom.clone();
+        self.cached.border_width.3 = border_left.clone();
         (
             border_top.unwrap(),
             border_right.unwrap(),

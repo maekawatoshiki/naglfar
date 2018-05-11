@@ -148,7 +148,7 @@ fn build_layout_tree(
         }
         NodeType::Text(_) => {
             Style::new_with(
-                if let Some(display) = parent_specified_values.0.get("display") {
+                if let Some(display) = parent_specified_values.property.get("display") {
                     match display[0] {
                         // If the parent element is an inline element, inherites the parent's properties.
                         Value::Keyword(ref k) if k == "inline" => parent_specified_values.clone(),
@@ -156,7 +156,7 @@ fn build_layout_tree(
                     }
                 } else {
                     inherited_property.clone()
-                }.0
+                }.property
                     .into_iter()
                     .filter(|&(ref name, _)| name != "float")
                     .collect(),
@@ -254,7 +254,7 @@ fn build_layout_tree(
 
 fn inherit_peoperties(specified_values: &Style, property_list: Vec<&str>) -> Style {
     let mut inherited_property = HashMap::new();
-    let specified_values = &specified_values.0;
+    let specified_values = &specified_values.property;
     for property in property_list {
         if let Some(value) = specified_values.get(property) {
             inherited_property.insert(property.to_string(), value.clone());
@@ -276,9 +276,12 @@ fn specified_values(
     rules.append(&mut matching_rules(elem, stylesheet, appeared_elements));
 
     // Insert inherited properties
-    inherited_property.0.iter().for_each(|(name, value)| {
-        values.insert(name.clone(), value.clone());
-    });
+    inherited_property
+        .property
+        .iter()
+        .for_each(|(name, value)| {
+            values.insert(name.clone(), value.clone());
+        });
 
     // Go through the rules from lowest to highest specificity.
     rules.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
@@ -414,10 +417,12 @@ pub fn layout_tree(
     stylesheet: &Stylesheet,
     mut containing_block: Dimensions,
 ) -> LayoutBox {
+    let mut first_construction_of_layout_tree = false;
     let mut root_box = LAYOUT_BOX.with(|layout_box| {
         layout_box
             .borrow_mut()
             .get_or_insert_with(|| {
+                first_construction_of_layout_tree = true;
                 let mut id = 0;
                 let default_style = default_style::default_style();
                 build_layout_tree(
@@ -446,6 +451,14 @@ pub fn layout_tree(
         saved_block,
         viewport,
     );
+
+    if first_construction_of_layout_tree {
+        LAYOUT_BOX.with(|layout_box| {
+            if let Some(ref mut layout_box) = *layout_box.borrow_mut() {
+                layout_box.property = root_box.property.clone()
+            }
+        });
+    }
 
     root_box
 }
@@ -528,8 +541,7 @@ impl LayoutBox {
     }
 
     pub fn assign_padding(&mut self) {
-        let (padding_top, padding_right, padding_bottom, padding_left) =
-            self.get_style_node().padding();
+        let (padding_top, padding_right, padding_bottom, padding_left) = self.property.padding();
 
         let d = &mut self.dimensions;
         d.padding.left = Au::from_f64_px(padding_left.to_px().unwrap());
@@ -539,7 +551,7 @@ impl LayoutBox {
     }
 
     pub fn assign_margin(&mut self) {
-        let (margin_top, margin_right, margin_bottom, margin_left) = self.get_style_node().margin();
+        let (margin_top, margin_right, margin_bottom, margin_left) = self.property.margin();
 
         let d = &mut self.dimensions;
         d.margin.left = Au::from_f64_px(margin_left.to_px().unwrap());
@@ -549,8 +561,7 @@ impl LayoutBox {
     }
 
     pub fn assign_border_width(&mut self) {
-        let (border_top, border_right, border_bottom, border_left) =
-            self.get_style_node().border_width();
+        let (border_top, border_right, border_bottom, border_left) = self.property.border_width();
 
         let d = &mut self.dimensions;
         d.border.left = Au::from_f64_px(border_left.to_px().unwrap());
