@@ -36,7 +36,7 @@ thread_local!(
     // HashMap<URL Fragment(id), y coordinate of the content>
     pub static URL_FRAGMENTS: RefCell<HashMap<String, f64>> = { RefCell::new(HashMap::with_capacity(8)) };
     pub static BUTTONS: RefCell<HashMap<usize, gtk::Button>> = { RefCell::new(HashMap::with_capacity(8)) };
-    pub static SURFACE_CACHE: RefCell<Option<(i32,i32,cairo::ImageSurface)>> = { RefCell::new(None) };
+    pub static SURFACE_CACHE: RefCell<Option<cairo::ImageSurface>> = { RefCell::new(None) };
 );
 
 static mut RESIZED: bool = false;
@@ -114,6 +114,7 @@ impl RenderingWindow {
                 println!("URL: {}", url);
                 update_html_tree_and_stylesheet(url);
                 ANKERS.with(|ankers| ankers.borrow_mut().clear());
+                SURFACE_CACHE.with(|sc| *sc.borrow_mut() = None);
                 drawing_area.queue_draw();
                 None
             })
@@ -217,18 +218,19 @@ impl RenderingWindow {
                         };
                     }
                     if anker_clicked {
-                        ankers.clear()
+                        ankers.clear();
+                        SURFACE_CACHE.with(|sc| *sc.borrow_mut() = None);
                     }
                 });
                 Some(true.to_value())
             })
             .unwrap();
 
-        scrolled_window.connect("configure-event", false, |_| {
+        window.connect_configure_event(|_, _| {
             unsafe {
                 RESIZED = true;
             }
-            Some(true.to_value())
+            false
         });
 
         let instance = RenderingWindow {
@@ -252,16 +254,14 @@ impl RenderingWindow {
                 //     .unwrap(); // [1] is Layout
 
                 let surface = SURFACE_CACHE.with(|sc| {
-                    if let Some((ref width, ref _height, ref surface)) = *sc.borrow_mut() {
-                        // if widget.get_size_request().0 == *width {
+                    if let Some(ref surface) = *sc.borrow_mut() {
                         unsafe {
-                            if !RESIZED {
-                                return surface.clone();
-                            } else {
+                            if RESIZED {
                                 RESIZED = false;
+                            } else {
+                                return surface.clone();
                             }
                         }
-                        // }
                     }
 
                     let (_, redraw_start_y, _, redraw_end_y) = cairo_context.clip_extents();
@@ -282,7 +282,7 @@ impl RenderingWindow {
                         .downcast::<gtk::Overlay>()
                         .unwrap()
                         .set_size_request(-1, content_rect.height.ceil_to_px());
-                    widget.set_size_request(-1, content_rect.height.ceil_to_px());
+
                     let surface = cairo::ImageSurface::create(
                         cairo::Format::ARgb32,
                         content_rect.width.to_px(),
@@ -292,11 +292,8 @@ impl RenderingWindow {
                     for item in &items {
                         render_item(&ctx, &mut pango_layout, /* layout, */ &item.command);
                     }
-                    *sc.borrow_mut() = Some((
-                        content_rect.width.ceil_to_px(),
-                        content_rect.height.ceil_to_px(),
-                        surface.clone(),
-                    ));
+
+                    *sc.borrow_mut() = Some(surface.clone());
                     surface
                 });
 
