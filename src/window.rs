@@ -10,7 +10,8 @@ use gtk::ContainerExt;
 use glib::prelude::*; // or `use gtk::prelude::*;`
 use glib;
 
-use gdk::{ContextExt, Cursor, CursorType, Event, EventButton, EventMask, EventMotion, RGBA};
+use gdk::{ContextExt, Cursor, CursorType, Event, EventButton, EventMask, EventMotion, Rectangle,
+          WindowExt, RGBA};
 use gdk_pixbuf::{InterpType, PixbufExt};
 
 use cairo::Context;
@@ -35,7 +36,10 @@ thread_local!(
     // HashMap<URL Fragment(id), y coordinate of the content>
     pub static URL_FRAGMENTS: RefCell<HashMap<String, f64>> = { RefCell::new(HashMap::with_capacity(8)) };
     pub static BUTTONS: RefCell<HashMap<usize, gtk::Button>> = { RefCell::new(HashMap::with_capacity(8)) };
+    pub static SURFACE_CACHE: RefCell<Option<(i32,i32,cairo::ImageSurface)>> = { RefCell::new(None) };
 );
+
+static mut RESIZED: bool = false;
 
 struct RenderingWindow {
     window: gtk::Window,
@@ -220,6 +224,13 @@ impl RenderingWindow {
             })
             .unwrap();
 
+        scrolled_window.connect("configure-event", false, |_| {
+            unsafe {
+                RESIZED = true;
+            }
+            Some(true.to_value())
+        });
+
         let instance = RenderingWindow {
             window: window,
             drawing_area: drawing_area,
@@ -228,51 +239,71 @@ impl RenderingWindow {
         instance
             .drawing_area
             .connect_draw(move |widget, cairo_context| {
-                let (_, redraw_start_y, _, redraw_end_y) = cairo_context.clip_extents();
-                let pango_ctx = widget.create_pango_context().unwrap();
-                let mut pango_layout = pango::Layout::new(&pango_ctx);
+                // println!("here");
 
-                let items = f(widget);
+                // let overlay = widget
+                //     .get_parent()
+                //     .unwrap()
+                //     .downcast::<gtk::Overlay>()
+                //     .unwrap();
+                // let layout = &overlay.get_children()[1]
+                //     .clone()
+                //     .downcast::<gtk::Layout>()
+                //     .unwrap(); // [1] is Layout
 
-                if let DisplayCommand::SolidColor(_, rect) = items[0].command {
-                    if widget.get_size_request().1 != rect.height.ceil_to_px() {
-                        widget
-                            .get_parent()
-                            .unwrap()
-                            .downcast::<gtk::Overlay>()
-                            .unwrap()
-                            .set_size_request(-1, rect.height.ceil_to_px());
-                        widget.set_size_request(-1, rect.height.ceil_to_px())
-                    }
-                }
-                let overlay = widget
-                    .get_parent()
-                    .unwrap()
-                    .downcast::<gtk::Overlay>()
-                    .unwrap();
-                let layout = &overlay.get_children()[1]
-                    .clone()
-                    .downcast::<gtk::Layout>()
-                    .unwrap(); // [1] is Layout
-
-                for item in &items {
-                    if match &item.command {
-                        &DisplayCommand::SolidColor(_, rect)
-                        | &DisplayCommand::Image(_, rect)
-                        | &DisplayCommand::Text(_, rect, _, _, _)
-                        | &DisplayCommand::Button(_, rect) => {
-                            let rect_y = rect.y.to_px();
-                            let rect_height = rect.height.to_px();
-                            let sy = max(rect_y, redraw_start_y as i32);
-                            let ey = min(rect_y + rect_height, redraw_end_y as i32);
-                            ey - sy > 0
+                let surface = SURFACE_CACHE.with(|sc| {
+                    if let Some((ref width, ref _height, ref surface)) = *sc.borrow_mut() {
+                        // if widget.get_size_request().0 == *width {
+                        unsafe {
+                            if !RESIZED {
+                                return surface.clone();
+                            } else {
+                                RESIZED = false;
+                            }
                         }
-                    } {
-                        render_item(cairo_context, &mut pango_layout, layout, &item.command);
+                        // }
                     }
-                }
 
-                layout.show_all();
+                    let (_, redraw_start_y, _, redraw_end_y) = cairo_context.clip_extents();
+                    let pango_ctx = widget.create_pango_context().unwrap();
+                    let mut pango_layout = pango::Layout::new(&pango_ctx);
+
+                    let items = f(widget);
+                    let content_rect =
+                        if let DisplayCommand::SolidColor(_, content_rect) = items[0].command {
+                            content_rect
+                        } else {
+                            unreachable!()
+                        };
+
+                    widget
+                        .get_parent()
+                        .unwrap()
+                        .downcast::<gtk::Overlay>()
+                        .unwrap()
+                        .set_size_request(-1, content_rect.height.ceil_to_px());
+                    widget.set_size_request(-1, content_rect.height.ceil_to_px());
+                    let surface = cairo::ImageSurface::create(
+                        cairo::Format::ARgb32,
+                        content_rect.width.to_px(),
+                        content_rect.height.to_px(),
+                    ).unwrap();
+                    let ctx = cairo::Context::new(&surface);
+                    for item in &items {
+                        render_item(&ctx, &mut pango_layout, /* layout, */ &item.command);
+                    }
+                    *sc.borrow_mut() = Some((
+                        content_rect.width.ceil_to_px(),
+                        content_rect.height.ceil_to_px(),
+                        surface.clone(),
+                    ));
+                    surface
+                });
+
+                cairo_context.set_source_surface(&surface, 0.0, 0.0);
+                cairo_context.paint();
+
+                // layout.show_all();
 
                 Inhibit(true)
             });
@@ -292,7 +323,7 @@ impl RenderingWindow {
 fn render_item(
     ctx: &Context,
     pango_layout: &mut pango::Layout,
-    layout: &gtk::Layout,
+    // layout: &gtk::Layout,
     item: &DisplayCommand,
 ) {
     match item {
@@ -365,7 +396,7 @@ fn render_item(
         }
         &DisplayCommand::Button(ref btn, rect) => {
             use gtk::LayoutExt;
-            layout.put(btn, rect.x.ceil_to_px(), rect.y.ceil_to_px());
+            // layout.put(btn, rect.x.ceil_to_px(), rect.y.ceil_to_px());
         }
     }
 }
