@@ -130,7 +130,7 @@ pub fn update_html_tree_and_stylesheet(html_src: String) {
     });
     STYLESHEET.with(|s| *s.borrow_mut() = Some(stylesheet));
 
-    layout::LAYOUT_BOX.with(|lb| *lb.borrow_mut() = None);
+    layout::LAYOUTBOX.with(|lb| *lb.borrow_mut() = None);
 
     unsafe {
         SRC_UPDATED = true;

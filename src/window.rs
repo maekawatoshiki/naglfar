@@ -264,7 +264,6 @@ impl RenderingWindow {
                         }
                     }
 
-                    let (_, redraw_start_y, _, redraw_end_y) = cairo_context.clip_extents();
                     let pango_ctx = widget.create_pango_context().unwrap();
                     let mut pango_layout = pango::Layout::new(&pango_ctx);
 

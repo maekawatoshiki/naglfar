@@ -427,19 +427,17 @@ impl LineMaker {
         }
     }
 
-    fn run_on_text_node(&mut self, layoutbox: LayoutBox, max_width: Au) {
-        let style = layoutbox.get_style_node();
-
+    fn run_on_text_node(&mut self, mut layoutbox: LayoutBox, max_width: Au) {
         let text = if let NodeType::Text(ref text) = layoutbox.node.data {
             &text[self.pending.range.clone()]
         } else {
             return;
         };
 
-        let font_size = style.font_size();
-        let line_height = style.line_height();
-        let font_weight = style.font_weight();
-        let font_slant = style.font_style();
+        let font_size = layoutbox.property.font_size();
+        let line_height = layoutbox.property.line_height();
+        let font_weight = layoutbox.property.font_weight();
+        let font_slant = layoutbox.property.font_style();
 
         let my_font = Font::new(font_size, font_weight, font_slant);
         let text_width = Au::from_f64_px(my_font.text_width(text));

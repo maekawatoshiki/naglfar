@@ -37,6 +37,7 @@ pub struct CachedProperties {
     border_width: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
 
     font_size: Option<Value>,
+    line_height: Option<Value>,
 }
 
 impl CachedProperties {
@@ -46,6 +47,7 @@ impl CachedProperties {
             padding: (None, None, None, None),
             border_width: (None, None, None, None),
             font_size: None,
+            line_height: None,
         }
     }
 }
@@ -501,17 +503,15 @@ impl Style {
         }
     }
 
-    pub fn font_size(&self) -> Au {
+    pub fn font_size(&mut self) -> Au {
         if let Some(ref font_size) = self.cached.font_size {
             return Au::from_f64_px(font_size.clone().to_px().unwrap());
         }
 
         let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
-        Au::from_f64_px(
-            self.value_with_default("font-size", &vec![default_font_size])[0]
-                .to_px()
-                .unwrap(),
-        )
+        let font_size = &self.value_with_default("font-size", &vec![default_font_size])[0];
+        self.cached.font_size = Some(font_size.clone());
+        Au::from_f64_px(font_size.to_px().unwrap())
     }
 
     pub fn font_weight(&self) -> FontWeight {
@@ -524,10 +524,23 @@ impl Style {
         self.lookup("font-style", "font-style", &vec![default_font_slant])[0].to_font_slant()
     }
 
-    pub fn line_height(&self) -> Au {
+    pub fn line_height(&mut self) -> Au {
         let font_size = self.font_size().to_f64_px();
         let default_line_height = Value::Length(font_size * DEFAULT_LINE_HEIGHT_SCALE, Unit::Px);
+
+        if let Some(ref line_height) = self.cached.line_height {
+            return Au::from_f64_px(match line_height {
+                &Value::Keyword(ref k) if k == "normal" => font_size * DEFAULT_LINE_HEIGHT_SCALE,
+                &Value::Length(f, Unit::Px) => f,
+                &Value::Length(f, Unit::Pt) => pt2px(f),
+                &Value::Length(_, _) => unimplemented!(),
+                &Value::Num(f) => font_size * f,
+                _ => panic!(),
+            });
+        }
+
         let line_height = &self.value_with_default("line-height", &vec![default_line_height])[0];
+        self.cached.line_height = Some(line_height.clone());
         Au::from_f64_px(match line_height {
             &Value::Keyword(ref k) if k == "normal" => font_size * DEFAULT_LINE_HEIGHT_SCALE,
             &Value::Length(f, Unit::Px) => f,

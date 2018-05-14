@@ -409,7 +409,7 @@ fn matches_simple_selector(elem: &ElementData, selector: &SimpleSelector) -> boo
 }
 
 use std::cell::RefCell;
-thread_local!(pub static LAYOUT_BOX: RefCell<Option<LayoutBox>> = { RefCell::new(None) };);
+thread_local!(pub static LAYOUTBOX: RefCell<Option<LayoutBox>> = { RefCell::new(None) };);
 
 /// Transform a style tree into a layout tree.
 pub fn layout_tree(
@@ -418,8 +418,8 @@ pub fn layout_tree(
     mut containing_block: Dimensions,
 ) -> LayoutBox {
     let mut first_construction_of_layout_tree = false;
-    let mut root_box = LAYOUT_BOX.with(|layout_box| {
-        layout_box
+    let mut root_box = LAYOUTBOX.with(|layoutbox| {
+        layoutbox
             .borrow_mut()
             .get_or_insert_with(|| {
                 first_construction_of_layout_tree = true;
@@ -453,9 +453,9 @@ pub fn layout_tree(
     );
 
     if first_construction_of_layout_tree {
-        LAYOUT_BOX.with(|layout_box| {
-            if let Some(ref mut layout_box) = *layout_box.borrow_mut() {
-                layout_box.property = root_box.property.clone()
+        LAYOUTBOX.with(|layoutbox| {
+            if let Some(ref mut layoutbox) = *layoutbox.borrow_mut() {
+                layoutbox.property = root_box.property.clone()
             }
         });
     }
