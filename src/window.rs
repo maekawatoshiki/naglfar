@@ -282,6 +282,7 @@ impl RenderingWindow {
                         .downcast::<gtk::Overlay>()
                         .unwrap()
                         .set_size_request(-1, content_rect.height.ceil_to_px());
+                    widget.set_size_request(-1, content_rect.height.ceil_to_px());
 
                     let surface = cairo::ImageSurface::create(
                         cairo::Format::ARgb32,
