@@ -35,6 +35,8 @@ pub struct CachedProperties {
     margin: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
     padding: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
     border_width: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
+
+    font_size: Option<Value>,
 }
 
 impl CachedProperties {
@@ -43,6 +45,7 @@ impl CachedProperties {
             margin: (None, None, None, None),
             padding: (None, None, None, None),
             border_width: (None, None, None, None),
+            font_size: None,
         }
     }
 }
@@ -499,6 +502,10 @@ impl Style {
     }
 
     pub fn font_size(&self) -> Au {
+        if let Some(ref font_size) = self.cached.font_size {
+            return Au::from_f64_px(font_size.clone().to_px().unwrap());
+        }
+
         let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
         Au::from_f64_px(
             self.value_with_default("font-size", &vec![default_font_size])[0]
