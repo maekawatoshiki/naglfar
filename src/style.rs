@@ -35,6 +35,7 @@ pub struct CachedProperties {
     margin: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
     padding: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
     border_width: (Option<Value>, Option<Value>, Option<Value>, Option<Value>),
+    border_color: (Option<Color>, Option<Color>, Option<Color>, Option<Color>),
 
     font_size: Option<Value>,
     line_height: Option<Value>,
@@ -46,6 +47,7 @@ impl CachedProperties {
             margin: (None, None, None, None),
             padding: (None, None, None, None),
             border_width: (None, None, None, None),
+            border_color: (None, None, None, None),
             font_size: None,
             line_height: None,
         }
@@ -394,7 +396,19 @@ impl Style {
         )
     }
 
-    pub fn border_color(&self) -> (Option<Color>, Option<Color>, Option<Color>, Option<Color>) {
+    pub fn border_color(&mut self) -> (Option<Color>, Option<Color>, Option<Color>, Option<Color>) {
+        if self.cached.border_color.0.is_some() || self.cached.border_color.1.is_some()
+            || self.cached.border_color.2.is_some()
+            || self.cached.border_color.3.is_some()
+        {
+            return (
+                self.cached.border_color.0.clone(),
+                self.cached.border_color.1.clone(),
+                self.cached.border_color.2.clone(),
+                self.cached.border_color.3.clone(),
+            );
+        }
+
         let mut border_top = self.value("border-top-color").and_then(|x| x[0].to_color());
         let mut border_bottom = self.value("border-bottom-color")
             .and_then(|x| x[0].to_color());
@@ -485,6 +499,11 @@ impl Style {
                 border_left.get_or_insert_with(|| border_color.clone());
             }
         }
+
+        self.cached.border_color.0 = border_top.clone();
+        self.cached.border_color.1 = border_right.clone();
+        self.cached.border_color.2 = border_bottom.clone();
+        self.cached.border_color.3 = border_left.clone();
 
         (border_top, border_right, border_bottom, border_left)
     }

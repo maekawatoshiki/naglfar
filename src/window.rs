@@ -10,14 +10,13 @@ use gtk::ContainerExt;
 use glib::prelude::*; // or `use gtk::prelude::*;`
 use glib;
 
-use gdk::{ContextExt, Cursor, CursorType, Event, EventButton, EventMask, EventMotion, Rectangle,
-          WindowExt, RGBA};
+use gdk::{ContextExt, Cursor, CursorType, Event, EventButton, EventMask, EventMotion, RGBA};
 use gdk_pixbuf::{InterpType, PixbufExt};
 
 use cairo::Context;
 use pango::LayoutExt;
 
-use std::{cell::RefCell, cmp::{max, min}, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap};
 
 use layout::Rect;
 use painter::{DisplayCommand, DisplayList};
@@ -391,8 +390,8 @@ fn render_item(
 
             pangocairo::functions::show_layout(ctx, &pango_layout);
         }
-        &DisplayCommand::Button(ref btn, rect) => {
-            use gtk::LayoutExt;
+        &DisplayCommand::Button(ref _btn, _rect) => {
+            // use gtk::LayoutExt;
             // layout.put(btn, rect.x.ceil_to_px(), rect.y.ceil_to_px());
         }
     }

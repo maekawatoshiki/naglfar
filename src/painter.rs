@@ -30,7 +30,7 @@ impl DisplayCommandInfo {
 
 pub type DisplayList = Vec<DisplayCommandInfo>;
 
-pub fn build_display_list(layout_root: &LayoutBox) -> DisplayList {
+pub fn build_display_list(layout_root: &mut LayoutBox) -> DisplayList {
     let mut list = Vec::new();
     render_layout_box(
         &mut list,
@@ -41,7 +41,7 @@ pub fn build_display_list(layout_root: &LayoutBox) -> DisplayList {
     list
 }
 
-fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &mut LayoutBox) {
     let is_input_elem = match layout_box.info {
         LayoutInfo::Button(_, _) => true,
         _ => false,
@@ -55,26 +55,26 @@ fn render_layout_box(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
     let mut children = layout_box.children.clone();
     children.sort_by(|&LayoutBox { z_index: a, .. }, &LayoutBox { z_index: b, .. }| a.cmp(&b));
 
-    for child in children
-        .iter()
+    for mut child in children
+        .iter_mut()
         .filter(|child| child.box_type != BoxType::Float)
     {
         render_layout_box(
             &mut buf,
             x + layout_box.dimensions.content.x,
             y + layout_box.dimensions.content.y,
-            &child,
+            &mut child,
         );
     }
-    for child in children
-        .iter()
+    for mut child in children
+        .iter_mut()
         .filter(|child| child.box_type == BoxType::Float)
     {
         render_layout_box(
             &mut buf,
             x + layout_box.dimensions.content.x,
             y + layout_box.dimensions.content.y,
-            &child,
+            &mut child,
         );
     }
 
@@ -96,7 +96,7 @@ fn render_button(
     _children: &mut DisplayList,
     x: Au,
     y: Au,
-    layout_box: &LayoutBox,
+    layout_box: &mut LayoutBox,
 ) {
     if let &LayoutInfo::Button(ref btn, _) = &layout_box.info {
         list.push(DisplayCommandInfo::new(DisplayCommand::Button(
@@ -106,8 +106,8 @@ fn render_button(
     }
 }
 
-fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
-    if let &BoxType::TextNode(ref text_info) = &layout_box.box_type {
+fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &mut LayoutBox) {
+    if let &mut BoxType::TextNode(ref text_info) = &mut layout_box.box_type {
         let text = if let NodeType::Text(ref text) = layout_box.node.data {
             &text.as_str()[text_info.range.clone()]
         } else {
@@ -116,14 +116,17 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
         list.push(DisplayCommandInfo::new(DisplayCommand::Text(
             text.to_string(),
             layout_box.dimensions.content.add_parent_coordinate(x, y),
-            get_color(layout_box, "color").unwrap_or(BLACK),
+            match layout_box.property.value("color") {
+                Some(maybe_color) => maybe_color[0].to_color(),
+                _ => None,
+            }.unwrap_or(BLACK),
             layout_box.property.text_decoration(),
             text_info.font,
         )));
     }
 }
 
-fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &mut LayoutBox) {
     match layout_box.box_type {
         BoxType::InlineNode | BoxType::Float => {
             if let NodeType::Element(ElementData {
@@ -146,7 +149,7 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
     }
 }
 
-fn register_anker(x: Au, y: Au, layout_box: &LayoutBox) {
+fn register_anker(x: Au, y: Au, layout_box: &mut LayoutBox) {
     match layout_box.info {
         LayoutInfo::Anker => {
             if let Some(url) = layout_box.node.anker_url() {
@@ -166,7 +169,7 @@ fn register_anker(x: Au, y: Au, layout_box: &LayoutBox) {
     }
 }
 
-fn register_url_fragment(x: Au, y: Au, layout_box: &LayoutBox) {
+fn register_url_fragment(x: Au, y: Au, layout_box: &mut LayoutBox) {
     if let NodeType::Element(ref e) = layout_box.node.data {
         if let Some(id) = e.id() {
             URL_FRAGMENTS.with(|url_fragments| {
@@ -184,7 +187,7 @@ fn register_url_fragment(x: Au, y: Au, layout_box: &LayoutBox) {
     }
 }
 
-fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &mut LayoutBox) {
     lookup_color(layout_box, "background-color", "background").map(|color| {
         list.push(DisplayCommandInfo::new(DisplayCommand::SolidColor(
             color,
@@ -196,7 +199,7 @@ fn render_background(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBo
     });
 }
 
-fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) {
+fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &mut LayoutBox) {
     let d = &layout_box.dimensions;
     let border_box = d.border_box().add_parent_coordinate(x, y);
 
@@ -255,16 +258,8 @@ fn render_borders(list: &mut DisplayList, x: Au, y: Au, layout_box: &LayoutBox) 
     }
 }
 
-/// Return the specified color for CSS property `name`, or None if no color was specified.
-fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
-    match layout_box.property.value(name) {
-        Some(maybe_color) => maybe_color[0].to_color(),
-        _ => None,
-    }
-}
-
 /// Return the specified color for CSS property `name` or `fallback_name`, or None if no color was specified.
-fn lookup_color(layout_box: &LayoutBox, name: &str, fallback_name: &str) -> Option<Color> {
+fn lookup_color(layout_box: &mut LayoutBox, name: &str, fallback_name: &str) -> Option<Color> {
     match layout_box
         .property
         .lookup_without_default(name, fallback_name)
