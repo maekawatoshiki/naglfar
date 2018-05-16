@@ -416,11 +416,17 @@ impl Parser {
             if self.eof() {
                 break;
             }
-            if self.next_char() == ';' {
-                assert_eq!(self.consume_char(), ';');
+            if self.skip_char_if_any(';') {
                 break;
             }
+
             values.push(self.parse_value());
+
+            self.consume_while(|c| c == ' ' || c == '\t');
+            if self.skip_char_if_any('\n') || self.skip_char_if_any('}') {
+                break;
+            }
+
             self.skip_char_if_any(',');
         }
         values
