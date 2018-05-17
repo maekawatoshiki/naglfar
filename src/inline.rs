@@ -87,7 +87,7 @@ impl LineMaker {
                 .width;
 
             match layoutbox.box_type {
-                BoxType::TextNode(_) => while self.pending.range.len() != 0 {
+                BoxType::TextNode(_) => while self.pending.range.len() > 0 {
                     self.run_on_text_node(layoutbox.clone(), max_width_considered_float);
                     max_width_considered_float = self.floats
                         .available_area(max_width, self.cur_height, Au(1))

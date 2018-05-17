@@ -1,7 +1,6 @@
 use layout::{BoxType, Dimensions, EdgeSizes, LayoutBox, LayoutInfo, Rect};
 use inline::get_image;
 use style;
-use css::Value;
 
 use std::cmp::{max, min};
 
@@ -254,25 +253,25 @@ impl LayoutBox {
 
     /// Calculate the width of a float (non-replaced) element.
     /// Sets the horizontal margin/padding/border dimensions, and the `width`.
+    /// Returns if the width of this float element is NOT specified.
     /// ref. https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html#float-width
     // TODO: Implement correctly!
     pub fn calculate_float_width(&mut self, containing_block: Dimensions) -> bool {
         let cb_width = containing_block.content.width.to_f64_px();
 
-        // `width` has initial value `auto`.
-        let auto = Value::Keyword("auto".to_string());
-        let width = self.property.value("width").unwrap_or(vec![auto.clone()])[0].clone();
-
         let d = &mut self.dimensions;
 
-        let mut width_not_specified = false;
-        if width == auto {
-            width_not_specified = true;
+        if let Some(x) = self.property.value("width") {
+            let width = x[0].clone();
+            if let Some(width) = width.maybe_percent_to_px(cb_width) {
+                d.content.width = Au::from_f64_px(width)
+            }
+            false
+        } else {
+            // width == auto
             d.content.width = containing_block.content.width;
-        } else if let Some(width) = width.maybe_percent_to_px(cb_width) {
-            d.content.width = Au::from_f64_px(width)
+            // width not specified
+            true
         }
-
-        width_not_specified
     }
 }

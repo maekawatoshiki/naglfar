@@ -223,6 +223,8 @@ impl LayoutBox {
         let mut last_margin_bottom = Au(0);
         let mut floats = &mut self.floats;
 
+        d.content.height = Au(0);
+
         // TODO: Consider a better way to position children.
         for child in &mut self.children {
             if let Some(clear) = child.property.clear() {
