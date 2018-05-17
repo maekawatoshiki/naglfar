@@ -455,7 +455,17 @@ pub fn layout_tree(
     if first_construction_of_layout_tree {
         LAYOUTBOX.with(|layoutbox| {
             if let Some(ref mut layoutbox) = *layoutbox.borrow_mut() {
-                layoutbox.property = root_box.property.clone()
+                assign_style_properties(&root_box, layoutbox);
+                fn assign_style_properties(root_box: &LayoutBox, layoutbox: &mut LayoutBox) {
+                    if root_box.box_type != BoxType::AnonymousBlock {
+                        layoutbox.property = root_box.property.clone();
+                        for (child, layoutbox_child) in
+                            root_box.children.iter().zip(&mut layoutbox.children)
+                        {
+                            assign_style_properties(child, layoutbox_child);
+                        }
+                    }
+                }
             }
         });
     }

@@ -45,7 +45,7 @@ impl LineMetrics {
 #[derive(Clone, Debug)]
 pub struct LineMaker {
     pub pending: Line,
-    pub work_list: VecDeque<LayoutBox>,
+    pub work_list: VecDeque<VecDeque<LayoutBox>>,
     pub new_boxes: Vec<LayoutBox>,
     pub floats: Floats,
     pub lines: Vec<Line>,
@@ -64,7 +64,7 @@ impl LineMaker {
                 metrics: LineMetrics::new(Au(0), Au(0)),
                 width: Au(0),
             },
-            work_list: VecDeque::from(boxes),
+            work_list: VecDeque::from(vec![VecDeque::from(boxes)]),
             new_boxes: vec![],
             floats: floats,
             lines: vec![],
@@ -77,7 +77,7 @@ impl LineMaker {
     }
 
     pub fn run(&mut self, max_width: Au, containing_block: Dimensions) {
-        while let Some(layoutbox) = self.work_list.pop_front() {
+        while let Some(layoutbox) = self.work_list.back_mut().unwrap().pop_front() {
             if let BoxType::TextNode(ref text_info) = layoutbox.box_type {
                 self.pending.range = text_info.range.clone()
             }
@@ -181,7 +181,9 @@ impl LineMaker {
             max_width: Au,
             containing_block: Dimensions,
         ) {
-            linemaker.work_list = VecDeque::from(layoutbox.children.clone());
+            linemaker
+                .work_list
+                .push_back(VecDeque::from(layoutbox.children.clone()));
             layoutbox.children.clear();
 
             layoutbox.assign_padding();
@@ -241,21 +243,13 @@ impl LineMaker {
                 layoutbox.dimensions.content.height = new_box.dimensions.content.height;
                 *new_box = layoutbox;
             }
+
+            linemaker.work_list.pop_back();
         }
         // Non-replaced inline elements(like <span>)
         match layoutbox.info {
             LayoutInfo::Generic | LayoutInfo::Anker => {
-                let mut linemaker = self.clone();
-
-                layout_text(layoutbox, &mut linemaker, max_width, containing_block);
-
-                self.new_boxes = linemaker.new_boxes;
-                self.lines = linemaker.lines;
-                self.start = linemaker.start;
-                self.end = linemaker.end;
-                self.cur_width = linemaker.cur_width;
-                self.cur_height = linemaker.cur_height;
-                self.cur_metrics = linemaker.cur_metrics;
+                layout_text(layoutbox, self, max_width, containing_block);
             }
             LayoutInfo::Image(_) => {
                 // Replaced Inline Element (<img>)
@@ -472,7 +466,7 @@ impl LineMaker {
                 },
                 self.pending.range.start..self.pending.range.start + max_chars,
             );
-            self.new_boxes.push(new_layoutbox.clone());
+            self.new_boxes.push(new_layoutbox);
 
             self.pending.range = self.pending.range.start + max_chars..self.pending.range.end;
 
@@ -492,7 +486,7 @@ impl LineMaker {
                 },
                 self.pending.range.start..text.len() + self.pending.range.start,
             );
-            self.new_boxes.push(new_layoutbox.clone());
+            self.new_boxes.push(new_layoutbox);
 
             self.pending.range = 0..0;
 
@@ -591,15 +585,13 @@ impl LayoutBox {
     pub fn calculate_inline_block_width(&mut self, _containing_block: Dimensions) {
         // `width` has initial value `auto`.
         // TODO: Implement calculating shrink-to-fit width
-        let auto = Value::Keyword("auto".to_string());
-        let width = &self.property.value("width").unwrap_or(vec![auto.clone()])[0];
-
-        if width == &auto {
+        if let Some(x) = self.property.value("width") {
+            self.dimensions.content.width = Au::from_f64_px(x[0].to_px().unwrap());
+        } else {
             // TODO
+            // width == auto
             panic!("calculating shrink-to-fit width is unsupported.");
-        }
-
-        self.dimensions.content.width = Au::from_f64_px(width.to_px().unwrap());
+        };
     }
 }
 use dom::Node;

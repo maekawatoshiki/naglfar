@@ -23,12 +23,7 @@ impl LayoutBox {
         let border = self.property.border_width();
         // Child width can depend on parent width, so we need to calculate this box's width before
         // laying out its children.
-        self.calculate_block_width(
-            containing_block,
-            margin.clone(),
-            padding.clone(),
-            border.clone(),
-        );
+        self.calculate_block_width(containing_block, &margin, &padding, &border);
 
         self.calculate_block_position(
             last_margin_bottom,
@@ -55,32 +50,36 @@ impl LayoutBox {
     pub fn calculate_block_width(
         &mut self,
         containing_block: Dimensions,
-        margin: (Value, Value, Value, Value),
-        padding: (Value, Value, Value, Value),
-        border: (Value, Value, Value, Value),
+        margin: &(Value, Value, Value, Value),
+        padding: &(Value, Value, Value, Value),
+        border: &(Value, Value, Value, Value),
     ) {
         let cb_width = containing_block.content.width.to_f64_px();
 
         // `width` has initial value `auto`.
         let auto = Value::Keyword("auto".to_string());
-        let mut width = self.property.value("width").unwrap_or(vec![auto.clone()])[0].clone();
+        let mut width = if let Some(x) = self.property.value("width") {
+            x[0].clone()
+        } else {
+            auto.clone()
+        };
 
-        let mut margin_left = margin.3;
-        let mut margin_right = margin.1;
+        let mut margin_left = margin.3.clone();
+        let mut margin_right = margin.1.clone();
 
-        let border_left = border.3;
-        let border_right = border.1;
+        let border_left = &border.3;
+        let border_right = &border.1;
 
-        let padding_left = padding.3;
-        let padding_right = padding.1;
+        let padding_left = &padding.3;
+        let padding_right = &padding.1;
 
         let total = sum([
             &margin_left,
             &margin_right,
-            &border_left,
-            &border_right,
-            &padding_left,
-            &padding_right,
+            border_left,
+            border_right,
+            padding_left,
+            padding_right,
             &width,
         ].iter()
             .map(|v| v.maybe_percent_to_px(cb_width).unwrap_or(0.0)));
