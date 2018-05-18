@@ -99,7 +99,7 @@ impl LayoutBox {
             z_index: 0,
             floats: Floats::new(),
             dimensions: Default::default(),
-            children: Vec::new(),
+            children: Vec::with_capacity(16),
         }
     }
 

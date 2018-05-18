@@ -292,6 +292,12 @@ impl RenderingWindow {
                         render_item(&ctx, &mut pango_layout, /* layout, */ &item.command);
                     }
 
+                    // let radial = cairo::LinearGradient::new(100.0, 100.0, 0.0, 200.0);
+                    // use cairo::Gradient;
+                    // radial.add_color_stop_rgba(0.0, 0.0, 0.0, 0.0, 0.5);
+                    // radial.add_color_stop_rgba(0.4, 0.0, 0.0, 0.0, 0.0);
+                    // ctx.mask(&radial);
+
                     *sc.borrow_mut() = Some(surface.clone());
                     surface
                 });
