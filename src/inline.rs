@@ -88,7 +88,7 @@ impl LineMaker {
 
             match layoutbox.box_type {
                 BoxType::TextNode(_) => while self.pending.range.len() > 0 {
-                    self.run_on_text_node(layoutbox.clone(), max_width_considered_float);
+                    self.run_on_text_node(&layoutbox, max_width_considered_float);
                     max_width_considered_float = self.floats
                         .available_area(max_width, self.cur_height, Au(1))
                         .width;
@@ -96,9 +96,11 @@ impl LineMaker {
                 BoxType::InlineBlockNode => {
                     self.run_on_inline_block_node(layoutbox, max_width_considered_float)
                 }
-                BoxType::InlineNode => {
-                    self.run_on_inline_node(layoutbox, max_width_considered_float, containing_block)
-                }
+                BoxType::InlineNode => self.run_on_inline_node(
+                    &layoutbox,
+                    max_width_considered_float,
+                    containing_block,
+                ),
                 _ => unimplemented!(),
             }
         }
@@ -171,7 +173,7 @@ impl LineMaker {
 
     fn run_on_inline_node(
         &mut self,
-        mut layoutbox: LayoutBox,
+        layoutbox: &LayoutBox,
         max_width: Au,
         containing_block: Dimensions,
     ) {
@@ -247,12 +249,13 @@ impl LineMaker {
         // Non-replaced inline elements(like <span>)
         match layoutbox.info {
             LayoutInfo::Generic | LayoutInfo::Anker => {
-                layout_text(layoutbox, self, max_width, containing_block);
+                layout_text(layoutbox.clone(), self, max_width, containing_block);
             }
             LayoutInfo::Image(_) => {
                 // Replaced Inline Element (<img>)
                 let width;
                 let height;
+                let mut layoutbox = layoutbox.clone();
                 layoutbox.layout_inline(&mut self.floats, containing_block);
                 width = layoutbox.dimensions.border_box().width;
                 height = layoutbox.dimensions.border_box().height;
@@ -419,23 +422,23 @@ impl LineMaker {
         }
     }
 
-    fn run_on_text_node(&mut self, mut layoutbox: LayoutBox, max_width: Au) {
+    fn run_on_text_node(&mut self, layoutbox: &LayoutBox, max_width: Au) {
         let text = if let NodeType::Text(ref text) = layoutbox.node.data {
             &text[self.pending.range.clone()]
         } else {
             return;
         };
 
-        let font_size = layoutbox.property.font_size();
-        let line_height = layoutbox.property.line_height();
-        let font_weight = layoutbox.property.font_weight();
-        let font_slant = layoutbox.property.font_style();
+        let mut new_layoutbox = layoutbox.clone();
+
+        let font_size = new_layoutbox.property.font_size();
+        let line_height = new_layoutbox.property.line_height();
+        let font_weight = new_layoutbox.property.font_weight();
+        let font_slant = new_layoutbox.property.font_style();
 
         let my_font = Font::new(font_size, font_weight, font_slant);
         let text_width = Au::from_f64_px(my_font.text_width(text));
         let (ascent, descent) = my_font.get_ascent_descent();
-
-        let mut new_layoutbox = layoutbox.clone();
 
         self.end += 1;
 
