@@ -93,7 +93,6 @@ impl Font {
 
     pub fn compute_max_chars(&self, s: &str, max_width: f64) -> usize {
         // TODO: Inefficient!
-        // TODO: This code doesn't allow other than alphabets.
         if max_width < 0f64 {
             return 0;
         }

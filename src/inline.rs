@@ -65,9 +65,9 @@ impl LineMaker {
                 width: Au(0),
             },
             work_list: VecDeque::from(vec![VecDeque::from(boxes)]),
-            new_boxes: vec![],
+            new_boxes: Vec::with_capacity(16),
             floats: floats,
-            lines: vec![],
+            lines: Vec::with_capacity(16),
             start: 0,
             end: 0,
             cur_width: Au(0),
@@ -188,18 +188,16 @@ impl LineMaker {
 
             layoutbox.assign_padding();
             layoutbox.assign_border_width();
+            layoutbox.assign_margin();
 
             let start = linemaker.end;
 
-            linemaker.cur_width +=
-                layoutbox.dimensions.padding.left + layoutbox.dimensions.border.left;
+            linemaker.cur_width += layoutbox.dimensions.left_offset();
             linemaker.run(
-                max_width
-                    - (layoutbox.dimensions.padding.right + layoutbox.dimensions.border.right),
+                max_width - layoutbox.dimensions.right_offset(),
                 containing_block,
             );
-            linemaker.cur_width +=
-                layoutbox.dimensions.padding.right + layoutbox.dimensions.border.right;
+            linemaker.cur_width += layoutbox.dimensions.right_offset();
 
             let end = linemaker.end;
 
@@ -219,9 +217,9 @@ impl LineMaker {
                     };
                 }
 
-                // TODO: Is margin also needed?
                 f!(layoutbox, new_box, padding);
                 f!(layoutbox, new_box, border);
+                f!(layoutbox, new_box, margin);
 
                 if new_boxes_len > 1 && line_is_broken {
                     // TODO: Makes no sense!
@@ -274,112 +272,112 @@ impl LineMaker {
                 self.new_boxes.push(layoutbox);
             }
             LayoutInfo::Button(_, _) => {
-                let btn_text = text(&layoutbox);
-                use gtk::Button;
-                use gtk::BinExt;
-                use gtk::WidgetExt;
-                use window::BUTTONS;
-                // println!("d {:?}", d);
-
-                let button = match &mut layoutbox.info {
-                    &mut LayoutInfo::Button(ref mut btn, ref id) => {
-                        let button = BUTTONS.with(|b| {
-                            b.borrow_mut()
-                                .entry(*id)
-                                .or_insert_with(|| Button::new_with_label(btn_text.as_str()))
-                                .clone()
-                        });
-                        *btn = Some(button.clone());
-                        button
-                    }
-                    _ => unreachable!(),
-                };
-                use glib::prelude::*; // or `use gtk::prelude::*;`
-                use gtk;
-                let label = button
-                    .get_child()
-                    .unwrap()
-                    .downcast::<gtk::Label>()
-                    .unwrap();
-                use pango;
-
-                let mut linemaker = self.clone();
-                layout_text(
-                    layoutbox.clone(),
-                    &mut linemaker,
-                    max_width,
-                    containing_block,
-                );
-
-                let font = get_font(&linemaker);
-                use css::px2pt;
-                label.set_markup(
-                    format!(
-                        "<span size='{}'>{}</span>",
-                        pango::units_from_double(px2pt(font.size.to_f64_px())),
-                        btn_text
-                    ).as_str(),
-                );
-                use gtk::LabelExt;
-                let button_height = button.get_allocated_height();
-                button.set_valign(gtk::Align::Baseline);
-                let width = Au::from_f64_px(label.get_allocated_width() as f64 + 10.0);
-
-                let mut d = Au::from_f64_px(button_height as f64) - font.size;
-                println!("height: {} {:?}", button_height, d);
-
-                layoutbox.dimensions.content.width = width;
-                layoutbox.dimensions.content.height = Au::from_f64_px(button_height as f64);
-
-                layoutbox.children.clear();
-
-                if self.cur_width + width > max_width {
-                    self.flush_cur_line();
-                    self.end += 1;
-
-                    self.cur_width = width;
-                } else {
-                    self.end += 1;
-                    self.cur_width += width;
-                }
-                self.cur_metrics.above_baseline = max(
-                    // Au(0),
-                    font.get_ascent_descent().0 + d / 2,
-                    linemaker.cur_metrics.above_baseline,
-                );
-                self.cur_metrics.under_baseline = max(
-                    // Au(0),
-                    font.get_ascent_descent().1 + d / 2,
-                    self.cur_metrics.under_baseline,
-                );
-
-                self.new_boxes.push(layoutbox);
-
-                // Get the font found first
-                fn get_font(linemaker: &LineMaker) -> Font {
-                    fn font(b: &LayoutBox) -> Font {
-                        if let BoxType::TextNode(Text { ref font, .. }) = b.box_type {
-                            font.clone()
-                        } else {
-                            for child in &b.children {
-                                return font(child);
-                            }
-                            panic!()
-                        }
-                    }
-                    font(linemaker.new_boxes.last().unwrap())
-                }
-                fn text(b: &LayoutBox) -> String {
-                    if let NodeType::Text(ref text) = b.node.data {
-                        text.clone()
-                    } else {
-                        let mut t = "".to_string();
-                        for child in &b.children {
-                            t += text(&child).as_str();
-                        }
-                        t
-                    }
-                }
+                // let btn_text = text(&layoutbox);
+                // use gtk::Button;
+                // use gtk::BinExt;
+                // use gtk::WidgetExt;
+                // use window::BUTTONS;
+                // // println!("d {:?}", d);
+                //
+                // let button = match &mut layoutbox.info {
+                //     &mut LayoutInfo::Button(ref mut btn, ref id) => {
+                //         let button = BUTTONS.with(|b| {
+                //             b.borrow_mut()
+                //                 .entry(*id)
+                //                 .or_insert_with(|| Button::new_with_label(btn_text.as_str()))
+                //                 .clone()
+                //         });
+                //         *btn = Some(button.clone());
+                //         button
+                //     }
+                //     _ => unreachable!(),
+                // };
+                // use glib::prelude::*; // or `use gtk::prelude::*;`
+                // use gtk;
+                // let label = button
+                //     .get_child()
+                //     .unwrap()
+                //     .downcast::<gtk::Label>()
+                //     .unwrap();
+                // use pango;
+                //
+                // let mut linemaker = self.clone();
+                // layout_text(
+                //     layoutbox.clone(),
+                //     &mut linemaker,
+                //     max_width,
+                //     containing_block,
+                // );
+                //
+                // let font = get_font(&linemaker);
+                // use css::px2pt;
+                // label.set_markup(
+                //     format!(
+                //         "<span size='{}'>{}</span>",
+                //         pango::units_from_double(px2pt(font.size.to_f64_px())),
+                //         btn_text
+                //     ).as_str(),
+                // );
+                // use gtk::LabelExt;
+                // let button_height = button.get_allocated_height();
+                // button.set_valign(gtk::Align::Baseline);
+                // let width = Au::from_f64_px(label.get_allocated_width() as f64 + 10.0);
+                //
+                // let mut d = Au::from_f64_px(button_height as f64) - font.size;
+                // println!("height: {} {:?}", button_height, d);
+                //
+                // layoutbox.dimensions.content.width = width;
+                // layoutbox.dimensions.content.height = Au::from_f64_px(button_height as f64);
+                //
+                // layoutbox.children.clear();
+                //
+                // if self.cur_width + width > max_width {
+                //     self.flush_cur_line();
+                //     self.end += 1;
+                //
+                //     self.cur_width = width;
+                // } else {
+                //     self.end += 1;
+                //     self.cur_width += width;
+                // }
+                // self.cur_metrics.above_baseline = max(
+                //     // Au(0),
+                //     font.get_ascent_descent().0 + d / 2,
+                //     linemaker.cur_metrics.above_baseline,
+                // );
+                // self.cur_metrics.under_baseline = max(
+                //     // Au(0),
+                //     font.get_ascent_descent().1 + d / 2,
+                //     self.cur_metrics.under_baseline,
+                // );
+                //
+                // self.new_boxes.push(layoutbox);
+                //
+                // // Get the font found first
+                // fn get_font(linemaker: &LineMaker) -> Font {
+                //     fn font(b: &LayoutBox) -> Font {
+                //         if let BoxType::TextNode(Text { ref font, .. }) = b.box_type {
+                //             font.clone()
+                //         } else {
+                //             for child in &b.children {
+                //                 return font(child);
+                //             }
+                //             panic!()
+                //         }
+                //     }
+                //     font(linemaker.new_boxes.last().unwrap())
+                // }
+                // fn text(b: &LayoutBox) -> String {
+                //     if let NodeType::Text(ref text) = b.node.data {
+                //         text.clone()
+                //     } else {
+                //         let mut t = "".to_string();
+                //         for child in &b.children {
+                //             t += text(&child).as_str();
+                //         }
+                //         t
+                //     }
+                // }
             }
             _ => {}
         }
