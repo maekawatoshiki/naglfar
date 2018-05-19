@@ -128,6 +128,7 @@ impl RenderingWindow {
             EventMask::POINTER_MOTION_MASK.bits() as i32
                 | EventMask::BUTTON_PRESS_MASK.bits() as i32,
         );
+
         overlay
             .connect("motion-notify-event", false, |args| {
                 use gdk::WindowExt;
@@ -292,7 +293,7 @@ impl RenderingWindow {
                         render_item(&ctx, &mut pango_layout, /* layout, */ &item.command);
                     }
 
-                    // let radial = cairo::LinearGradient::new(100.0, 100.0, 0.0, 200.0);
+                    // let radial = cairo::LinearGradient::new(0.0, 0.0, 0.0, 200.0);
                     // use cairo::Gradient;
                     // radial.add_color_stop_rgba(0.0, 0.0, 0.0, 0.0, 0.5);
                     // radial.add_color_stop_rgba(0.4, 0.0, 0.0, 0.0, 0.0);
@@ -302,8 +303,16 @@ impl RenderingWindow {
                     surface
                 });
 
+                let (_, redraw_start_y, redraw_end_x, redraw_end_y) = cairo_context.clip_extents();
+
                 cairo_context.set_source_surface(&surface, 0.0, 0.0);
-                cairo_context.paint();
+                cairo_context.rectangle(
+                    0.0,
+                    redraw_start_y,
+                    redraw_end_x,
+                    redraw_end_y - redraw_start_y,
+                );
+                cairo_context.fill();
 
                 // layout.show_all();
 
