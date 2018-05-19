@@ -436,7 +436,7 @@ impl Parser {
         match self.next_char() {
             '0'...'9' => self.parse_length(),
             '#' => self.parse_color(),
-            '\"' => self.parse_string(),
+            '\"' | '\'' => self.parse_string(),
             _ => {
                 let ident = self.parse_identifier();
                 match ident.as_str() {
