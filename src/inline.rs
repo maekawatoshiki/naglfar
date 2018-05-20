@@ -1,7 +1,7 @@
 use css::Value;
 use dom::NodeType;
 use font::Font;
-use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, Text};
+use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, Rect, Text};
 use float::Floats;
 
 use std::ops::Range;
@@ -18,6 +18,7 @@ pub struct Line {
     pub range: Range<usize>, // Range of LayoutBox(es) that represent(s) this line.
     pub metrics: LineMetrics,
     pub width: Au,
+    pub zone: Rect,
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -63,6 +64,7 @@ impl LineMaker {
                 range: 0..0,
                 metrics: LineMetrics::new(Au(0), Au(0)),
                 width: Au(0),
+                zone: ::std::default::Default::default(),
             },
             work_list: VecDeque::from(vec![VecDeque::from(boxes)]),
             new_boxes: Vec::with_capacity(16),
@@ -77,21 +79,32 @@ impl LineMaker {
     }
 
     pub fn run(&mut self, max_width: Au, containing_block: Dimensions) {
+        self.pending.zone = self.floats
+            .available_area(max_width, self.cur_height, Au(1));
+        let mut max_width_considered_float = self.pending.zone.width;
+
         while let Some(layoutbox) = self.work_list.back_mut().unwrap().pop_front() {
             if let BoxType::TextNode(ref text_info) = layoutbox.box_type {
                 self.pending.range = text_info.range.clone()
             }
 
-            let mut max_width_considered_float = self.floats
-                .available_area(max_width, self.cur_height, Au(1))
-                .width;
+            macro_rules! update_available_zone { () => {
+                if self.pending.zone.height > Au(0)
+                    && (self.cur_height + self.floats.ceiling > self.pending.zone.height)
+                {
+                    self.pending.zone =
+                        self.floats
+                            .available_area(max_width, self.cur_height, Au(1));
+                    max_width_considered_float = self.pending.zone.width;
+                }
+            } }
+
+            update_available_zone!();
 
             match layoutbox.box_type {
                 BoxType::TextNode(_) => while self.pending.range.len() > 0 {
                     self.run_on_text_node(&layoutbox, max_width_considered_float);
-                    max_width_considered_float = self.floats
-                        .available_area(max_width, self.cur_height, Au(1))
-                        .width;
+                    update_available_zone!()
                 },
                 BoxType::InlineBlockNode => {
                     self.run_on_inline_block_node(layoutbox, max_width_considered_float)
@@ -122,6 +135,7 @@ impl LineMaker {
             width: self.new_boxes[self.start..self.end]
                 .iter()
                 .fold(Au(0), |acc, lbox| acc + lbox.dimensions.margin_box().width),
+            zone: self.pending.zone,
         });
         self.cur_height += self.cur_metrics.calculate_line_height();
         self.start = self.end;
@@ -131,19 +145,15 @@ impl LineMaker {
         self.flush_cur_line()
     }
 
-    pub fn assign_position(&mut self, max_width: Au) {
+    pub fn assign_position(&mut self) {
         self.cur_height = Au(0);
 
         for line in &self.lines {
             self.cur_width = Au(0);
 
             for new_box in &mut self.new_boxes[line.range.clone()] {
-                let (left_floats_width, max_width_considered_float) = {
-                    let available_area =
-                        self.floats
-                            .available_area(max_width, self.cur_height, Au(1)); // magic number '1': Anything is ok if Au(x) > 0.
-                    (available_area.x, available_area.width)
-                };
+                let (left_floats_width, max_width_considered_float) =
+                    (line.zone.x, line.zone.width);
                 // TODO: Refine
                 let text_align = new_box.property.text_align();
                 let init_width = match text_align {

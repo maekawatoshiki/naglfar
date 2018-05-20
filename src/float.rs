@@ -111,7 +111,7 @@ impl Floats {
                     x: Au(0),
                     y: Au(0),
                     width: max_width,
-                    height: Au(0),
+                    height: Au(-1),
                 }
             }
             _ => unreachable!(),

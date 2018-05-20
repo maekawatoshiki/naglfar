@@ -514,7 +514,7 @@ impl LayoutBox {
                 let mut linemaker = LineMaker::new(self.children.clone(), floats.clone());
                 linemaker.run(containing_block.content.width, containing_block);
                 linemaker.end_of_lines();
-                linemaker.assign_position(containing_block.content.width);
+                linemaker.assign_position();
 
                 self.dimensions.content.width = linemaker.calculate_width();
                 self.dimensions.content.height = linemaker.cur_height;
