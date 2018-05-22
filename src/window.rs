@@ -111,10 +111,13 @@ impl RenderingWindow {
 
                 let url = entry.get_text().unwrap();
                 println!("URL: {}", url);
+
                 update_html_tree_and_stylesheet(url);
                 ANKERS.with(|ankers| ankers.borrow_mut().clear());
                 SURFACE_CACHE.with(|sc| *sc.borrow_mut() = None);
+
                 drawing_area.queue_draw();
+
                 None
             })
             .unwrap();
@@ -184,10 +187,9 @@ impl RenderingWindow {
                     .get_position();
 
                 ANKERS.with(|ankers| {
-                    // TODO: Makes no sense.
-                    let mut ankers = ankers.borrow_mut();
-                    let mut anker_clicked = false;
-                    if let Some((_, ankerkind)) = ankers.iter().find(|&(rect, _)| {
+                    let mut jump_to_another_page = false;
+
+                    if let Some((_, ankerkind)) = ankers.borrow().iter().find(|&(rect, _)| {
                         rect.x.to_f64_px() <= clicked_x
                             && clicked_x <= rect.x.to_f64_px() + rect.width.to_f64_px()
                             && rect.y.to_f64_px() <= clicked_y
@@ -195,13 +197,14 @@ impl RenderingWindow {
                     }) {
                         match ankerkind {
                             &AnkerKind::URL(ref url) => {
-                                anker_clicked = true;
+                                jump_to_another_page = true;
                                 update_html_tree_and_stylesheet(url.to_string());
                                 overlay.get_children()[0].queue_draw(); // [0] is DrawingArea
                             }
                             &AnkerKind::URLFragment(ref id) => {
                                 URL_FRAGMENTS.with(|ufs| {
                                     if let Some(content_y) = ufs.borrow().get(id) {
+                                        // TODO: Makes no sense.
                                         let mut adjustment = overlay
                                             .get_parent()
                                             .unwrap()
@@ -217,8 +220,9 @@ impl RenderingWindow {
                             }
                         };
                     }
-                    if anker_clicked {
-                        ankers.clear();
+
+                    if jump_to_another_page {
+                        ankers.borrow_mut().clear();
                         SURFACE_CACHE.with(|sc| *sc.borrow_mut() = None);
                     }
                 });
