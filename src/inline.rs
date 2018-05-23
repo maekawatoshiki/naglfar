@@ -463,18 +463,14 @@ impl LineMaker {
 
         if self.cur_width + text_width > max_width {
             let remaining_width = max_width - self.cur_width; // Is this correc?
-            let max_chars = my_font.compute_max_chars(text, remaining_width.to_f64_px());
+            let (max_chars, text_width) =
+                my_font.compute_max_chars_and_width(text, remaining_width.to_f64_px());
 
-            new_layoutbox.dimensions.content.width =
-                Au::from_f64_px(my_font.text_width(&text[0..max_chars]));
+            new_layoutbox.dimensions.content.width = Au::from_f64_px(text_width);
             new_layoutbox.dimensions.content.height = ascent + descent;
 
             new_layoutbox.set_text_info(
-                Font {
-                    size: font_size,
-                    weight: font_weight,
-                    slant: font_slant,
-                },
+                Font::new(font_size, font_weight, font_slant),
                 self.pending.range.start..self.pending.range.start + max_chars,
             );
             self.new_boxes.push(new_layoutbox);
@@ -490,11 +486,7 @@ impl LineMaker {
             new_layoutbox.dimensions.content.height = ascent + descent;
 
             new_layoutbox.set_text_info(
-                Font {
-                    size: font_size,
-                    weight: font_weight,
-                    slant: font_slant,
-                },
+                Font::new(font_size, font_weight, font_slant),
                 self.pending.range.start..text.len() + self.pending.range.start,
             );
             self.new_boxes.push(new_layoutbox);
