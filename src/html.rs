@@ -90,7 +90,7 @@ impl Parser {
     fn new(input: String) -> Parser {
         Parser {
             pos: 0,
-            input: remove_comments(input.as_bytes(), "<!--", "-->"),
+            input: input,
         }
     }
 
@@ -103,12 +103,20 @@ impl Parser {
                 _ => self.consume_whitespace()?,
             };
 
+            // Comments
+            if self.starts_with("<!--") {
+                self.consume_comment()?;
+                continue;
+            }
+
+            // DOCTYPE
             if self.starts_with("<!") {
                 self.consume_while(|c| c != '>')?;
                 assert_eq!(self.consume_char()?, '>');
                 continue;
             }
 
+            // TODO: Must support </
             if self.eof() || self.starts_with("</") {
                 break;
             }
@@ -136,6 +144,14 @@ impl Parser {
 
         if is_not_to_close_tag(tag_name.as_str()) {
             return Ok(dom::Node::elem(tag_name, attrs, vec![]));
+        }
+
+        if tag_name == "script" || tag_name == "style" {
+            return Ok(dom::Node::elem(
+                tag_name,
+                attrs,
+                vec![dom::Node::text(self.consume_special_element()?)],
+            ));
         }
 
         // Contents.
@@ -213,6 +229,32 @@ impl Parser {
         ))
     }
 
+    fn consume_comment(&mut self) -> Result<(), ()> {
+        while !self.eof() {
+            if self.starts_with("-->") {
+                assert_eq!('-', self.consume_char()?);
+                assert_eq!('-', self.consume_char()?);
+                assert_eq!('>', self.consume_char()?);
+                break;
+            }
+            self.consume_char()?;
+        }
+        Ok(())
+    }
+
+    fn consume_special_element(&mut self) -> Result<String, ()> {
+        let mut body = "".to_string();
+        while !self.eof() {
+            if self.starts_with("</") {
+                self.consume_while(|c| c != '>')?;
+                assert_eq!(self.consume_char()?, '>');
+                break;
+            }
+            body.push(self.consume_char()?);
+        }
+        Ok(body)
+    }
+
     fn consume_whitespace(&mut self) -> Result<(), ()> {
         self.consume_while(char::is_whitespace).and(Ok(()))
     }
@@ -221,11 +263,11 @@ impl Parser {
     where
         F: Fn(char) -> bool,
     {
-        let mut v = vec![];
+        let mut s = "".to_string();
         while !self.eof() && f(self.next_char()?) {
-            v.push(self.consume_char()? as u8);
+            s.push(self.consume_char()?);
         }
-        Ok(String::from_utf8_lossy(v.as_slice()).to_owned().to_string())
+        Ok(s)
     }
 
     fn consume_char(&mut self) -> Result<char, ()> {
