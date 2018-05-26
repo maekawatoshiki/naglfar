@@ -138,41 +138,51 @@ pub fn update_html_tree_and_stylesheet(html_src: String) {
 }
 
 pub fn run_with_url(html_src: String) {
-    update_html_tree_and_stylesheet(html_src);
+    let main_browser_process = ::std::thread::spawn(|| {
+        update_html_tree_and_stylesheet(html_src);
 
-    window::render(move |widget| {
-        let mut viewport: layout::Dimensions = ::std::default::Default::default();
-        viewport.content.width = Au::from_f64_px(widget.get_allocated_width() as f64);
-        viewport.content.height = Au::from_f64_px(widget.get_allocated_height() as f64);
+        window::render(move |widget| {
+            let mut viewport: layout::Dimensions = ::std::default::Default::default();
+            viewport.content.width = Au::from_f64_px(widget.get_allocated_width() as f64);
+            viewport.content.height = Au::from_f64_px(widget.get_allocated_height() as f64);
 
-        LAYOUT_SAVER.with(|x| {
-            let (ref mut last_width, ref mut last_height, ref mut last_displays) = *x.borrow_mut();
-            if *last_width == viewport.content.width && *last_height == viewport.content.height
-                && unsafe { !SRC_UPDATED }
-            {
-                last_displays.clone()
-            } else {
-                unsafe {
-                    SRC_UPDATED = false;
+            LAYOUT_SAVER.with(|x| {
+                let (ref mut last_width, ref mut last_height, ref mut last_displays) =
+                    *x.borrow_mut();
+                if *last_width == viewport.content.width && *last_height == viewport.content.height
+                    && unsafe { !SRC_UPDATED }
+                {
+                    last_displays.clone()
+                } else {
+                    unsafe {
+                        SRC_UPDATED = false;
+                    }
+                    *last_width = viewport.content.width;
+                    *last_height = viewport.content.height;
+
+                    let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
+                    let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
+                    let mut layout_tree = layout::layout_tree(&html_tree, &stylesheet, viewport);
+                    // print!("LAYOUT:\n{}", layout_tree);
+
+                    let display_command = painter::build_display_list(&mut layout_tree);
+                    // println!("DISPLAY:\n{:?}", display_command);
+
+                    *last_displays = display_command.clone();
+
+                    display_command
                 }
-                *last_width = viewport.content.width;
-                *last_height = viewport.content.height;
+            })
+        });
+    }).join();
 
-                let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
-                let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
-                let mut layout_tree = layout::layout_tree(&html_tree, &stylesheet, viewport);
-                // print!("LAYOUT:\n{}", layout_tree);
+    if let Err(_) = main_browser_process {
+        println!(
+            "************ Sorry, Naglfar has been crushed. *************\n    I'd appreciate it if you could report what you did"
+        );
+    }
 
-                let display_command = painter::build_display_list(&mut layout_tree);
-                // println!("DISPLAY:\n{:?}", display_command);
-
-                *last_displays = display_command.clone();
-
-                display_command
-            }
-        })
-    });
-
+    // Delete downloaded files
     if let Ok(dir) = fs::read_dir("./cache") {
         for entry in dir {
             if let Ok(entry) = entry {
