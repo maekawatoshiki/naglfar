@@ -26,7 +26,7 @@ use self::rand::Rng;
 
 /// If ``url_str`` starts with ``http(s)://``, downloads the specified file:
 ///  Returns (downloaded file name, file path(URL without ``http(s)://domain/``)).
-/// If ``url_str`` starts with ``file://``, doesn't do anything special.
+/// If ``url_str`` starts with ``file://``, does nothing especially.
 ///  Just returns (local file name, local file path).
 pub fn download(url_str: &str) -> (String, PathBuf) {
     let url = HTML_SRC_URL.with(|html_src_url| {
@@ -44,38 +44,37 @@ pub fn download(url_str: &str) -> (String, PathBuf) {
         Url::parse(url_str).unwrap()
     });
 
-    if url.scheme().to_ascii_lowercase() == "file" {
-        // file://
-        (url.path().to_string(), Path::new(url.path()).to_path_buf())
-    } else {
-        // http(s)://
+    match url.scheme().to_ascii_lowercase().as_str() {
+        "file" => (url.path().to_string(), Path::new(url.path()).to_path_buf()),
+        "http" | "https" => {
+            let mut content: Vec<u8> = vec![];
+            reqwest::get(url.clone())
+                .unwrap()
+                .copy_to(&mut content)
+                .unwrap();
 
-        let mut content: Vec<u8> = vec![];
-        reqwest::get(url.clone())
-            .unwrap()
-            .copy_to(&mut content)
-            .unwrap();
-        let path = Path::new(url.path());
+            let path = Path::new(url.path());
+            let tmpfile_name = format!(
+                "cache/{}.{}",
+                rand::thread_rng()
+                    .gen_ascii_chars()
+                    .take(8)
+                    .collect::<String>(),
+                if let Some(ext) = path.extension() {
+                    ext.to_str().unwrap()
+                } else {
+                    "html"
+                }
+            );
 
-        let tmpfile_name = format!(
-            "cache/{}.{}",
-            rand::thread_rng()
-                .gen_ascii_chars()
-                .take(8)
-                .collect::<String>(),
-            if let Some(ext) = path.extension() {
-                ext.to_str().unwrap()
-            } else {
-                "html"
-            }
-        );
+            println!("downloaded {}", url.as_str());
 
-        println!("downloaded {}", url.as_str());
+            let mut f = BufWriter::new(fs::File::create(tmpfile_name.as_str()).unwrap());
+            f.write_all(content.as_slice()).unwrap();
 
-        let mut f = BufWriter::new(fs::File::create(tmpfile_name.as_str()).unwrap());
-        f.write_all(content.as_slice()).unwrap();
-
-        (tmpfile_name, path.to_path_buf())
+            (tmpfile_name, path.to_path_buf())
+        }
+        _ => unimplemented!(),
     }
 }
 
@@ -85,8 +84,8 @@ use std::rc::Rc;
 thread_local!(
     static LAYOUT_SAVER: RefCell<(Au, Au, painter::DisplayList)> = { RefCell::new((Au(0), Au(0), vec![])) };
     static HTML_SRC_URL: RefCell<Option<String>> = { RefCell::new(None) };
-    static HTML_TREE: Rc<RefCell<Option<dom::Node>>> = { Rc::new(RefCell::new(None)) };
-    static STYLESHEET: Rc<RefCell<Option<css::Stylesheet>>> = { Rc::new(RefCell::new(None)) };
+    static HTML_TREE:    Rc<RefCell<Option<dom::Node>>> = { Rc::new(RefCell::new(None)) };
+    static STYLESHEET:   Rc<RefCell<Option<css::Stylesheet>>> = { Rc::new(RefCell::new(None)) };
 );
 
 static mut SRC_UPDATED: bool = false;
@@ -177,9 +176,7 @@ pub fn run_with_url(html_src: String) {
     }).join();
 
     if let Err(_) = main_browser_process {
-        println!(
-            "************ Sorry, Naglfar has been crushed. *************\n    I'd appreciate it if you could report what you did"
-        );
+        println!("*** Sorry, Naglfar has been crushed. ***\n");
     }
 
     // Delete downloaded files
