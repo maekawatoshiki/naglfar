@@ -22,7 +22,7 @@ use layout::Rect;
 use painter::{DisplayCommand, DisplayList};
 use font::FONT_DESC;
 use css::{TextDecoration, px2pt};
-use interface::update_html_tree_and_stylesheet;
+use interface::update_html_source;
 
 #[derive(Clone, Debug)]
 pub enum AnkerKind {
@@ -112,7 +112,7 @@ impl RenderingWindow {
                 let url = entry.get_text().unwrap();
                 println!("URL: {}", url);
 
-                update_html_tree_and_stylesheet(url);
+                update_html_source(url);
                 ANKERS.with(|ankers| ankers.borrow_mut().clear());
                 SURFACE_CACHE.with(|sc| *sc.borrow_mut() = None);
 
@@ -198,7 +198,7 @@ impl RenderingWindow {
                         match ankerkind {
                             &AnkerKind::URL(ref url) => {
                                 jump_to_another_page = true;
-                                update_html_tree_and_stylesheet(url.to_string());
+                                update_html_source(url.to_string());
                                 overlay.get_children()[0].queue_draw(); // [0] is DrawingArea
                             }
                             &AnkerKind::URLFragment(ref id) => {

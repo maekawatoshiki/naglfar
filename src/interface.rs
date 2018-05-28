@@ -90,7 +90,7 @@ thread_local!(
 
 static mut SRC_UPDATED: bool = false;
 
-pub fn update_html_tree_and_stylesheet(html_src: String) {
+pub fn update_html_source(html_src: String) {
     let (html_src_cache_name, html_src_path) = download(html_src.as_str());
 
     println!("HTML:");
@@ -138,7 +138,7 @@ pub fn update_html_tree_and_stylesheet(html_src: String) {
 
 pub fn run_with_url(html_src: String) {
     let main_browser_process = ::std::thread::spawn(|| {
-        update_html_tree_and_stylesheet(html_src);
+        update_html_source(html_src);
 
         window::render(move |widget| {
             let mut viewport: layout::Dimensions = ::std::default::Default::default();
