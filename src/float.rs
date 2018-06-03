@@ -242,7 +242,7 @@ impl LayoutBox {
                 self.dimensions.content.y = containing_block.content.height + float_height;
                 break;
             } else {
-                if available_area.height == Au(0) {
+                if available_area.height < Au(0) {
                     // There is no available area.
                     break;
                 }
