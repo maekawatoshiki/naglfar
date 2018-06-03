@@ -10,7 +10,7 @@ fn main() {
     let app = App::new("Naglfar")
         .version(VERSION_STR)
         .author("uint256_t")
-        .about("Naglfar is a web browser implementation in Rust")
+        .about("A toy web browser implementation in Rust from scratch")
         .arg(
             Arg::with_name("URL")
                 .help("Set URL (starts with http(s):// or file://)")

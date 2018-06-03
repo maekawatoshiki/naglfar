@@ -57,7 +57,7 @@ pub fn download(url_str: &str) -> (String, PathBuf) {
             let tmpfile_name = format!(
                 "cache/{}.{}",
                 rand::thread_rng()
-                    .gen_ascii_chars()
+                    .sample_iter(&rand::distributions::Alphanumeric)
                     .take(8)
                     .collect::<String>(),
                 if let Some(ext) = path.extension() {
