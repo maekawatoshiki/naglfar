@@ -212,7 +212,7 @@ pub fn parse_attr_style(source: String) -> Vec<Declaration> {
     let mut decls = Vec::new();
     let mut parser = Parser::new(source);
     loop {
-        parser.consume_whitespace();
+        parser.consume_whitespace().unwrap();
         if parser.eof() {
             break;
         }
@@ -272,7 +272,8 @@ impl Parser {
     fn parse_rules(&mut self) -> Vec<Rule> {
         let mut rules = vec![];
         loop {
-            self.consume_whitespace();
+            self.consume_whitespace().unwrap();
+
             if self.eof() {
                 break;
             }
@@ -281,16 +282,16 @@ impl Parser {
                 // TODO: Implement correctly
                 assert_eq!(self.consume_char().unwrap(), '@');
                 assert_eq!(self.parse_identifier().unwrap().as_str(), "media");
-                self.consume_while(|c| c != '{');
-                self.consume_char();
+                self.consume_while(|c| c != '{').unwrap();
+                self.consume_char().unwrap();
                 loop {
-                    self.consume_whitespace();
+                    self.consume_whitespace().unwrap();
                     if self.next_char().unwrap() == '}' {
                         break;
                     }
-                    self.parse_rule();
+                    self.parse_rule().unwrap();
                 }
-                self.consume_char();
+                self.consume_char().unwrap();
             } else {
                 if let Ok(ok) = self.parse_rule() {
                     rules.push(ok)
@@ -487,15 +488,12 @@ impl Parser {
     }
 
     fn parse_float(&mut self) -> Result<f64, ()> {
-        let s = self.consume_while(|c| match c {
+        self.consume_while(|c| match c {
             '0'...'9' | '.' => true,
             _ => false,
-        })?;
-        if let Ok(ok) = s.parse() {
-            Ok(ok)
-        } else {
-            Err(())
-        }
+        })?
+            .parse()
+            .or_else(|_| Err(()))
     }
 
     fn parse_string(&mut self) -> Result<Value, ()> {
