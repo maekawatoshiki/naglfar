@@ -114,7 +114,9 @@ impl LineMaker {
                     max_width_considered_float,
                     containing_block,
                 ),
-                _ => unimplemented!(),
+                _ => {
+                    println!("unimplemented: {}:{}", file!(), line!());
+                }
             }
         }
     }

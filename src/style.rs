@@ -524,13 +524,18 @@ impl Style {
 
     pub fn font_size(&mut self) -> Au {
         if let Some(ref font_size) = self.cached.font_size {
-            return Au::from_f64_px(font_size.clone().to_px().unwrap());
+            return Au::from_f64_px(
+                font_size
+                    .clone()
+                    .maybe_percent_to_px(DEFAULT_LINE_HEIGHT_SCALE)
+                    .unwrap(),
+            );
         }
 
         let default_font_size = Value::Length(DEFAULT_FONT_SIZE, Unit::Px);
         let font_size = &self.value_with_default("font-size", &vec![default_font_size])[0];
         self.cached.font_size = Some(font_size.clone());
-        Au::from_f64_px(font_size.to_px().unwrap())
+        Au::from_f64_px(font_size.maybe_percent_to_px(DEFAULT_FONT_SIZE).unwrap())
     }
 
     pub fn font_weight(&self) -> FontWeight {

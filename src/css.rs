@@ -310,7 +310,10 @@ impl Parser {
                     self.consume_whitespace();
                 }
                 '{' => break,
-                c => panic!("Unexpected character {} in selector list", c),
+                c => {
+                    println!("Unexpected character {} in selector list", c);
+                    self.consume_char();
+                }
             }
         }
         // Return selectors with highest specificity first, for use in matching.
@@ -467,10 +470,10 @@ impl Parser {
     }
 
     fn parse_string(&mut self) -> Value {
+        let quote = self.consume_char();
+        self.consume_while(|c| c != quote);
+        assert_eq!(self.consume_char(), quote);
         // TODO: Implement correctly
-        assert_eq!(self.consume_char(), '\"');
-        self.consume_while(|c| c != '\"');
-        assert_eq!(self.consume_char(), '\"');
         Value::Num(0.0)
     }
 
