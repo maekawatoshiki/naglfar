@@ -258,7 +258,7 @@ impl LineMaker {
 
             linemaker.work_list.pop_back();
         }
-        // Non-replaced inline elements(like <span>)
+
         match layoutbox.info {
             LayoutInfo::Generic | LayoutInfo::Anker => {
                 layout_text(layoutbox.clone(), self, max_width, containing_block);
@@ -644,6 +644,7 @@ thread_local!(
 );
 
 use interface::download;
+
 pub fn get_pixbuf(node: &Node) -> gdk_pixbuf::Pixbuf {
     IMG_CACHE.with(|c| {
         let image_url = node.image_url().unwrap();

@@ -151,8 +151,11 @@ impl LayoutBox {
         _saved_block: Dimensions,
         viewport: Dimensions,
     ) {
-        // TODO: Implement correctly ASAP!
-        // Replaced Inline Element (<img>)
+        self.assign_padding();
+        self.assign_border_width();
+        self.assign_margin();
+
+        // TODO: Implement correctly
         match self.info {
             LayoutInfo::Image(ref mut imgdata) => {
                 get_image(&self.node, imgdata, containing_block);
@@ -160,10 +163,6 @@ impl LayoutBox {
                 self.dimensions.content.height = imgdata.metadata.height;
             }
             LayoutInfo::Generic | LayoutInfo::Anker => {
-                self.assign_padding();
-                self.assign_border_width();
-                self.assign_margin();
-
                 let width_not_specified = self.calculate_float_width(containing_block);
 
                 if width_not_specified {
