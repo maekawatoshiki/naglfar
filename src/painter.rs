@@ -127,25 +127,20 @@ fn render_text(list: &mut DisplayList, x: Au, y: Au, layout_box: &mut LayoutBox)
 }
 
 fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &mut LayoutBox) {
-    match layout_box.box_type {
-        BoxType::InlineNode | BoxType::Float => {
-            if let NodeType::Element(ElementData {
-                ref layout_type, ..
-            }) = layout_box.node.data
-            {
-                if layout_type == &LayoutType::Image {
-                    list.push(DisplayCommandInfo::new(DisplayCommand::Image(
-                        if let &LayoutInfo::Image(ref pixbuf) = &layout_box.info {
-                            pixbuf.clone().unwrap()
-                        } else {
-                            panic!()
-                        },
-                        layout_box.dimensions.content.add_parent_coordinate(x, y),
-                    )))
-                }
-            }
+    if let NodeType::Element(ElementData {
+        ref layout_type, ..
+    }) = layout_box.node.data
+    {
+        if layout_type == &LayoutType::Image {
+            list.push(DisplayCommandInfo::new(DisplayCommand::Image(
+                if let &LayoutInfo::Image(ref pixbuf) = &layout_box.info {
+                    pixbuf.clone().unwrap()
+                } else {
+                    panic!()
+                },
+                layout_box.dimensions.content.add_parent_coordinate(x, y),
+            )))
         }
-        _ => {}
     }
 }
 

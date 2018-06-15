@@ -21,6 +21,7 @@ impl LayoutBox {
         let margin = self.property.margin();
         let padding = self.property.padding();
         let border = self.property.border_width();
+
         // Child width can depend on parent width, so we need to calculate this box's width before
         // laying out its children.
         self.calculate_block_width(containing_block, &margin, &padding, &border);
@@ -38,6 +39,17 @@ impl LayoutBox {
         }
 
         self.layout_block_children(viewport);
+
+        use inline;
+        use layout;
+        match &mut self.info {
+            &mut layout::LayoutInfo::Image(ref mut pixbuf) => {
+                let (width, height) = inline::get_image(&self.node, pixbuf, containing_block);
+                self.dimensions.content.width = width;
+                self.dimensions.content.height = height;
+            }
+            _ => {}
+        }
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
         // children are laid out.
