@@ -43,10 +43,10 @@ impl LayoutBox {
         use inline;
         use layout;
         match &mut self.info {
-            &mut layout::LayoutInfo::Image(ref mut pixbuf) => {
-                let (width, height) = inline::get_image(&self.node, pixbuf, containing_block);
-                self.dimensions.content.width = width;
-                self.dimensions.content.height = height;
+            &mut layout::LayoutInfo::Image(ref mut imgdata) => {
+                inline::get_image(&self.node, imgdata, containing_block);
+                self.dimensions.content.width = imgdata.metadata.width;
+                self.dimensions.content.height = imgdata.metadata.height;
             }
             _ => {}
         }

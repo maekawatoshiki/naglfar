@@ -1,7 +1,7 @@
 use css::Value;
 use dom::NodeType;
 use font::Font;
-use layout::{BoxType, Dimensions, LayoutBox, LayoutInfo, Rect, Text};
+use layout::{BoxType, Dimensions, ImageData, LayoutBox, LayoutInfo, Rect, Text};
 use float::Floats;
 
 use std::ops::Range;
@@ -518,15 +518,14 @@ impl LayoutBox {
     /// Calculate the width of a inline-level replaced(<img>) element in normal flow.
     pub fn calculate_replaced_inline_width_height(&mut self, containing_block: Dimensions) {
         // Replaced Inline Element (<img>)
-        let (width, height) = match &mut self.info {
-            &mut LayoutInfo::Image(ref mut pixbuf) => {
-                get_image(&self.node, pixbuf, containing_block)
+        match &mut self.info {
+            &mut LayoutInfo::Image(ref mut imgdata) => {
+                get_image(&self.node, imgdata, containing_block);
+                self.dimensions.content.width = imgdata.metadata.width;
+                self.dimensions.content.height = imgdata.metadata.height;
             }
             _ => unimplemented!(),
         };
-
-        self.dimensions.content.width = width;
-        self.dimensions.content.height = height;
     }
 }
 
@@ -599,22 +598,14 @@ impl LayoutBox {
         };
     }
 }
+
 use dom::Node;
-pub fn get_image(
-    node: &Node,
-    pixbuf: &mut Option<gdk_pixbuf::Pixbuf>,
-    containing_block: Dimensions,
-) -> (Au, Au) {
+
+pub fn get_image(node: &Node, imgdata: &mut ImageData, containing_block: Dimensions) {
     let cb_width = containing_block.content.width.to_f64_px();
     let cb_height = containing_block.content.height.to_f64_px();
 
-    let pixbuf = match pixbuf {
-        &mut Some(ref pixbuf) => pixbuf.clone(),
-        &mut None => {
-            *pixbuf = Some(get_pixbuf(node));
-            pixbuf.clone().unwrap()
-        }
-    };
+    let pixbuf = imgdata.pixbuf.get_or_insert_with(|| get_pixbuf(node));
 
     let specified_width_px = node.attr("width")
         .and_then(|w| w.maybe_percent_to_px(cb_width));
@@ -622,7 +613,7 @@ pub fn get_image(
     let specified_height_px = node.attr("height")
         .and_then(|h| h.maybe_percent_to_px(cb_height));
 
-    match (specified_width_px, specified_height_px) {
+    let (width, height) = match (specified_width_px, specified_height_px) {
         (Some(width), Some(height)) => (Au::from_f64_px(width), Au::from_f64_px(height)),
         (Some(width), None) => (
             Au::from_f64_px(width),
@@ -636,7 +627,10 @@ pub fn get_image(
             Au::from_f64_px(pixbuf.get_width() as f64),
             Au::from_f64_px(pixbuf.get_height() as f64),
         ),
-    }
+    };
+
+    imgdata.metadata.width = width;
+    imgdata.metadata.height = height;
 }
 
 use std::cell::RefCell;

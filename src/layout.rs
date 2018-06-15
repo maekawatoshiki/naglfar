@@ -52,9 +52,21 @@ pub struct EdgeSizes {
 pub enum LayoutInfo {
     Generic,
     Text,
-    Image(Option<gdk_pixbuf::Pixbuf>),
+    Image(ImageData),
     Anker,
     Button(Option<gtk::Button>, usize),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ImageData {
+    pub pixbuf: Option<gdk_pixbuf::Pixbuf>,
+    pub metadata: ImageMetaData,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ImageMetaData {
+    pub width: Au,
+    pub height: Au,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -87,7 +99,27 @@ pub struct Text {
     pub range: Range<usize>,
 }
 
-pub type Texts = Vec<Text>;
+impl ImageData {
+    pub fn new(pixbuf: Option<gdk_pixbuf::Pixbuf>, metadata: ImageMetaData) -> ImageData {
+        ImageData {
+            pixbuf: pixbuf,
+            metadata: metadata,
+        }
+    }
+
+    pub fn new_empty() -> ImageData {
+        ImageData::new(None, ImageMetaData::new(Au(0), Au(0)))
+    }
+}
+
+impl ImageMetaData {
+    pub fn new(width: Au, height: Au) -> ImageMetaData {
+        ImageMetaData {
+            width: width,
+            height: height,
+        }
+    }
+}
 
 impl LayoutBox {
     pub fn new(box_type: BoxType, node: Node, property: Style, info: LayoutInfo) -> LayoutBox {
@@ -186,7 +218,7 @@ fn build_layout_tree(
         match node.layout_type() {
             LayoutType::Generic => LayoutInfo::Generic,
             LayoutType::Text => LayoutInfo::Text,
-            LayoutType::Image => LayoutInfo::Image(None),
+            LayoutType::Image => LayoutInfo::Image(ImageData::new_empty()),
             LayoutType::Anker => LayoutInfo::Anker,
             LayoutType::Button => LayoutInfo::Button(None, *id),
         },

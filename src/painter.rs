@@ -133,8 +133,8 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &mut LayoutBox
     {
         if layout_type == &LayoutType::Image {
             list.push(DisplayCommandInfo::new(DisplayCommand::Image(
-                if let &LayoutInfo::Image(ref pixbuf) = &layout_box.info {
-                    pixbuf.clone().unwrap()
+                if let &LayoutInfo::Image(ref imgdata) = &layout_box.info {
+                    imgdata.pixbuf.clone().unwrap()
                 } else {
                     panic!()
                 },

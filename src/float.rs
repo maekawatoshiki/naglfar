@@ -154,10 +154,10 @@ impl LayoutBox {
         // TODO: Implement correctly ASAP!
         // Replaced Inline Element (<img>)
         match self.info {
-            LayoutInfo::Image(ref mut pixbuf) => {
-                let (width, height) = get_image(&self.node, pixbuf, containing_block);
-                self.dimensions.content.width = width;
-                self.dimensions.content.height = height;
+            LayoutInfo::Image(ref mut imgdata) => {
+                get_image(&self.node, imgdata, containing_block);
+                self.dimensions.content.width = imgdata.metadata.width;
+                self.dimensions.content.height = imgdata.metadata.height;
             }
             LayoutInfo::Generic | LayoutInfo::Anker => {
                 self.assign_padding();
