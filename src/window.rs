@@ -357,12 +357,12 @@ fn render_item(
             );
             ctx.fill();
         }
-        &DisplayCommand::Image(ref pixbuf, rect) => {
+        &DisplayCommand::Image(ref pixbuf, ref img_metadata, rect) => {
             ctx.set_source_pixbuf(
                 &pixbuf
                     .scale_simple(
-                        rect.width.to_f64_px() as i32,
-                        rect.height.to_f64_px() as i32,
+                        img_metadata.width.to_f64_px() as i32,
+                        img_metadata.height.to_f64_px() as i32,
                         InterpType::Hyper,
                     )
                     .unwrap(),

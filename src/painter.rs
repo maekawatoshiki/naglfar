@@ -1,4 +1,4 @@
-use layout::{BoxType, LayoutBox, LayoutInfo, Rect};
+use layout::{BoxType, ImageMetaData, LayoutBox, LayoutInfo, Rect};
 use font::Font;
 use dom::{ElementData, LayoutType, NodeType};
 use css::{Color, TextDecoration, BLACK};
@@ -12,7 +12,7 @@ use window::{AnkerKind, ANKERS, URL_FRAGMENTS};
 #[derive(Debug, Clone)]
 pub enum DisplayCommand {
     SolidColor(Color, Rect),
-    Image(gdk_pixbuf::Pixbuf, Rect),
+    Image(gdk_pixbuf::Pixbuf, ImageMetaData, Rect),
     Text(String, Rect, Color, Vec<TextDecoration>, Font),
     Button(gtk::Button, Rect),
 }
@@ -132,14 +132,13 @@ fn render_image(list: &mut DisplayList, x: Au, y: Au, layout_box: &mut LayoutBox
     }) = layout_box.node.data
     {
         if layout_type == &LayoutType::Image {
-            list.push(DisplayCommandInfo::new(DisplayCommand::Image(
-                if let &LayoutInfo::Image(ref imgdata) = &layout_box.info {
-                    imgdata.pixbuf.clone().unwrap()
-                } else {
-                    panic!()
-                },
-                layout_box.dimensions.content.add_parent_coordinate(x, y),
-            )))
+            if let &LayoutInfo::Image(ref imgdata) = &layout_box.info {
+                list.push(DisplayCommandInfo::new(DisplayCommand::Image(
+                    imgdata.pixbuf.clone().unwrap(),
+                    imgdata.metadata.clone(),
+                    layout_box.dimensions.content.add_parent_coordinate(x, y),
+                )))
+            }
         }
     }
 }

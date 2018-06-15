@@ -221,9 +221,9 @@ impl LayoutBox {
     }
 
     pub fn calculate_float_position(&mut self, floats: &mut Floats, containing_block: Dimensions) {
-        let mut float_height = Au(0);
+        let mut margin_box = self.dimensions.margin_box();
+        let mut float_height = -margin_box.y;
         loop {
-            let margin_box = self.dimensions.margin_box();
             let available_area = floats.available_area(
                 containing_block.content.width,
                 float_height,
@@ -246,6 +246,7 @@ impl LayoutBox {
                     break;
                 }
                 float_height += available_area.height;
+                margin_box.height += available_area.height;
             }
         }
     }
