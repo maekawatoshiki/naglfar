@@ -216,13 +216,19 @@ pub fn parse_attr_style(source: String) -> Vec<Declaration> {
         if parser.eof() {
             break;
         }
-        decls.push(parser.parse_declaration());
+        match parser.parse_declaration() {
+            Ok(ok) => decls.push(ok),
+            Err(_) => {}
+        }
     }
     decls
 }
 
 pub fn parse_value(source: String) -> Value {
-    Parser::new(source).parse_value()
+    match Parser::new(source).parse_value() {
+        Ok(ok) => ok,
+        Err(_) => Value::Num(0.0),
+    }
 }
 
 fn valid_ident_char(c: char) -> bool {
@@ -271,267 +277,290 @@ impl Parser {
                 break;
             }
 
-            if self.next_char() == '@' {
+            if self.next_char().unwrap() == '@' {
                 // TODO: Implement correctly
-                assert_eq!(self.consume_char(), '@');
-                assert_eq!(self.parse_identifier().as_str(), "media");
+                assert_eq!(self.consume_char().unwrap(), '@');
+                assert_eq!(self.parse_identifier().unwrap().as_str(), "media");
                 self.consume_while(|c| c != '{');
                 self.consume_char();
                 loop {
                     self.consume_whitespace();
-                    if self.next_char() == '}' {
+                    if self.next_char().unwrap() == '}' {
                         break;
                     }
                     self.parse_rule();
                 }
                 self.consume_char();
             } else {
-                rules.push(self.parse_rule());
+                if let Ok(ok) = self.parse_rule() {
+                    rules.push(ok)
+                }
             }
         }
         rules
     }
 
-    fn parse_rule(&mut self) -> Rule {
-        Rule {
-            selectors: self.parse_selectors(),
-            declarations: self.parse_declarations(),
-        }
+    fn parse_rule(&mut self) -> Result<Rule, ()> {
+        Ok(Rule {
+            selectors: self.parse_selectors()?,
+            declarations: self.parse_declarations()?,
+        })
     }
 
-    fn parse_selectors(&mut self) -> Vec<Selector> {
+    fn parse_selectors(&mut self) -> Result<Vec<Selector>, ()> {
         let mut selectors = Vec::new();
         loop {
-            selectors.push(self.parse_selector());
-            self.consume_whitespace();
-            match self.next_char() {
+            selectors.push(self.parse_selector()?);
+            self.consume_whitespace()?;
+            match self.next_char()? {
                 ',' => {
-                    self.consume_char();
-                    self.consume_whitespace();
+                    self.consume_char()?;
+                    self.consume_whitespace()?;
                 }
                 '{' => break,
                 c => {
                     println!("Unexpected character {} in selector list", c);
-                    self.consume_char();
+                    self.consume_char()?;
                 }
             }
         }
         // Return selectors with highest specificity first, for use in matching.
         selectors.sort_by(|a, b| b.specificity().cmp(&a.specificity()));
-        selectors
+        Ok(selectors)
     }
 
-    fn parse_selector(&mut self) -> Selector {
-        let s1 = self.parse_simple_selector();
-        self.consume_whitespace();
-        // TODO: Implement correctly
-        self.parse_pseudo_class_or_element();
-        self.consume_whitespace();
-        match self.next_char() {
+    fn parse_selector(&mut self) -> Result<Selector, ()> {
+        let s1 = self.parse_simple_selector()?;
+        self.consume_whitespace()?;
+        match self.next_char()? {
             // Descendant
-            c if c.is_alphanumeric() || c == '#' || c == '.' => {
-                let s2 = self.parse_selector();
-                return Selector::Descendant(s1, Box::new(s2));
+            c if c.is_alphanumeric() || c == '#' || c == '.' || c == ':' || c == '[' => {
+                let s2 = self.parse_selector()?;
+                return Ok(Selector::Descendant(s1, Box::new(s2)));
             }
             '>' => {
-                assert_eq!(self.consume_char(), '>');
-                self.consume_whitespace();
-                let s2 = self.parse_selector();
-                return Selector::Child(s1, Box::new(s2));
+                assert_eq!(self.consume_char()?, '>');
+                self.consume_whitespace()?;
+                let s2 = self.parse_selector()?;
+                return Ok(Selector::Child(s1, Box::new(s2)));
             }
             _ => {}
         }
-        Selector::Simple(s1)
+        Ok(Selector::Simple(s1))
     }
 
-    fn parse_simple_selector(&mut self) -> SimpleSelector {
+    fn parse_simple_selector(&mut self) -> Result<SimpleSelector, ()> {
         let mut selector = SimpleSelector {
             tag_name: None,
             id: None,
             class: HashSet::new(),
         };
         while !self.eof() {
-            match self.next_char() {
+            match self.next_char()? {
                 '#' => {
-                    self.consume_char();
-                    selector.id = Some(self.parse_identifier());
+                    self.consume_char()?;
+                    selector.id = Some(self.parse_identifier()?);
                 }
                 '.' => {
-                    self.consume_char();
-                    selector.class.insert(self.parse_identifier());
+                    self.consume_char()?;
+                    selector.class.insert(self.parse_identifier()?);
                 }
                 '*' => {
                     // universal selector
-                    self.consume_char();
+                    self.consume_char()?;
+                }
+                ':' => {
+                    self.parse_pseudo_class_or_element()?;
+                }
+                '[' => {
+                    self.parse_attribute()?;
                 }
                 c if valid_ident_char(c) => {
-                    selector.tag_name = Some(self.parse_identifier());
+                    selector.tag_name = Some(self.parse_identifier()?);
                 }
                 _ => break,
             }
         }
-        selector
+        Ok(selector)
     }
 
-    fn parse_pseudo_class_or_element(&mut self) {
-        // TODO: Implement correctly
-        if self.skip_char_if_any(':') {
-            self.skip_char_if_any(':');
-            self.consume_whitespace();
-            self.parse_identifier();
+    // TODO: Implement correctly
+    fn parse_pseudo_class_or_element(&mut self) -> Result<(), ()> {
+        assert_eq!(self.skip_char_if_any(':')?, true); // pseudo-class
+        self.skip_char_if_any(':')?; //pseudo-element
+        self.consume_whitespace()?;
+        self.parse_identifier()?;
+        self.consume_whitespace()?;
+        if self.skip_char_if_any('(')? {
+            self.consume_while(|c| c != ')')?;
+            assert_eq!(self.consume_char()?, ')');
         }
+        Ok(())
     }
 
-    fn parse_declarations(&mut self) -> Vec<Declaration> {
-        assert_eq!(self.consume_char(), '{');
+    // TODO: Implement correctly
+    fn parse_attribute(&mut self) -> Result<(), ()> {
+        if self.skip_char_if_any('[')? {
+            self.consume_while(|c| c != ']')?;
+            assert_eq!(self.consume_char()?, ']');
+        }
+        Ok(())
+    }
+
+    fn parse_declarations(&mut self) -> Result<Vec<Declaration>, ()> {
+        assert_eq!(self.consume_char()?, '{');
         let mut declarations = Vec::new();
         loop {
-            self.consume_whitespace();
-            if self.next_char() == '}' {
-                self.consume_char();
+            self.consume_whitespace()?;
+            if self.next_char()? == '}' {
+                self.consume_char()?;
                 break;
             }
-            declarations.push(self.parse_declaration());
+            declarations.push(self.parse_declaration()?);
         }
-        declarations
+        Ok(declarations)
     }
 
-    fn parse_declaration(&mut self) -> Declaration {
-        let property_name = self.parse_identifier();
-        self.consume_whitespace();
-        assert_eq!(self.consume_char(), ':');
-        self.consume_whitespace();
-        let values = self.parse_values();
-        self.consume_whitespace();
+    fn parse_declaration(&mut self) -> Result<Declaration, ()> {
+        let property_name = self.parse_identifier()?;
+        self.consume_whitespace()?;
+        assert_eq!(self.consume_char()?, ':');
+        self.consume_whitespace()?;
+        let values = self.parse_values()?;
+        self.consume_whitespace()?;
 
-        Declaration {
+        Ok(Declaration {
             name: property_name,
             values: values,
-        }
+        })
     }
 
     // Methods for parsing values:
 
-    fn parse_values(&mut self) -> Vec<Value> {
+    fn parse_values(&mut self) -> Result<Vec<Value>, ()> {
         let mut values = vec![];
         loop {
-            self.consume_whitespace();
+            self.consume_whitespace()?;
             if self.eof() {
                 break;
             }
-            if self.skip_char_if_any(';') {
+            if self.skip_char_if_any(';')? {
                 break;
             }
 
-            values.push(self.parse_value());
+            values.push(self.parse_value()?);
 
-            self.consume_while(|c| c == ' ' || c == '\t');
-            if self.skip_char_if_any('\n') || self.skip_char_if_any('}') {
+            self.consume_while(|c| c == ' ' || c == '\t')?;
+            if self.skip_char_if_any('\n')? || self.skip_char_if_any('}')? {
                 break;
             }
 
-            self.skip_char_if_any(',');
+            self.skip_char_if_any(',')?;
         }
-        values
+        Ok(values)
     }
 
-    fn parse_value(&mut self) -> Value {
-        match self.next_char() {
+    fn parse_value(&mut self) -> Result<Value, ()> {
+        match self.next_char()? {
             '0'...'9' => self.parse_length(),
             '#' => self.parse_color(),
             '\"' | '\'' => self.parse_string(),
             _ => {
-                let ident = self.parse_identifier();
+                let ident = self.parse_identifier()?;
                 match ident.as_str() {
                     "rgb" => self.parse_rgb_color(),
                     "rgba" => self.parse_rgba_color(),
                     "url" => self.parse_url(),
-                    _ => Value::Keyword(ident),
+                    _ => Ok(Value::Keyword(ident)),
                 }
             }
         }
     }
 
-    fn parse_length(&mut self) -> Value {
-        let num = self.parse_float();
-        if !self.eof() && valid_alpha_percent_char(self.next_char()) {
-            Value::Length(num, self.parse_unit())
+    fn parse_length(&mut self) -> Result<Value, ()> {
+        let num = self.parse_float()?;
+        if !self.eof() && valid_alpha_percent_char(self.next_char()?) {
+            Ok(Value::Length(num, self.parse_unit()?))
         } else {
-            Value::Num(num)
+            Ok(Value::Num(num))
         }
     }
 
-    fn parse_float(&mut self) -> f64 {
+    fn parse_float(&mut self) -> Result<f64, ()> {
         let s = self.consume_while(|c| match c {
             '0'...'9' | '.' => true,
             _ => false,
-        });
-        s.parse().unwrap()
+        })?;
+        if let Ok(ok) = s.parse() {
+            Ok(ok)
+        } else {
+            Err(())
+        }
     }
 
-    fn parse_string(&mut self) -> Value {
-        let quote = self.consume_char();
-        self.consume_while(|c| c != quote);
-        assert_eq!(self.consume_char(), quote);
+    fn parse_string(&mut self) -> Result<Value, ()> {
+        let quote = self.consume_char()?;
+        self.consume_while(|c| c != quote)?;
+        assert_eq!(self.consume_char()?, quote);
         // TODO: Implement correctly
-        Value::Num(0.0)
+        Ok(Value::Num(0.0))
     }
 
-    fn parse_unit(&mut self) -> Unit {
-        match &*self.parse_identifier_percent() {
-            "px" => Unit::Px,
-            "pt" => Unit::Pt,
-            "%" => Unit::Percent,
-            "em" => Unit::Em,
+    fn parse_unit(&mut self) -> Result<Unit, ()> {
+        match &*self.parse_identifier_percent()? {
+            "px" => Ok(Unit::Px),
+            "pt" => Ok(Unit::Pt),
+            "%" => Ok(Unit::Percent),
+            "em" => Ok(Unit::Em),
             _ => panic!("unrecognized unit"),
         }
     }
 
-    fn parse_rgb_color(&mut self) -> Value {
-        assert_eq!(self.consume_char_ignore_whitescape(), '(');
-        let r = self.parse_float();
-        assert_eq!(self.consume_char_ignore_whitescape(), ',');
-        let g = self.parse_float();
-        assert_eq!(self.consume_char_ignore_whitescape(), ',');
-        let b = self.parse_float();
-        assert_eq!(self.consume_char_ignore_whitescape(), ')');
-        Value::Color(Color {
+    fn parse_rgb_color(&mut self) -> Result<Value, ()> {
+        assert_eq!(self.consume_char_ignore_whitescape()?, '(');
+        let r = self.parse_float()?;
+        assert_eq!(self.consume_char_ignore_whitescape()?, ',');
+        let g = self.parse_float()?;
+        assert_eq!(self.consume_char_ignore_whitescape()?, ',');
+        let b = self.parse_float()?;
+        assert_eq!(self.consume_char_ignore_whitescape()?, ')');
+        Ok(Value::Color(Color {
             r: r as u8,
             g: g as u8,
             b: b as u8,
             a: 255,
-        })
+        }))
     }
 
-    fn parse_rgba_color(&mut self) -> Value {
-        assert_eq!(self.consume_char_ignore_whitescape(), '(');
-        let r = self.parse_float();
-        assert_eq!(self.consume_char_ignore_whitescape(), ',');
-        let g = self.parse_float();
-        assert_eq!(self.consume_char_ignore_whitescape(), ',');
-        let b = self.parse_float();
-        assert_eq!(self.consume_char_ignore_whitescape(), ',');
-        let a = self.parse_float();
-        assert_eq!(self.consume_char_ignore_whitescape(), ')');
-        Value::Color(Color {
+    fn parse_rgba_color(&mut self) -> Result<Value, ()> {
+        assert_eq!(self.consume_char_ignore_whitescape()?, '(');
+        let r = self.parse_float()?;
+        assert_eq!(self.consume_char_ignore_whitescape()?, ',');
+        let g = self.parse_float()?;
+        assert_eq!(self.consume_char_ignore_whitescape()?, ',');
+        let b = self.parse_float()?;
+        assert_eq!(self.consume_char_ignore_whitescape()?, ',');
+        let a = self.parse_float()?;
+        assert_eq!(self.consume_char_ignore_whitescape()?, ')');
+        Ok(Value::Color(Color {
             r: r as u8,
             g: g as u8,
             b: b as u8,
             a: (255.0 * a) as u8,
-        })
+        }))
     }
 
-    fn parse_url(&mut self) -> Value {
+    fn parse_url(&mut self) -> Result<Value, ()> {
         // TODO: Implement correctly
-        assert_eq!(self.consume_char_ignore_whitescape(), '(');
-        self.consume_while(|c| c != ')');
-        assert_eq!(self.consume_char_ignore_whitescape(), ')');
-        Value::Num(0.0)
+        assert_eq!(self.consume_char_ignore_whitescape()?, '(');
+        self.consume_while(|c| c != ')')?;
+        assert_eq!(self.consume_char_ignore_whitescape()?, ')');
+        Ok(Value::Num(0.0))
     }
 
-    fn parse_color(&mut self) -> Value {
-        assert_eq!(self.consume_char(), '#');
-        let hex_str = self.parse_hex_num();
+    fn parse_color(&mut self) -> Result<Value, ()> {
+        assert_eq!(self.consume_char()?, '#');
+        let hex_str = self.parse_hex_num()?;
         let (r, g, b) = match hex_str.len() {
             3 => {
                 let r = u8::from_str_radix(&hex_str[0..1], 16).unwrap();
@@ -546,72 +575,71 @@ impl Parser {
             ),
             _ => panic!(),
         };
-        Value::Color(Color {
+        Ok(Value::Color(Color {
             r: r,
             g: g,
             b: b,
             a: 255,
-        })
+        }))
     }
 
-    fn parse_hex_num(&mut self) -> String {
+    fn parse_hex_num(&mut self) -> Result<String, ()> {
         self.consume_while(valid_hex_char)
     }
 
-    // fn parse_hex_pair(&mut self) -> u8 {
+    // fn parse_hex_pair(&mut self) -> Result<u8, ()> {
     //     let s = &self.input[self.pos..self.pos + 2];
     //     self.pos += 2;
     //     u8::from_str_radix(s, 16).unwrap()
     // }
 
-    fn parse_identifier(&mut self) -> String {
-        self.consume_while(valid_ident_char).to_lowercase()
+    fn parse_identifier(&mut self) -> Result<String, ()> {
+        Ok(self.consume_while(valid_ident_char)?.to_lowercase())
     }
 
-    fn parse_identifier_percent(&mut self) -> String {
-        self.consume_while(valid_ident_percent_char).to_lowercase()
+    fn parse_identifier_percent(&mut self) -> Result<String, ()> {
+        Ok(self.consume_while(valid_ident_percent_char)?.to_lowercase())
     }
 
-    fn consume_char_ignore_whitescape(&mut self) -> char {
-        self.consume_whitespace();
-        let c = self.consume_char();
-        self.consume_whitespace();
-        c
+    fn consume_char_ignore_whitescape(&mut self) -> Result<char, ()> {
+        self.consume_whitespace()?;
+        let c = self.consume_char()?;
+        self.consume_whitespace()?;
+        Ok(c)
     }
 
-    fn consume_whitespace(&mut self) {
-        self.consume_while(char::is_whitespace);
+    fn consume_whitespace(&mut self) -> Result<(), ()> {
+        self.consume_while(char::is_whitespace).and(Ok(()))
     }
 
-    fn consume_while<F>(&mut self, test: F) -> String
+    fn consume_while<F>(&mut self, f: F) -> Result<String, ()>
     where
         F: Fn(char) -> bool,
     {
-        let mut result = String::new();
-        while !self.eof() && test(self.next_char()) {
-            result.push(self.consume_char());
+        let mut s = "".to_string();
+        while !self.eof() && f(self.next_char()?) {
+            s.push(self.consume_char()?);
         }
-        result
+        Ok(s)
     }
-
-    fn consume_char(&mut self) -> char {
+    fn consume_char(&mut self) -> Result<char, ()> {
         let mut iter = self.input[self.pos..].char_indices();
-        let (_, cur_char) = iter.next().unwrap();
+        let (_, cur_char) = iter.next().ok_or(())?;
         let (next_pos, _) = iter.next().unwrap_or((1, ' '));
         self.pos += next_pos;
-        cur_char
+        Ok(cur_char)
     }
 
-    fn skip_char_if_any(&mut self, c: char) -> bool {
-        if !self.eof() && self.next_char() == c {
-            assert_eq!(self.consume_char(), c);
-            return true;
+    fn skip_char_if_any(&mut self, c: char) -> Result<bool, ()> {
+        if !self.eof() && self.next_char()? == c {
+            assert_eq!(self.consume_char()?, c);
+            return Ok(true);
         }
-        false
+        Ok(false)
     }
 
-    fn next_char(&mut self) -> char {
-        self.input[self.pos..].chars().next().unwrap()
+    fn next_char(&self) -> Result<char, ()> {
+        self.input[self.pos..].chars().next().ok_or(())
     }
 
     fn eof(&self) -> bool {
