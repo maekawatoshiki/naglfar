@@ -281,7 +281,7 @@ impl Parser {
             if self.next_char().unwrap() == '@' {
                 // TODO: Implement correctly
                 assert_eq!(self.consume_char().unwrap(), '@');
-                assert_eq!(self.parse_identifier().unwrap().as_str(), "media");
+                self.parse_identifier().unwrap();
                 self.consume_while(|c| c != '{').unwrap();
                 self.consume_char().unwrap();
                 loop {
@@ -311,7 +311,9 @@ impl Parser {
     fn parse_selectors(&mut self) -> Result<Vec<Selector>, ()> {
         let mut selectors = Vec::new();
         loop {
-            selectors.push(self.parse_selector()?);
+            if let Ok(ok) = self.parse_selector() {
+                selectors.push(ok);
+            }
             self.consume_whitespace()?;
             match self.next_char()? {
                 ',' => {
@@ -321,6 +323,7 @@ impl Parser {
                 '{' => break,
                 c => {
                     println!("Unexpected character {} in selector list", c);
+                    // assert!(false);
                     self.consume_char()?;
                 }
             }
@@ -351,6 +354,7 @@ impl Parser {
     }
 
     fn parse_simple_selector(&mut self) -> Result<SimpleSelector, ()> {
+        let mut unsupported_feature = false;
         let mut selector = SimpleSelector {
             tag_name: None,
             id: None,
@@ -374,7 +378,7 @@ impl Parser {
                     self.parse_pseudo_class_or_element()?;
                 }
                 '[' => {
-                    self.parse_attribute()?;
+                    unsupported_feature = self.parse_attribute().is_err();
                 }
                 c if valid_ident_char(c) => {
                     selector.tag_name = Some(self.parse_identifier()?);
@@ -382,7 +386,11 @@ impl Parser {
                 _ => break,
             }
         }
-        Ok(selector)
+        if unsupported_feature {
+            Err(())
+        } else {
+            Ok(selector)
+        }
     }
 
     // TODO: Implement correctly
@@ -405,7 +413,8 @@ impl Parser {
             self.consume_while(|c| c != ']')?;
             assert_eq!(self.consume_char()?, ']');
         }
-        Ok(())
+        // TODO: Just returns Err(()) to ignore this selector for now
+        Err(())
     }
 
     fn parse_declarations(&mut self) -> Result<Vec<Declaration>, ()> {
@@ -463,7 +472,7 @@ impl Parser {
 
     fn parse_value(&mut self) -> Result<Value, ()> {
         match self.next_char()? {
-            '0'...'9' => self.parse_length(),
+            '-' | '0'...'9' => self.parse_length(),
             '#' => self.parse_color(),
             '\"' | '\'' => self.parse_string(),
             _ => {
@@ -489,7 +498,7 @@ impl Parser {
 
     fn parse_float(&mut self) -> Result<f64, ()> {
         self.consume_while(|c| match c {
-            '0'...'9' | '.' => true,
+            '-' | '0'...'9' | '.' => true,
             _ => false,
         })?
             .parse()
