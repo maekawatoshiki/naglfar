@@ -159,7 +159,7 @@ fn build_layout_tree(
     inherited_property: &Style,
     parent_specified_values: &Style,
     appeared_elements: &Vec<SimpleSelector>,
-    id: &mut usize,
+    // id: &mut usize,
 ) -> LayoutBox {
     let mut appeared_elements = appeared_elements.clone();
     let specified_values = match node.data {
@@ -220,7 +220,7 @@ fn build_layout_tree(
             LayoutType::Text => LayoutInfo::Text,
             LayoutType::Image => LayoutInfo::Image(ImageData::new_empty()),
             LayoutType::Anker => LayoutInfo::Anker,
-            LayoutType::Button => LayoutInfo::Button(None, *id),
+            LayoutType::Button => LayoutInfo::Button(None, 0 /* *id */),
         },
     );
 
@@ -246,9 +246,8 @@ fn build_layout_tree(
     );
 
     // Create the descendant boxes.
-    let mut float_insert_point: Option<usize> = None;
-    for (i, child) in node.children.iter().enumerate() {
-        *id += 1;
+    for child in node.children.iter() {
+        // *id += 1;
         let child = build_layout_tree(
             child,
             stylesheet,
@@ -256,28 +255,21 @@ fn build_layout_tree(
             &inherited_property,
             &specified_values,
             &appeared_elements,
-            id,
+            // id,
         );
+
         match (child.property.display(), child.property.float()) {
             (Display::Block, style::FloatType::None) => {
                 root.children.push(child);
-                if float_insert_point.is_some() {
-                    float_insert_point = None;
-                }
             }
             (Display::Inline, style::FloatType::None)
             | (Display::InlineBlock, style::FloatType::None) => {
                 root.get_inline_container().children.push(child);
-                float_insert_point = Some(i);
+            }
+            (_, style::FloatType::Left) | (_, style::FloatType::Right) => {
+                root.children.push(child);
             }
             (Display::None, _) => {} // Don't lay out nodes with `display: none;`
-            (_, style::FloatType::Left) | (_, style::FloatType::Right) => {
-                // if let Some(pos) = float_insert_point {
-                //     root.children.insert(pos, build_layout_tree(child, id));
-                // } else {
-                root.children.push(child);
-                // }
-            }
         }
     }
 
@@ -455,7 +447,7 @@ pub fn layout_tree(
             .borrow_mut()
             .get_or_insert_with(|| {
                 first_construction_of_layout_tree = true;
-                let mut id = 0;
+                // let mut id = 0;
                 let default_style = default_style::default_style();
                 build_layout_tree(
                     root,
@@ -464,7 +456,7 @@ pub fn layout_tree(
                     &style::Style::new(),
                     &style::Style::new(),
                     &vec![],
-                    &mut id,
+                    // &mut id,
                 )
             })
             .clone()
