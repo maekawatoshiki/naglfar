@@ -548,7 +548,7 @@ impl LayoutBox {
                 linemaker.end_of_lines();
                 linemaker.assign_position();
 
-                self.dimensions.content.width = linemaker.calculate_width();
+                self.dimensions.content.width = linemaker.intrinsic_width();
                 self.dimensions.content.height = linemaker.cur_height;
                 self.children = linemaker.new_boxes;
             }

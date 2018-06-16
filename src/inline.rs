@@ -121,7 +121,7 @@ impl LineMaker {
         }
     }
 
-    pub fn calculate_width(&self) -> Au {
+    pub fn intrinsic_width(&self) -> Au {
         let mut max_width = Au(0);
         for line in &self.lines {
             max_width = max(max_width, line.width);
