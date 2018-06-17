@@ -94,6 +94,10 @@ impl Value {
         match *self {
             Value::Length(f, Unit::Px) | Value::Num(f) => Some(f),
             Value::Length(f, Unit::Pt) => Some(pt2px(f)),
+            Value::Length(_, Unit::Em) => {
+                println!("The unit 'em' is currently unsupported. Treated as '16px'");
+                Some(16.0)
+            }
             _ => None,
         }
     }
@@ -103,6 +107,10 @@ impl Value {
             Value::Length(f, Unit::Px) | Value::Num(f) => Some(f),
             Value::Length(f, Unit::Pt) => Some(pt2px(f)),
             Value::Length(f, Unit::Percent) => Some(len * (f / 100.0)),
+            Value::Length(_, Unit::Em) => {
+                println!("The unit 'em' is currently unsupported. Treated as '16px'");
+                Some(16.0)
+            }
             _ => None,
         }
     }
@@ -111,6 +119,10 @@ impl Value {
         match *self {
             Value::Length(f, Unit::Pt) | Value::Num(f) => Some(f),
             Value::Length(f, Unit::Px) => Some(px2pt(f)),
+            Value::Length(_, Unit::Em) => {
+                println!("The unit 'em' is currently unsupported. Treated as '12pt'");
+                Some(12.0)
+            }
             _ => None,
         }
     }
@@ -279,19 +291,28 @@ impl Parser {
             }
 
             if self.next_char().unwrap() == '@' {
-                // TODO: Implement correctly
+                // TODO: Ignore all at-mark rules. Implement correctly ASAP!
                 assert_eq!(self.consume_char().unwrap(), '@');
-                self.parse_identifier().unwrap();
-                self.consume_while(|c| c != '{').unwrap();
-                self.consume_char().unwrap();
-                loop {
-                    self.consume_whitespace().unwrap();
-                    if self.next_char().unwrap() == '}' {
-                        break;
+                let ident = self.parse_identifier().unwrap();
+                if ident == "charset" || ident == "import" {
+                    self.consume_while(|c| c != ';').unwrap();
+                    assert_eq!(self.consume_char().unwrap(), ';');
+                } else if ident == "font-face" {
+                    self.consume_while(|c| c != '{').unwrap();
+                    self.parse_declarations().unwrap();
+                } else {
+                    // @support, @media...
+                    self.consume_while(|c| c != '{').unwrap();
+                    assert_eq!(self.consume_char().unwrap(), '{');
+                    loop {
+                        self.consume_whitespace().unwrap();
+                        if self.next_char().unwrap() == '}' {
+                            break;
+                        }
+                        self.parse_rule().unwrap();
                     }
-                    self.parse_rule().unwrap();
+                    self.consume_char().unwrap();
                 }
-                self.consume_char().unwrap();
             } else {
                 if let Ok(ok) = self.parse_rule() {
                     rules.push(ok)
@@ -323,7 +344,7 @@ impl Parser {
                 '{' => break,
                 c => {
                     println!("Unexpected character {} in selector list", c);
-                    // assert!(false);
+                    panic!();
                     self.consume_char()?;
                 }
             }
@@ -461,7 +482,7 @@ impl Parser {
             values.push(self.parse_value()?);
 
             self.consume_while(|c| c == ' ' || c == '\t')?;
-            if self.skip_char_if_any('\n')? || self.skip_char_if_any('}')? {
+            if self.skip_char_if_any('\n')? || self.next_char()? == '}' {
                 break;
             }
 
@@ -472,15 +493,32 @@ impl Parser {
 
     fn parse_value(&mut self) -> Result<Value, ()> {
         match self.next_char()? {
-            '-' | '0'...'9' => self.parse_length(),
+            '-' if self.next2_char()?.is_numeric() => self.parse_length(),
+            '.' | '0'...'9' => self.parse_length(),
             '#' => self.parse_color(),
             '\"' | '\'' => self.parse_string(),
             _ => {
+                self.skip_char_if_any('!')?; // TODO: Is this correct?
+
                 let ident = self.parse_identifier()?;
                 match ident.as_str() {
                     "rgb" => self.parse_rgb_color(),
                     "rgba" => self.parse_rgba_color(),
                     "url" => self.parse_url(),
+                    _ if self.next_char()? == '(' => {
+                        // TODO: Unsupported functions are ignored.
+                        let mut nest = 0;
+                        self.consume_while(|c| {
+                            match c {
+                                '(' => nest += 1,
+                                ')' => nest -= 1,
+                                _ => {}
+                            }
+                            nest > 0
+                        })?;
+                        assert_eq!(self.consume_char()?, ')');
+                        Ok(Value::Keyword(ident))
+                    }
                     _ => Ok(Value::Keyword(ident)),
                 }
             }
@@ -519,7 +557,11 @@ impl Parser {
             "pt" => Ok(Unit::Pt),
             "%" => Ok(Unit::Percent),
             "em" => Ok(Unit::Em),
-            _ => panic!("unrecognized unit"),
+            u => {
+                println!("unrecognized unit: {}", u);
+                // Unrecognized units are treated as Px
+                Ok(Unit::Pt)
+            }
         }
     }
 
@@ -619,9 +661,9 @@ impl Parser {
         self.consume_while(char::is_whitespace).and(Ok(()))
     }
 
-    fn consume_while<F>(&mut self, f: F) -> Result<String, ()>
+    fn consume_while<F>(&mut self, mut f: F) -> Result<String, ()>
     where
-        F: Fn(char) -> bool,
+        F: FnMut(char) -> bool,
     {
         let mut s = "".to_string();
         while !self.eof() && f(self.next_char()?) {
@@ -647,6 +689,13 @@ impl Parser {
 
     fn next_char(&self) -> Result<char, ()> {
         self.input[self.pos..].chars().next().ok_or(())
+    }
+
+    fn next2_char(&self) -> Result<char, ()> {
+        let mut iter = self.input[self.pos..].char_indices();
+        iter.next().ok_or(())?;
+        let (next_pos, _) = iter.next().unwrap_or((1, ' '));
+        self.input[self.pos + next_pos..].chars().next().ok_or(())
     }
 
     fn eof(&self) -> bool {
