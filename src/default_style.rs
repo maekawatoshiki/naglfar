@@ -22,6 +22,7 @@ thread_local!(
         rule_a(&mut rules);
         rule_img(&mut rules);
         rule_b(&mut rules);
+        rule_i(&mut rules);
         rule_button(&mut rules);
         rule_style(&mut rules);
         rule_title(&mut rules);
@@ -154,6 +155,16 @@ fn rule_b(rules: &mut Vec<Rule>) {
         declarations: vec![
             decl!("display", keyword!("inline")),
             decl!("font-weight", keyword!("bold")),
+        ],
+    });
+}
+
+fn rule_i(rules: &mut Vec<Rule>) {
+    rules.push(Rule {
+        selectors: vec![tag_name!("i")],
+        declarations: vec![
+            decl!("display", keyword!("inline")),
+            decl!("font-style", keyword!("italic")),
         ],
     });
 }

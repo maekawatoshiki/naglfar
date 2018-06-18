@@ -297,7 +297,7 @@ impl Parser {
                 if ident == "charset" || ident == "import" {
                     self.consume_while(|c| c != ';').unwrap();
                     assert_eq!(self.consume_char().unwrap(), ';');
-                } else if ident == "font-face" {
+                } else if ident == "font-face" || ident == "-ms-viewport" {
                     self.consume_while(|c| c != '{').unwrap();
                     self.parse_declarations().unwrap();
                 } else {
@@ -344,7 +344,7 @@ impl Parser {
                 '{' => break,
                 c => {
                     println!("Unexpected character {} in selector list", c);
-                    panic!();
+                    // debug: panic!();
                     self.consume_char()?;
                 }
             }
@@ -368,6 +368,13 @@ impl Parser {
                 self.consume_whitespace()?;
                 let s2 = self.parse_selector()?;
                 return Ok(Selector::Child(s1, Box::new(s2)));
+            }
+            '+' => {
+                assert_eq!(self.consume_char()?, '+');
+                self.consume_whitespace()?;
+                let s2 = self.parse_selector()?;
+                // TODO: Adjacent sibling selector is treated as Descendant selector for now.
+                return Ok(Selector::Descendant(s1, Box::new(s2)));
             }
             _ => {}
         }
@@ -499,6 +506,7 @@ impl Parser {
             '\"' | '\'' => self.parse_string(),
             _ => {
                 self.skip_char_if_any('!')?; // TODO: Is this correct?
+                self.skip_char_if_any('\\')?; // TODO: Is this correct?
 
                 let ident = self.parse_identifier()?;
                 match ident.as_str() {
@@ -535,12 +543,19 @@ impl Parser {
     }
 
     fn parse_float(&mut self) -> Result<f64, ()> {
-        self.consume_while(|c| match c {
+        let n = self.consume_while(|c| match c {
             '-' | '0'...'9' | '.' => true,
             _ => false,
         })?
             .parse()
-            .or_else(|_| Err(()))
+            .or_else(|_| Err(()));
+
+        // TODO: Ignore expression
+        self.consume_while(|c| {
+            c.is_numeric() || c == '.' || c == '-' || c == '+' || c == '*' || c == '/'
+        })?;
+
+        n
     }
 
     fn parse_string(&mut self) -> Result<Value, ()> {
