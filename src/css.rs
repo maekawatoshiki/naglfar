@@ -477,24 +477,32 @@ impl Parser {
 
     fn parse_values(&mut self) -> Result<Vec<Value>, ()> {
         let mut values = vec![];
-        loop {
-            self.consume_whitespace()?;
-            if self.eof() {
-                break;
-            }
-            if self.skip_char_if_any(';')? {
-                break;
-            }
 
-            values.push(self.parse_value()?);
+        if let Ok(()) = (|| -> Result<(), ()> {
+            loop {
+                self.consume_whitespace()?;
+                if self.eof() {
+                    break;
+                }
+                if let Ok(true) = self.skip_char_if_any(';') {
+                    break;
+                }
 
-            self.consume_while(|c| c == ' ' || c == '\t')?;
-            if self.skip_char_if_any('\n')? || self.next_char()? == '}' {
-                break;
+                if let Ok(ok) = self.parse_value() {
+                    values.push(ok)
+                }
+
+                self.consume_while(|c| c == ' ' || c == '\t')?;
+                if self.skip_char_if_any('\n')? || self.next_char()? == '}' {
+                    break;
+                }
+
+                self.skip_char_if_any(',')?;
             }
+            Ok(())
+        })()
+        {}
 
-            self.skip_char_if_any(',')?;
-        }
         Ok(values)
     }
 
@@ -513,7 +521,7 @@ impl Parser {
                     "rgb" => self.parse_rgb_color(),
                     "rgba" => self.parse_rgba_color(),
                     "url" => self.parse_url(),
-                    _ if self.next_char()? == '(' => {
+                    _ if !self.eof() && self.next_char()? == '(' => {
                         // TODO: Unsupported functions are ignored.
                         let mut nest = 0;
                         self.consume_while(|c| {
