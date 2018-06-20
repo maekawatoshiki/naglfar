@@ -30,6 +30,7 @@ jobs:
           command: |
             git clone https://github.com/SimonKagstrom/kcov
             cd kcov
+            git checkout 9db5fa58986c2eae39e82580f15ba6fadb2dc906
             cmake .
             make -j
             make install
