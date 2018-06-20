@@ -824,6 +824,9 @@ fn test1() {
             font-size: 10pt; 
             color: #ffffff; 
             background-color: #030; 
+            content: 'aa';
+            background-image: url(aaa);
+            unknown: unknown(11)
         }";
     let stylesheet = parse(src.to_string());
     let rules = vec![
@@ -926,6 +929,18 @@ fn test1() {
                         }),
                     ],
                 },
+                Declaration {
+                    name: "content".to_string(),
+                    values: vec![Value::Num(0.0)],
+                },
+                Declaration {
+                    name: "background-image".to_string(),
+                    values: vec![Value::Num(0.0)],
+                },
+                Declaration {
+                    name: "unknown".to_string(),
+                    values: vec![Value::Keyword("unknown".to_string())],
+                },
             ],
         },
     ];
@@ -1004,6 +1019,30 @@ fn test_at_mark_rules() {
               a: b 
             } 
           }
+        "
+            .to_string(),
+    );
+}
+
+#[test]
+fn test_pseudo() {
+    parse(
+        "
+        div:hover { 
+        }
+        div::first-line {
+        }
+        "
+            .to_string(),
+    );
+}
+
+#[test]
+fn test_attribute() {
+    parse(
+        "
+        input[type='submit'] {
+        }
         "
             .to_string(),
     );
