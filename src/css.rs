@@ -299,7 +299,15 @@ impl Parser {
                     assert_eq!(self.consume_char().unwrap(), ';');
                 } else if ident == "font-face" || ident == "-ms-viewport" {
                     self.consume_while(|c| c != '{').unwrap();
-                    self.parse_declarations().unwrap();
+                    assert_eq!(self.consume_char().unwrap(), '{');
+                    loop {
+                        self.consume_whitespace().unwrap();
+                        if self.next_char().unwrap() == '}' {
+                            self.consume_char().unwrap();
+                            break;
+                        }
+                        self.parse_rule().unwrap();
+                    }
                 } else {
                     // @support, @media...
                     self.consume_while(|c| c != '{').unwrap();
@@ -307,11 +315,11 @@ impl Parser {
                     loop {
                         self.consume_whitespace().unwrap();
                         if self.next_char().unwrap() == '}' {
+                            self.consume_char().unwrap();
                             break;
                         }
                         self.parse_rule().unwrap();
                     }
-                    self.consume_char().unwrap();
                 }
             } else {
                 if let Ok(ok) = self.parse_rule() {
@@ -975,5 +983,28 @@ fn test_rgb_rgba() {
                 ],
             },
         ]
+    );
+}
+
+#[test]
+fn test_at_mark_rules() {
+    // At-mark rules are all ignored.
+    parse(
+        "
+          @import 'a.css';
+
+          @font-face { 
+            div { 
+              a: b 
+            } 
+          }
+
+          @media { 
+            div { 
+              a: b 
+            } 
+          }
+        "
+            .to_string(),
     );
 }
