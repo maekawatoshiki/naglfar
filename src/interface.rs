@@ -24,6 +24,11 @@ use std::io::{BufWriter, Write};
 extern crate rand;
 use self::rand::Rng;
 
+#[macro_export]
+macro_rules! debug_println {
+   ($($arg:tt)*) => { if cfg!(debug_assertions) { println!($($arg)*); } }
+}
+
 /// If ``url_str`` starts with ``http(s)://``, downloads the specified file:
 ///  Returns (downloaded file name, file path(URL without ``http(s)://domain/``)).
 /// If ``url_str`` starts with ``file://``, does nothing especially.
@@ -67,7 +72,7 @@ pub fn download(url_str: &str) -> (String, PathBuf) {
                 }
             );
 
-            println!("downloaded {}", url.as_str());
+            debug_println!("downloaded {}", url.as_str());
 
             let mut f = BufWriter::new(fs::File::create(tmpfile_name.as_str()).unwrap());
             f.write_all(content.as_slice()).unwrap();
@@ -93,7 +98,7 @@ static mut SRC_UPDATED: bool = false;
 pub fn update_html_source(html_src: String) {
     let (html_src_cache_name, html_src_path) = download(html_src.as_str());
 
-    println!("HTML:");
+    debug_println!("HTML:");
     let mut html_source = "".to_string();
     OpenOptions::new()
         .read(true)
@@ -103,9 +108,9 @@ pub fn update_html_source(html_src: String) {
         .ok()
         .expect("cannot read file");
     let html_tree = html::parse(html_source, html_src_path);
-    print!("{}", html_tree);
+    debug_println!("{}", html_tree);
 
-    println!("CSS:");
+    debug_println!("CSS:");
     let mut css_source = "".to_string();
     if let Some(stylesheet_path) = html_tree.find_stylesheet_path() {
         let (css_cache_name, _) = download(stylesheet_path.to_str().unwrap());
@@ -119,10 +124,10 @@ pub fn update_html_source(html_src: String) {
     } else if let Some(stylesheet_str) = html_tree.find_stylesheet_in_style_tag() {
         css_source = stylesheet_str;
     } else {
-        println!("*** Not found any stylesheet but continue ***");
+        debug_println!("*** Not found any stylesheet but continue ***");
     }
     let stylesheet = css::parse(css_source);
-    print!("{}", stylesheet);
+    debug_println!("{}", stylesheet);
 
     HTML_TREE.with(|h| {
         *h.borrow_mut() = Some(html_tree);
@@ -156,16 +161,17 @@ pub fn run_with_url(html_src: String) {
                     unsafe {
                         SRC_UPDATED = false;
                     }
+
                     *last_width = viewport.content.width;
                     *last_height = viewport.content.height;
 
                     let html_tree = HTML_TREE.with(|h| (*h.borrow()).clone().unwrap());
                     let stylesheet = STYLESHEET.with(|s| (*s.borrow()).clone().unwrap());
                     let mut layout_tree = layout::layout_tree(&html_tree, &stylesheet, viewport);
-                    // print!("LAYOUT:\n{}", layout_tree);
+                    // debug_println!("LAYOUT:\n{}", layout_tree);
 
                     let display_command = painter::build_display_list(&mut layout_tree);
-                    // println!("DISPLAY:\n{:?}", display_command);
+                    // debug_println!("DISPLAY:\n{:?}", display_command);
 
                     *last_displays = display_command.clone();
 
