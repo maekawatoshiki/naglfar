@@ -1,5 +1,4 @@
 use layout::{BoxType, Dimensions, EdgeSizes, LayoutBox, LayoutInfo, Rect};
-use inline::get_image;
 use style;
 
 use std::cmp::{max, min};
@@ -157,11 +156,7 @@ impl LayoutBox {
 
         // TODO: Implement correctly
         match self.info {
-            LayoutInfo::Image(ref mut imgdata) => {
-                get_image(&self.node, imgdata, containing_block);
-                self.dimensions.content.width = imgdata.metadata.width;
-                self.dimensions.content.height = imgdata.metadata.height;
-            }
+            LayoutInfo::Image(_) => self.load_image(containing_block),
             LayoutInfo::Generic | LayoutInfo::Anker => {
                 let width_not_specified = self.calculate_float_width(containing_block);
 
@@ -202,6 +197,9 @@ impl LayoutBox {
             }
             _ => unimplemented!("{:?}", self.info),
         };
+
+        self.assign_replaced_width_if_necessary();
+        self.assign_replaced_height_if_necessary();
 
         self.calculate_float_position(floats, containing_block);
 

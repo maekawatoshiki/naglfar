@@ -605,6 +605,51 @@ impl LayoutBox {
     }
 }
 
+impl LayoutBox {
+    pub fn load_image(&mut self, containing_block: Dimensions) {
+        use inline;
+        match &mut self.info {
+            &mut LayoutInfo::Image(ref mut imgdata) => {
+                inline::get_image(&self.node, imgdata, containing_block);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn is_replaced(&self) -> bool {
+        match self.info {
+            LayoutInfo::Image(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn assign_replaced_width_if_necessary(&mut self) {
+        if self.is_replaced() {
+            match self.info {
+                LayoutInfo::Image(ref imgdata) => {
+                    if imgdata.metadata.width > Au(0) {
+                        self.dimensions.content.width = imgdata.metadata.width;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    pub fn assign_replaced_height_if_necessary(&mut self) {
+        if self.is_replaced() {
+            match self.info {
+                LayoutInfo::Image(ref imgdata) => {
+                    if imgdata.metadata.height > Au(0) {
+                        self.dimensions.content.height = imgdata.metadata.height;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 impl FontWeight {
     pub fn to_cairo_font_weight(&self) -> cairo::FontWeight {
         match self {

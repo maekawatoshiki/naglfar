@@ -503,29 +503,14 @@ impl LineMaker {
 impl LayoutBox {
     /// Lay out a inline-level element and its descendants.
     pub fn layout_inline(&mut self, _floats: &mut Floats, containing_block: Dimensions) {
-        match self.info {
-            LayoutInfo::Image(_) => {
-                self.calculate_replaced_inline_width_height(containing_block);
+        self.load_image(containing_block);
 
-                self.assign_padding();
-                self.assign_border_width();
-                self.assign_margin();
-            }
-            _ => unimplemented!(),
-        }
-    }
+        self.assign_padding();
+        self.assign_border_width();
+        self.assign_margin();
 
-    /// Calculate the width of a inline-level replaced(<img>) element in normal flow.
-    pub fn calculate_replaced_inline_width_height(&mut self, containing_block: Dimensions) {
-        // Replaced Inline Element (<img>)
-        match &mut self.info {
-            &mut LayoutInfo::Image(ref mut imgdata) => {
-                get_image(&self.node, imgdata, containing_block);
-                self.dimensions.content.width = imgdata.metadata.width;
-                self.dimensions.content.height = imgdata.metadata.height;
-            }
-            _ => unimplemented!(),
-        };
+        self.assign_replaced_width_if_necessary();
+        self.assign_replaced_height_if_necessary();
     }
 }
 

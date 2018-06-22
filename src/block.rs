@@ -16,6 +16,8 @@ impl LayoutBox {
         _saved_block: Dimensions,
         viewport: Dimensions,
     ) {
+        self.load_image(containing_block);
+
         self.floats = floats.clone();
 
         let margin = self.property.margin();
@@ -40,16 +42,8 @@ impl LayoutBox {
 
         self.layout_block_children(viewport);
 
-        use inline;
-        use layout;
-        match &mut self.info {
-            &mut layout::LayoutInfo::Image(ref mut imgdata) => {
-                inline::get_image(&self.node, imgdata, containing_block);
-                self.dimensions.content.width = imgdata.metadata.width;
-                self.dimensions.content.height = imgdata.metadata.height;
-            }
-            _ => {}
-        }
+        self.assign_replaced_width_if_necessary();
+        self.assign_replaced_height_if_necessary();
 
         // Parent height can depend on child height, so `calculate_height` must be called after the
         // children are laid out.
