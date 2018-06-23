@@ -182,7 +182,7 @@ pub fn run_with_url(html_src: String) {
     }).join();
 
     if let Err(_) = main_browser_process {
-        println!("*** Sorry, Naglfar has been crushed. ***\n");
+        println!("*** Sorry, Naglfar has been crushed. ***");
     }
 
     // Delete downloaded files
