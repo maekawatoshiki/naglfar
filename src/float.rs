@@ -160,11 +160,12 @@ impl LayoutBox {
             LayoutInfo::Generic | LayoutInfo::Anker => {
                 let width_not_specified = self.calculate_float_width(containing_block);
 
-                // Calculate the 'shrink-to-fit' width.
-                // TODO: Implement correctly
                 if width_not_specified {
+                    let children = self.children.clone();
+                    let floats = self.floats.clone();
                     self.layout_float_children(viewport);
 
+                    // println!("before: {:?}", self.dimensions.content.width);
                     self.dimensions.content.width = Au(0);
                     for child in &self.children {
                         match self.box_type {
@@ -182,6 +183,14 @@ impl LayoutBox {
                             _ => {}
                         }
                     }
+                    // println!("after: {:?}", self.dimensions.content.width);
+
+                    // Recalculate the descendants' size and position.
+                    // TODO: More efficient implementation needed
+                    self.dimensions.content.height = Au(0);
+                    self.floats = floats;
+                    self.children = children;
+                    self.layout_float_children(viewport);
                 } else {
                     self.layout_float_children(viewport);
                 }
