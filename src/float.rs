@@ -160,9 +160,9 @@ impl LayoutBox {
             LayoutInfo::Generic | LayoutInfo::Anker => {
                 let width_not_specified = self.calculate_float_width(containing_block);
 
+                // Calculate the 'shrink-to-fit' width.
+                // TODO: Implement correctly
                 if width_not_specified {
-                    let children = self.children.clone();
-                    let floats = self.floats.clone();
                     self.layout_float_children(viewport);
 
                     self.dimensions.content.width = Au(0);
@@ -171,24 +171,17 @@ impl LayoutBox {
                             BoxType::BlockNode | BoxType::AnonymousBlock => {
                                 self.dimensions.content.width = max(
                                     self.dimensions.content.width,
-                                    child.dimensions.margin_box().width,
+                                    child.dimensions.border_box().width,
                                 );
                             }
                             BoxType::Float => {
-                                // Ignore whether the float is on left or on right
+                                // Ignore whether the float is on left or right
                                 self.dimensions.content.width +=
-                                    child.dimensions.margin_box().width;
+                                    child.dimensions.border_box().width;
                             }
                             _ => {}
                         }
                     }
-
-                    // Recalculate the descendants' size and position.
-                    // TODO: More efficient implementation needed
-                    self.dimensions.content.height = Au(0);
-                    self.floats = floats;
-                    self.children = children;
-                    self.layout_float_children(viewport);
                 } else {
                     self.layout_float_children(viewport);
                 }
