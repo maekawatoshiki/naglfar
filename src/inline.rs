@@ -79,8 +79,19 @@ impl LineMaker {
     }
 
     pub fn run(&mut self, max_width: Au, containing_block: Dimensions) {
-        self.pending.zone = self.floats
-            .available_area(max_width, self.cur_height, Au(1));
+        let shrink_to_fit = max_width < Au(0);
+
+        self.pending.zone = if shrink_to_fit {
+            Rect {
+                x: Au(0),
+                y: Au(0),
+                width: Au(-1),
+                height: Au(0),
+            }
+        } else {
+            self.floats
+                .available_area(max_width, self.cur_height, Au(1))
+        };
         let mut max_width_considered_float = self.pending.zone.width;
 
         while let Some(layoutbox) = self.work_list.back_mut().unwrap().pop_front() {
@@ -89,8 +100,9 @@ impl LineMaker {
             }
 
             macro_rules! update_available_zone { () => {
-                if self.pending.zone.height > Au(0)
-                    && (self.cur_height + self.floats.ceiling > self.pending.zone.height)
+                if !shrink_to_fit &&
+                    (self.pending.zone.height > Au(0)
+                        && (self.cur_height + self.floats.ceiling > self.pending.zone.height))
                 {
                     self.pending.zone =
                         self.floats
@@ -154,8 +166,13 @@ impl LineMaker {
             self.cur_width = Au(0);
 
             for new_box in &mut self.new_boxes[line.range.clone()] {
-                let (left_floats_width, max_width_considered_float) =
+                let (left_floats_width, mut max_width_considered_float) =
                     (line.zone.x, line.zone.width);
+
+                if max_width_considered_float < Au(0) {
+                    max_width_considered_float = line.width;
+                }
+
                 // TODO: Refine
                 let text_align = new_box.property.text_align();
                 let init_width = match text_align {
@@ -195,6 +212,8 @@ impl LineMaker {
             max_width: Au,
             containing_block: Dimensions,
         ) {
+            let shrink_to_fit = max_width < Au(0);
+
             linemaker
                 .work_list
                 .push_back(VecDeque::from(layoutbox.children.clone()));
@@ -208,7 +227,11 @@ impl LineMaker {
 
             linemaker.cur_width += layoutbox.dimensions.left_offset();
             linemaker.run(
-                max_width - layoutbox.dimensions.right_offset(),
+                if shrink_to_fit {
+                    max_width
+                } else {
+                    max_width - layoutbox.dimensions.right_offset()
+                },
                 containing_block,
             );
             linemaker.cur_width += layoutbox.dimensions.right_offset();
@@ -259,6 +282,8 @@ impl LineMaker {
             linemaker.work_list.pop_back();
         }
 
+        let shrink_to_fit = max_width < Au(0);
+
         match layoutbox.info {
             LayoutInfo::Generic | LayoutInfo::Anker => {
                 layout_text(layoutbox.clone(), self, max_width, containing_block);
@@ -272,7 +297,7 @@ impl LineMaker {
                 width = layoutbox.dimensions.border_box().width;
                 height = layoutbox.dimensions.border_box().height;
 
-                if self.cur_width + width > max_width {
+                if !shrink_to_fit && self.cur_width + width > max_width {
                     self.flush_cur_line();
                     self.end += 1;
 
@@ -435,6 +460,8 @@ impl LineMaker {
     }
 
     fn run_on_text_node(&mut self, layoutbox: &LayoutBox, max_width: Au) {
+        let shrink_to_fit = max_width < Au(0);
+
         let text = if let NodeType::Text(ref text) = layoutbox.node.data {
             &text[self.pending.range.clone()]
         } else {
@@ -463,7 +490,7 @@ impl LineMaker {
             (line_height - (ascent + descent)) / 2 + descent,
         );
 
-        if self.cur_width + text_width > max_width {
+        if !shrink_to_fit && self.cur_width + text_width > max_width {
             let remaining_width = max_width - self.cur_width; // Is this correc?
             let (max_chars, text_width) =
                 my_font.compute_max_chars_and_width(text, remaining_width.to_f64_px());

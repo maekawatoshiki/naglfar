@@ -161,14 +161,18 @@ impl LayoutBox {
                 let width_not_specified = self.calculate_float_width(containing_block);
 
                 if width_not_specified {
-                    let children = self.children.clone();
-                    let floats = self.floats.clone();
-                    self.layout_float_children(viewport);
+                    // When dimensions.content.width < Au(0), LineBreaker inside layout_float_children()
+                    // calculates shrink-to-fit width.
+                    self.dimensions.content.width = Au(-1);
+                }
 
-                    // println!("before: {:?}", self.dimensions.content.width);
+                self.layout_float_children(viewport);
+
+                if width_not_specified {
                     self.dimensions.content.width = Au(0);
+
                     for child in &self.children {
-                        match self.box_type {
+                        match child.box_type {
                             BoxType::BlockNode | BoxType::AnonymousBlock => {
                                 self.dimensions.content.width = max(
                                     self.dimensions.content.width,
@@ -183,16 +187,6 @@ impl LayoutBox {
                             _ => {}
                         }
                     }
-                    // println!("after: {:?}", self.dimensions.content.width);
-
-                    // Recalculate the descendants' size and position.
-                    // TODO: More efficient implementation needed
-                    self.dimensions.content.height = Au(0);
-                    self.floats = floats;
-                    self.children = children;
-                    self.layout_float_children(viewport);
-                } else {
-                    self.layout_float_children(viewport);
                 }
 
                 self.calculate_block_height();
