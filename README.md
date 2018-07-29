@@ -5,6 +5,7 @@
 [![](http://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 Naglfar is a toy web browser in Rust.
+*I'm focusing on developing a toy JavaScript engine: ![Rapidus](https://github.com/maekawatoshiki/rapidus).*
 
 ![Naglfar](https://raw.githubusercontent.com/maekawatoshiki/naglfar/master/screenshot.gif)
 
