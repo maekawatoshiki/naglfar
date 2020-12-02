@@ -1,6 +1,6 @@
-use html;
-use dom;
 use css;
+use dom;
+use html;
 use layout;
 use painter;
 use window;
@@ -87,10 +87,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 thread_local!(
-    static LAYOUT_SAVER: RefCell<(Au, Au, painter::DisplayList)> = { RefCell::new((Au(0), Au(0), vec![])) };
+    static LAYOUT_SAVER: RefCell<(Au, Au, painter::DisplayList)> =
+        { RefCell::new((Au(0), Au(0), vec![])) };
     static HTML_SRC_URL: RefCell<Option<String>> = { RefCell::new(None) };
-    static HTML_TREE:    Rc<RefCell<Option<dom::Node>>> = { Rc::new(RefCell::new(None)) };
-    static STYLESHEET:   Rc<RefCell<Option<css::Stylesheet>>> = { Rc::new(RefCell::new(None)) };
+    static HTML_TREE: Rc<RefCell<Option<dom::Node>>> = { Rc::new(RefCell::new(None)) };
+    static STYLESHEET: Rc<RefCell<Option<css::Stylesheet>>> = { Rc::new(RefCell::new(None)) };
 );
 
 static mut SRC_UPDATED: bool = false;
@@ -153,7 +154,8 @@ pub fn run_with_url(html_src: String) {
             LAYOUT_SAVER.with(|x| {
                 let (ref mut last_width, ref mut last_height, ref mut last_displays) =
                     *x.borrow_mut();
-                if *last_width == viewport.content.width && *last_height == viewport.content.height
+                if *last_width == viewport.content.width
+                    && *last_height == viewport.content.height
                     && unsafe { !SRC_UPDATED }
                 {
                     last_displays.clone()
@@ -179,7 +181,8 @@ pub fn run_with_url(html_src: String) {
                 }
             })
         });
-    }).join();
+    })
+    .join();
 
     if let Err(_) = main_browser_process {
         println!("*** Sorry, Naglfar has been crushed. ***");
